@@ -9,14 +9,18 @@ export default defineConfig({
     },
   },
   plugins: [
-    // Cesium 插件：自动处理 Worker 文件路径与静态资源
     cesium(),
   ],
   build: {
     target: "esnext",
   },
   server: {
-    port: 3000,
-    open: true,
+    port: 5173,
+    proxy: {
+      "/api": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
+      },
+    },
   },
 });

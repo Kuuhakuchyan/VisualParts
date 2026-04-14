@@ -296,6 +296,16 @@ export class RegionalHeatmapLayer {
    */
   private _isInitialized: boolean = false;
 
+  /**
+   * 数值标注 Entity 集合（每个热力点一个 Label）
+   */
+  private _labelEntities: Cesium.Entity[] = [];
+
+  /**
+   * 是否显示数值标注
+   */
+  private _showLabels: boolean = false;
+
   // =============================================================================
   // 构造函数
   // =============================================================================
@@ -341,6 +351,13 @@ export class RegionalHeatmapLayer {
    */
   public get pointCount(): number {
     return this._currentData.length;
+  }
+
+  /**
+   * 是否显示数值标注
+   */
+  public get showLabels(): boolean {
+    return this._showLabels;
   }
 
   // =============================================================================
@@ -503,6 +520,11 @@ export class RegionalHeatmapLayer {
     console.debug(
       `[RegionalHeatmapLayer] 热力图已更新，数据点数：${newData.length}`
     );
+
+    // 同步更新数值标注
+    if (this._showLabels && this._labelEntities.length > 0) {
+      this._updateLabels();
+    }
   }
 
   // =============================================================================
@@ -579,6 +601,9 @@ export class RegionalHeatmapLayer {
    */
   public async destroy(): Promise<void> {
     console.debug("[RegionalHeatmapLayer] 开始销毁热力图层...");
+
+    // —— 移除数值标注 ——
+    this._removeLabels();
 
     // —— 从场景移除 Entity ——
     if (this._heatmapEntity && this._viewer) {
@@ -787,7 +812,127 @@ export class RegionalHeatmapLayer {
       `[RegionalHeatmapLayer] Entity 已添加至 viewer.entities，` +
         `classificationType: ${classType === Cesium.ClassificationType.BOTH ? 'BOTH（地表+建筑立面）' : 'TERRAIN（仅地表）'}`
     );
+
+    // 创建数值标注
+    this._createLabels();
   }
+
+  // =============================================================================
+  // 公开方法：toggleLabels — 显示/隐藏热力数值标注
+  // =============================================================================
+
+  /**
+   * 切换热力数值标注的显示状态
+   *
+   * 在每个热力点中心叠加 Cesium.Label，展示归一化热力值（0.0~1.0）。
+   *
+   * @returns {boolean} 切换后的显示状态
+   */
+  public toggleLabels(): boolean {
+    this._showLabels = !this._showLabels;
+
+    if (this._showLabels) {
+      if (this._labelEntities.length === 0) {
+        this._createLabels();
+      } else {
+        this._labelEntities.forEach(e => { e.show = true; });
+      }
+    } else {
+      this._labelEntities.forEach(e => { e.show = false; });
+    }
+
+    console.debug(`[RegionalHeatmapLayer] 数值标注已${this._showLabels ? '显示' : '隐藏'}`);
+    return this._showLabels;
+  }
+
+  // =============================================================================
+  // 私有方法：_createLabels — 在每个热力点创建 Label
+  // =============================================================================
+
+  private _createLabels(): void {
+    if (!this._bounds || !this._viewer || this._currentData.length === 0) return;
+
+    const { west, east, south, north } = this._bounds;
+    const lngRange = east - west;
+    const latRange = north - south;
+
+    this._removeLabels();
+
+    for (const point of this._currentData) {
+      const lng = west + point.x * lngRange;
+      const lat = south + point.y * latRange;
+
+      const [r, g, b] = interpolateColor(point.value);
+      const color = new Cesium.Color(r / 255, g / 255, b / 255, 0.9);
+      const fontSize = 10 + Math.round(point.value * 6);
+
+      const label = this._viewer.entities.add({
+        position: Cesium.Cartesian3.fromDegrees(lng, lat, 30),
+        label: {
+          text: point.value.toFixed(2),
+          font: `${fontSize}px sans-serif`,
+          fillColor: color,
+          outlineColor: Cesium.Color.WHITE,
+          outlineWidth: 2,
+          style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+          pixelOffset: new Cesium.Cartesian2(0, -8),
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          show: true,
+        },
+      } as any);
+
+      this._labelEntities.push(label);
+    }
+
+    console.debug(`[RegionalHeatmapLayer] 已创建 ${this._labelEntities.length} 个数值标注`);
+  }
+
+  // =============================================================================
+  // 私有方法：_updateLabels — 更新已有 Label 文字和颜色
+  // =============================================================================
+
+  private _updateLabels(): void {
+    if (!this._bounds || this._labelEntities.length === 0) return;
+
+    const { west, east, south, north } = this._bounds;
+    const lngRange = east - west;
+    const latRange = north - south;
+    const count = Math.min(this._currentData.length, this._labelEntities.length);
+
+    for (let i = 0; i < count; i++) {
+      const point = this._currentData[i];
+      const entity = this._labelEntities[i];
+
+      const lng = west + point.x * lngRange;
+      const lat = south + point.y * latRange;
+      entity.position = Cesium.Cartesian3.fromDegrees(lng, lat, 30);
+
+      const [r, g, b] = interpolateColor(point.value);
+      const color = new Cesium.Color(r / 255, g / 255, b / 255, 0.9);
+      const fontSize = 10 + Math.round(point.value * 6);
+
+      const label = entity.label as any;
+      label.text = point.value.toFixed(2);
+      label.fillColor = color;
+      label.font = `${fontSize}px sans-serif`;
+    }
+  }
+
+  // =============================================================================
+  // 私有方法：_removeLabels — 移除所有 Label
+  // =============================================================================
+
+  private _removeLabels(): void {
+    if (!this._viewer) return;
+    for (const entity of this._labelEntities) {
+      try { this._viewer.entities.remove(entity); } catch (_) { /* ignore */ }
+    }
+    this._labelEntities = [];
+  }
+
+  // =============================================================================
+  // 私有方法：_validateBounds — 边界参数校验
+  // =============================================================================
 
   /**
    * 边界参数校验

@@ -384,6 +384,10 @@
         🔄 重置热力场
         <small>恢复初始数据</small>
       </button>
+      <button class="btn" id="btnToggleLabels">
+        🔢 显示数值标注
+        <small>叠加热力点数值</small>
+      </button>
       <button class="btn" id="btnDestroy">
         🗑 销毁全部图层
         <small>释放显存</small>
@@ -472,6 +476,20 @@
       document.getElementById("btnHeatReset").onclick = function () {
         var data = window.__initialData;
         if (data && heatmap) heatmap.updateHeatmap(data);
+      };
+
+      var labelBtn = document.getElementById("btnToggleLabels");
+      labelBtn.onclick = function () {
+        if (!heatmap) return;
+        var showing = heatmap.toggleLabels();
+        if (labelBtn && labelBtn.firstChild) {
+          labelBtn.firstChild.textContent = showing ? " 🔢 隐藏数值标注" : " 🔢 显示数值标注";
+          if (showing) {
+            labelBtn.classList.add("active");
+          } else {
+            labelBtn.classList.remove("active");
+          }
+        }
       };
 
       document.getElementById("sliderOpacity").oninput = function (e) {

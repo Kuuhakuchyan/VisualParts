@@ -12,7 +12,7 @@ import { BuildingBuilderLayer } from "../src/cesium_core/layers/BuildingBuilderL
 import { ImageryLayerManager } from "../src/cesium_core/layers/ImageryLayerManager";
 
 // ============================================================================
-// 阶段一：初始化 Viewer
+// 阶段二：初始化 Viewer
 // ============================================================================
 
 async function initViewer() {
@@ -40,11 +40,11 @@ async function initViewer() {
 }
 
 // ============================================================================
-// 阶段二：加载建筑底座（OSM 白模兜底）
+// 阶段三：加载建筑底座（OSM 白模兜底）
 // ============================================================================
 
 async function loadCampusLayer(viewer: Cesium.Viewer) {
-  console.log("[Test] 阶段二：加载 CampusTilesetLayer（OSM 白模兜底）...");
+  console.log("[Test] 阶段三：加载 CampusTilesetLayer（OSM 白模兜底）...");
 
   const campusLayer = new CampusTilesetLayer(viewer);
 
@@ -71,11 +71,11 @@ async function loadCampusLayer(viewer: Cesium.Viewer) {
 }
 
 // ============================================================================
-// 阶段三：初始化热力图层
+// 阶段四：初始化热力图层
 // ============================================================================
 
 async function loadHeatmapLayer(viewer: Cesium.Viewer) {
-  console.log("[Test] 阶段三：初始化 RegionalHeatmapLayer...");
+  console.log("[Test] 阶段四：初始化 RegionalHeatmapLayer...");
 
   const heatmapLayer = new RegionalHeatmapLayer(viewer);
 
@@ -125,7 +125,7 @@ async function loadHeatmapLayer(viewer: Cesium.Viewer) {
 }
 
 // ============================================================================
-// 阶段四：交互测试 — 模拟拔楼 + 热力场更新
+// 阶段五：交互测试 — 模拟拔楼 + 热力场更新
 // ============================================================================
 
 async function testInteractions(
@@ -133,7 +133,7 @@ async function testInteractions(
   campusLayer: CampusTilesetLayer,
   heatmapLayer: RegionalHeatmapLayer
 ) {
-  console.log("[Test] 阶段四：交互测试（点击屏幕拾取建筑 / 模拟拔楼 + 热力更新）");
+  console.log("[Test] 阶段五：交互测试（点击屏幕拾取建筑 / 模拟拔楼 + 热力更新）");
 
   // 安装鼠标左键拾取监听
   const handler = new Cesium.ScreenSpaceEventHandler(
@@ -268,13 +268,43 @@ async function runAllTests() {
   console.log("=".repeat(60));
 
   try {
-    // 阶段一：Viewer
+    // 阶段一：API 连接测试（优先，确保前后端通信正常）
+    console.log("[Test] 阶段一：测试与后端 API 的连接...");
+    try {
+      const healthRes = await fetch("/api/simulation/health");
+      const healthData = await healthRes.json();
+      console.log("[Test] ✅ 后端健康检查通过:", healthData);
+
+      console.log("[Test] 测试 what-if 推演接口...");
+      const whatIfRes = await fetch("/api/simulation/what-if", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetBuildingId: "a1111111-1111-1111-1111-111111111111",
+          action: "REMOVE",
+          radiusMeters: 100,
+        }),
+      });
+      const whatIfData = await whatIfRes.json();
+      if (whatIfData.success) {
+        console.log("[Test] ✅ what-if 推演成功! scenarioId:", whatIfData.data.scenarioId);
+        console.log("[Test]    平均降温:", whatIfData.data.averageTempDelta, "°C");
+        console.log("[Test]    受影响格点数:", whatIfData.data.updatedGrids.length);
+        console.log("[Test]    总耗时:", whatIfData.data.totalTimeMs, "ms");
+      } else {
+        console.warn("[Test] ⚠️ what-if 推演失败:", whatIfData.message);
+      }
+    } catch (e) {
+      console.error("[Test] ❌ API 调用出错:", e);
+    }
+
+    // 阶段二：Viewer
     const viewer = await initViewer();
 
-    // 阶段二：建筑底座
+    // 阶段三：建筑底座
     const campusLayer = await loadCampusLayer(viewer);
 
-    // 阶段三：热力图层
+    // 阶段四：热力图层
     initialData = [
       { x: 0.50, y: 0.45, value: 0.95 },
       { x: 0.52, y: 0.48, value: 0.90 },
@@ -292,17 +322,17 @@ async function runAllTests() {
     ];
     const heatmapLayer = await loadHeatmapLayer(viewer);
 
-    // 阶段四：交互
+    // 阶段五：交互
     await testInteractions(viewer, campusLayer, heatmapLayer);
 
-    // 阶段五：影像底图管理器
+    // 阶段六：影像底图管理器
     const imageryManager = new ImageryLayerManager(viewer);
     console.log("[Test] ImageryLayerManager 已创建，可手动调用：");
     console.log("  - window.__imageryManager.switchToStreet()");
     console.log("  - window.__imageryManager.switchToSatellite()");
     console.log("  - window.__imageryManager.toggle()");
 
-    // 阶段六：建筑建造
+    // 阶段七：建筑建造
     const builderLayer = new BuildingBuilderLayer(viewer);
     console.log("[Test] BuildingBuilderLayer 已创建，可手动调用：");
     console.log("  - window.__builderLayer.startPlacement({ type: 'commercial', shape: 'box', height: 60 })");
