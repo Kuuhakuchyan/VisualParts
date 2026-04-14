@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>城市微环境决策支持系统 — 功能测试</title>
+
+  <!-- 引入 Cesium CSS -->
+  <link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.120/Build/Cesium/Widgets/widgets.css" />
+
+  <style>
+    /* ================================================================
+       全局重置与布局
+       ================================================================ */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #0d1117;
+      font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+      color: #e6edf3;
+    }
+
+    /* ================================================================
+       Cesium 容器
+       ================================================================ */
+    #cesiumContainer {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    /* Cesium 左下角 logo 颜色适配深色主题 */
+    .cesium-credit-logoContainer,
+    .cesium-credit-textContainer {
+      display: none !important;
+    }
+
+    /* ================================================================
+       顶部控制面板
+       ================================================================ */
+    #controlPanel {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 1000;
+      background: rgba(13, 17, 23, 0.88);
+      border: 1px solid rgba(48, 54, 61, 0.8);
+      border-radius: 10px;
+      padding: 16px 20px;
+      min-width: 260px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+    }
+
+    #controlPanel h1 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #58a6ff;
+      margin-bottom: 14px;
+      letter-spacing: 0.5px;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .status-dot.success { background: #3fb950; box-shadow: 0 0 6px #3fb950; }
+    .status-dot.pending { background: #d29922; box-shadow: 0 0 6px #d29922; }
+    .status-dot.error   { background: #f85149; box-shadow: 0 0 6px #f85149; }
+
+    .status-label { color: #8b949e; min-width: 80px; }
+    .status-value { color: #e6edf3; }
+
+    /* 操作按钮组 */
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .btn {
+      padding: 8px 14px;
+      border-radius: 6px;
+      border: 1px solid rgba(48, 54, 61, 0.8);
+      background: rgba(22, 27, 34, 0.9);
+      color: #e6edf3;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: left;
+    }
+
+    .btn:hover {
+      background: rgba(48, 54, 61, 0.9);
+      border-color: #58a6ff;
+      color: #58a6ff;
+    }
+
+    .btn.danger:hover {
+      border-color: #f85149;
+      color: #f85149;
+    }
+
+    .btn:active { transform: scale(0.98); }
+
+    .btn small {
+      display: block;
+      font-size: 11px;
+      color: #8b949e;
+      margin-top: 2px;
+    }
+
+    /* 分隔线 */
+    .divider {
+      border: none;
+      border-top: 1px solid rgba(48, 54, 61, 0.6);
+      margin: 12px 0;
+    }
+
+    /* 透明度滑块 */
+    .slider-group {
+      margin-top: 12px;
+    }
+
+    .slider-label {
+      font-size: 12px;
+      color: #8b949e;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(48, 54, 61, 0.8);
+      outline: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #58a6ff;
+      box-shadow: 0 0 6px rgba(88, 166, 255, 0.6);
+      cursor: pointer;
+    }
+
+    /* 加载状态 */
+    #loadingOverlay {
+      position: fixed;
+      inset: 0;
+      background: #0d1117;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.5s;
+    }
+
+    #loadingOverlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .loader-ring {
+      width: 48px;
+      height: 48px;
+      border: 3px solid rgba(88, 166, 255, 0.2);
+      border-top-color: #58a6ff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loader-text {
+      color: #8b949e;
+      font-size: 14px;
+    }
+
+    /* ================================================================
+       右下角图例
+       ================================================================ */
+    #legend {
+      position: absolute;
+      bottom: 30px;
+      right: 16px;
+      z-index: 1000;
+      background: rgba(13, 17, 23, 0.88);
+      border: 1px solid rgba(48, 54, 61, 0.8);
+      border-radius: 10px;
+      padding: 12px 16px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      font-size: 12px;
+    }
+
+    #legend h3 {
+      font-size: 12px;
+      color: #58a6ff;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .gradient-bar {
+      width: 160px;
+      height: 12px;
+      border-radius: 3px;
+      background: linear-gradient(to right,
+        rgb(0, 0, 139),
+        rgb(0, 139, 139),
+        rgb(0, 255, 0),
+        rgb(255, 255, 0),
+        rgb(255, 0, 0)
+      );
+      margin-bottom: 4px;
+    }
+
+    .gradient-labels {
+      display: flex;
+      justify-content: space-between;
+      color: #8b949e;
+      font-size: 11px;
+    }
+
+    /* ================================================================
+       左下角控制台快捷键提示
+       ================================================================ */
+    #shortcutHint {
+      position: absolute;
+      bottom: 30px;
+      left: 16px;
+      z-index: 1000;
+      background: rgba(13, 17, 23, 0.80);
+      border: 1px solid rgba(48, 54, 61, 0.6);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: #8b949e;
+      backdrop-filter: blur(8px);
+      line-height: 1.8;
+    }
+
+    #shortcutHint kbd {
+      background: rgba(48, 54, 61, 0.8);
+      border: 1px solid rgba(88, 166, 255, 0.3);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-family: monospace;
+      font-size: 11px;
+      color: #58a6ff;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 加载遮罩 -->
+  <div id="loadingOverlay">
+    <div class="loader-ring"></div>
+    <div class="loader-text">正在初始化 Cesium 场景...</div>
+  </div>
+
+  <!-- Cesium 渲染容器 -->
+  <div id="cesiumContainer"></div>
+
+  <!-- 顶部控制面板 -->
+  <div id="controlPanel">
+    <h1>城市微环境决策支持系统</h1>
+
+    <div class="status-item">
+      <div class="status-dot pending" id="dotViewer"></div>
+      <span class="status-label">Viewer</span>
+      <span class="status-value" id="statusViewer">初始化中...</span>
+    </div>
+    <div class="status-item">
+      <div class="status-dot pending" id="dotCampus"></div>
+      <span class="status-label">建筑底座</span>
+      <span class="status-value" id="statusCampus">待加载...</span>
+    </div>
+    <div class="status-item">
+      <div class="status-dot pending" id="dotHeatmap"></div>
+      <span class="status-label">热力图层</span>
+      <span class="status-value" id="statusHeatmap">待初始化...</span>
+    </div>
+
+    <hr class="divider" />
+
+    <div class="btn-group" id="buildGroup">
+      <button class="btn" id="btnBuildResidential">
+        🏠 建造住宅楼
+        <small>浅黄色 · 30m</small>
+      </button>
+      <button class="btn" id="btnBuildCommercial">
+        🏢 建造商业楼
+        <small>蓝灰色 · 60m</small>
+      </button>
+      <button class="btn" id="btnBuildOffice">
+        🏛 建造办公楼
+        <small>深蓝色 · 80m</small>
+      </button>
+      <button class="btn" id="btnBuildIndustrial">
+        🏭 建造工厂
+        <small>灰色 · 40m</small>
+      </button>
+      <button class="btn" id="btnBuildPublic">
+        🏥 建造公共设施
+        <small>绿色 · 50m</small>
+      </button>
+      <button class="btn danger" id="btnClearBuildings">
+        🗑 清除全部建筑
+        <small>移除已建造</small>
+      </button>
+    </div>
+
+    <hr class="divider" />
+
+    <div class="status-item">
+      <div class="status-dot success" id="dotBuilder"></div>
+      <span class="status-label">建造模式</span>
+      <span class="status-value" id="statusBuilder">待机</span>
+    </div>
+
+    <hr class="divider" />
+
+    <!-- 底图切换 -->
+    <div class="status-item">
+      <div class="status-dot success" id="dotBasemap"></div>
+      <span class="status-label">底图模式</span>
+      <span class="status-value" id="statusBasemap">街道图</span>
+    </div>
+    <div class="btn-group" id="basemapGroup">
+      <button class="btn" id="btnStreetMap">
+        🗺 街道图
+        <small>矢量底图 + 注记</small>
+      </button>
+      <button class="btn" id="btnSatelliteMap">
+        🛰 卫星图
+        <small>Esri 影像底图</small>
+      </button>
+    </div>
+
+    <hr class="divider" />
+
+    <div class="btn-group">
+      <button class="btn" id="btnHome">
+        🏠 回到初始视角
+        <small>郑州大学主校区</small>
+      </button>
+      <button class="btn" id="btnShowAll">
+        👁 恢复全部建筑
+        <small>撤销拔楼操作</small>
+      </button>
+      <button class="btn danger" id="btnHeatReset">
+        🔄 重置热力场
+        <small>恢复初始数据</small>
+      </button>
+      <button class="btn" id="btnDestroy">
+        🗑 销毁全部图层
+        <small>释放显存</small>
+      </button>
+    </div>
+
+    <hr class="divider" />
+
+    <div class="slider-group">
+      <div class="slider-label">
+        <span>热力透明度</span>
+        <span id="opacityValue">75%</span>
+      </div>
+      <input type="range" id="sliderOpacity" min="0" max="100" value="75" />
+    </div>
+  </div>
+
+  <!-- 右下角图例 -->
+  <div id="legend">
+    <h3>热力图例</h3>
+    <div class="gradient-bar"></div>
+    <div class="gradient-labels">
+      <span>低温（冷岛）</span>
+      <span>高温（热岛）</span>
+    </div>
+  </div>
+
+  <!-- 左下角快捷键 -->
+  <div id="shortcutHint">
+    <kbd>左键</kbd> 拾取建筑拔楼 &nbsp;
+    <kbd>右键</kbd> 恢复全部
+  </div>
+
+  <!-- 加载 Vite 模块入口 -->
+  <script type="module" src="/test/main.ts"></script>
+
+  <script>
+    /* ================================================================
+       控制面板交互 — 纯 JS，无 TS 语法
+       ================================================================ */
+
+    function updateStatus(dotId, textId, label, value, ok) {
+      var dot = document.getElementById(dotId);
+      var text = document.getElementById(textId);
+      if (dot) {
+        dot.className = "status-dot " + (ok ? "success" : "error");
+      }
+      if (text) {
+        text.textContent = value;
+      }
+    }
+
+    function bindCesiumReady(campus, heatmap) {
+      var overlay = document.getElementById("loadingOverlay");
+      if (overlay) {
+        overlay.classList.add("hidden");
+      }
+      updateStatus("dotViewer", "statusViewer", "Viewer", "就绪", true);
+      if (campus) {
+        var loaded = campus.isLoaded;
+        updateStatus("dotCampus", "statusCampus", "建筑底座",
+          loaded ? ("已加载（隐藏 " + campus.hiddenCount + " 栋）") : "加载中...", loaded);
+      }
+      if (heatmap) {
+        var inited = heatmap.isInitialized;
+        updateStatus("dotHeatmap", "statusHeatmap", "热力图层",
+          inited ? ("已初始化（" + heatmap.pointCount + " 个热力点）") : "初始化中...", inited);
+      }
+      updateStatus("dotBuilder", "statusBuilder", "建造模式", "待机", true);
+    }
+
+    // 绑定所有按钮事件（一次性完成）
+    function bindAllButtons(campus, heatmap) {
+      document.getElementById("btnHome").onclick = function () {
+        var viewer = window.__viewer;
+        if (viewer) viewer.camera.flyHome({ duration: 1.5 });
+      };
+
+      document.getElementById("btnShowAll").onclick = function () {
+        if (!campus) return;
+        var count = campus.showAllBuildings();
+        updateStatus("dotCampus", "statusCampus", "建筑底座",
+          "已恢复 " + count + " 栋建筑", true);
+      };
+
+      document.getElementById("btnHeatReset").onclick = function () {
+        var data = window.__initialData;
+        if (data && heatmap) heatmap.updateHeatmap(data);
+      };
+
+      document.getElementById("sliderOpacity").oninput = function (e) {
+        var val = parseInt(e.target.value) / 100;
+        var valText = document.getElementById("opacityValue");
+        if (valText) valText.textContent = Math.round(val * 100) + "%";
+        if (heatmap) heatmap.setOpacity(val);
+      };
+
+      document.getElementById("btnDestroy").onclick = function () {
+        window.__testHandler && window.__testHandler.destroy();
+        if (heatmap) heatmap.destroy();
+        if (campus) campus.destroy();
+        var builder = window.__builderLayer;
+        if (builder) builder.destroy();
+        updateStatus("dotCampus", "statusCampus", "建筑底座", "已销毁", true);
+        updateStatus("dotHeatmap", "statusHeatmap", "热力图层", "已销毁", true);
+        updateStatus("dotBuilder", "statusBuilder", "建造模式", "已销毁", true);
+      };
+
+      var buildBtns = [
+        { id: "btnBuildResidential", type: "residential", height: 30 },
+        { id: "btnBuildCommercial",   type: "commercial",  height: 60 },
+        { id: "btnBuildOffice",       type: "office",      height: 80 },
+        { id: "btnBuildIndustrial",   type: "industrial",  height: 40 },
+        { id: "btnBuildPublic",       type: "public",      height: 50 }
+      ];
+      buildBtns.forEach(function (item) {
+        document.getElementById(item.id).onclick = function () {
+          var builder = window.__builderLayer;
+          if (!builder) return;
+          builder.startPlacement({ type: item.type, shape: "box", height: item.height });
+          var statusText = document.getElementById("statusBuilder");
+          if (statusText) statusText.textContent = "建造中：" + item.type;
+          var dotBuilder = document.getElementById("dotBuilder");
+          if (dotBuilder) dotBuilder.className = "status-dot success";
+        };
+      });
+
+      document.getElementById("btnClearBuildings").onclick = function () {
+        var builder = window.__builderLayer;
+        if (!builder) return;
+        var count = builder.clearAllBuildings();
+        var statusText = document.getElementById("statusBuilder");
+        if (statusText) statusText.textContent = "已清空（" + count + "栋）";
+      };
+
+      // 底图切换
+      document.getElementById("btnStreetMap").onclick = function () {
+        var imagery = window.__imageryManager;
+        if (!imagery) return;
+        imagery.switchToStreet();
+        var statusText = document.getElementById("statusBasemap");
+        if (statusText) statusText.textContent = "街道图";
+        document.getElementById("btnStreetMap").style.borderColor = "#58a6ff";
+        document.getElementById("btnSatelliteMap").style.borderColor = "";
+      };
+
+      document.getElementById("btnSatelliteMap").onclick = function () {
+        var imagery = window.__imageryManager;
+        if (!imagery) return;
+        imagery.switchToSatellite();
+        var statusText = document.getElementById("statusBasemap");
+        if (statusText) statusText.textContent = "卫星图";
+        document.getElementById("btnSatelliteMap").style.borderColor = "#58a6ff";
+        document.getElementById("btnStreetMap").style.borderColor = "";
+      };
+    }
+
+    // 监听 main.ts 派发的自定义事件
+    window.addEventListener("__cesiumReady__", function (e) {
+      var campus = window.__campusLayer;
+      var heatmap = window.__heatmapLayer;
+      bindCesiumReady(campus, heatmap);
+      bindAllButtons(campus, heatmap);
+    });
+
+    // 备用：6 秒后强制隐藏遮罩（保底兜底）
+    setTimeout(function () {
+      var overlay = document.getElementById("loadingOverlay");
+      if (overlay) overlay.classList.add("hidden");
+    }, 6000);
+  </script>
+</body>
+</html>

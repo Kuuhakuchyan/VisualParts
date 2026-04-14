@@ -1,0 +1,1837 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>郑州黄河湿地“空天地”一体化智能监测平台</title>
+    <style>
+        /* 认证标签页样式 */
+        .auth-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(0, 180, 255, 0.3);
+        }
+        .auth-tab {
+            flex: 1;
+            padding: 10px;
+            background: none;
+            border: none;
+            color: #b3e0ff;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        .auth-tab.active {
+            color: #00b4ff;
+            border-bottom: 2px solid #00b4ff;
+        }
+        .auth-form {
+            display: none;
+        }
+        .auth-form.active {
+            display: block;
+        }
+        .security-question select {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            background: rgba(0, 40, 80, 0.5);
+            border: 1px solid rgba(0, 180, 255, 0.3);
+            color: white;
+            border-radius: 4px;
+        }
+        /* 个人资料图标样式 */
+        .profile-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(0, 180, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 10px auto;
+            cursor: pointer;
+            border: 2px solid rgba(0, 180, 255, 0.5);
+            transition: all 0.3s;
+        }
+        .profile-icon:hover {
+            transform: scale(1.1);
+            background: rgba(0, 180, 255, 0.3);
+        }
+        .profile-icon img {
+            width: 24px;
+            height: 24px;
+        }
+        /* 登录模块样式 */
+        .auth-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        .auth-status {
+            background: rgba(10, 30, 60, 0.8);
+            padding: 10px 15px;
+            border-radius: 20px;
+            color: #b3e0ff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .auth-btn {
+            background: rgba(0, 120, 255, 0.3);
+            color: white;
+            border: 1px solid rgba(0, 180, 255, 0.5);
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .auth-btn:hover {
+            background: rgba(0, 120, 255, 0.5);
+        }
+        /* 登录页面样式 */
+        .login-page {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 10, 20, 0.9);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-form-container {
+            background: rgba(10, 30, 60, 0.95);
+            padding: 30px;
+            border-radius: 10px;
+            width: 350px;
+            box-shadow: 0 0 50px rgba(0, 100, 255, 0.3);
+            border: 1px solid rgba(0, 180, 255, 0.5);
+        }
+        .login-form-container h2 {
+            color: #00b4ff;
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 1.8em;
+        }
+        .login-form-container input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            background: rgba(0, 40, 80, 0.5);
+            border: 1px solid rgba(0, 180, 255, 0.3);
+            color: white;
+            border-radius: 4px;
+        }
+        .login-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 15px 0;
+            font-size: 0.9em;
+        }
+        .remember-me {
+            display: flex;
+            align-items: center;
+        }
+        .remember-me input {
+            width: auto;
+            margin-right: 8px;
+        }
+        .forgot-password {
+            color: #00b4ff;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .forgot-password:hover {
+            text-decoration: underline;
+        }
+        .login-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .login-buttons button {
+            flex: 1;
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .login-submit {
+            background: rgba(0, 120, 255, 0.5);
+            border: 1px solid rgba(0, 180, 255, 0.5);
+            color: white;
+        }
+        .login-submit:hover {
+            background: rgba(0, 120, 255, 0.7);
+        }
+        .login-cancel {
+            background: rgba(255, 50, 50, 0.3);
+            border: 1px solid rgba(255, 100, 100, 0.5);
+            color: white;
+        }
+        .login-cancel:hover {
+            background: rgba(255, 50, 50, 0.5);
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            background: #0a1625;
+            color: #fff;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+            transition: margin-left 0.5s;
+        }
+
+        /* 侧边栏样式 */
+        .sidebar-collapsed {
+            width: 50px;
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            background: rgba(10, 30, 60, 0.9);
+            z-index: 1000;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding-top: 20px;
+            border-right: 1px solid rgba(0, 180, 255, 0.3);
+            transition: width 0.3s;
+        }
+
+        .sidebar-expanded {
+            width: 200px;
+        }
+
+        .sidebar-icon {
+            font-size: 24px;
+            color: #00b4ff;
+            margin: 15px 0;
+            transition: all 0.3s;
+        }
+
+        .sidebar-icon:hover {
+            transform: scale(1.2);
+            color: #00ff88;
+        }
+
+        .sidebar-menu {
+            display: none;
+            width: 100%;
+            padding: 10px;
+        }
+
+        .sidebar-expanded .sidebar-menu {
+            display: block;
+        }
+
+        .sidebar-menu-item {
+            padding: 10px;
+            color: #b3e0ff;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(0, 180, 255, 0.2);
+            transition: all 0.3s;
+        }
+
+        .sidebar-menu-item:hover {
+            background: rgba(0, 100, 255, 0.2);
+            color: #00ff88;
+        }
+        /* 功能选项抽屉 */
+        .option-drawer {
+            position: fixed;
+            top: 120px;
+            left: 0;
+            width: 260px;
+            transform: translateX(-210px);
+            background: rgba(10, 30, 60, 0.95);
+            border-right: 1px solid rgba(0, 180, 255, 0.3);
+            box-shadow: 8px 0 24px rgba(0, 0, 0, 0.35);
+            border-radius: 0 10px 10px 0;
+            transition: transform 0.3s ease;
+            z-index: 1100;
+        }
+        .option-drawer.open {
+            transform: translateX(0);
+        }
+        .drawer-toggle {
+            width: 50px;
+            height: 44px;
+            position: absolute;
+            right: -50px;
+            top: 10px;
+            border: 1px solid rgba(0, 180, 255, 0.4);
+            background: linear-gradient(90deg, rgba(0, 120, 255, 0.45), rgba(0, 180, 255, 0.25));
+            color: #e6f7ff;
+            border-radius: 0 6px 6px 0;
+            cursor: pointer;
+            writing-mode: vertical-rl;
+            letter-spacing: 2px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .drawer-toggle:hover {
+            background: rgba(0, 180, 255, 0.5);
+            box-shadow: 0 0 10px rgba(0, 180, 255, 0.6);
+        }
+        .drawer-body {
+            padding: 14px 12px 16px;
+            max-height: calc(100vh - 160px);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .drawer-section {
+            background: rgba(0, 60, 120, 0.35);
+            border: 1px solid rgba(0, 180, 255, 0.3);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .drawer-section-title {
+            margin: 0;
+            padding: 10px 12px;
+            color: #00b4ff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            background: rgba(0, 80, 160, 0.35);
+        }
+        .drawer-items {
+            padding: 8px 12px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .drawer-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #b3e0ff;
+            padding: 6px 8px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(0, 180, 255, 0.15);
+        }
+        .drawer-item input[type="checkbox"] {
+            accent-color: #00b4ff;
+        }
+        .drawer-action {
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(0, 180, 255, 0.4);
+            background: rgba(0, 120, 255, 0.25);
+            color: #e6f7ff;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .drawer-action:hover {
+            background: rgba(0, 180, 255, 0.35);
+        }
+        .drawer-section.collapsed .drawer-items {
+            display: none;
+        }
+        .drawer-open .container {
+            margin-left: 280px;
+        }
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                linear-gradient(rgba(0, 120, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 120, 255, 0.1) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: -1;
+        }
+        h1 {
+            text-align: center;
+            padding: 25px;
+            font-size: 2.8em;
+            text-shadow: 0 0 15px rgba(0, 180, 255, 0.7);
+            margin: 0;
+            background: rgba(0, 40, 80, 0.5);
+            border-bottom: 1px solid rgba(0, 180, 255, 0.3);
+        }
+        .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 30px;
+            max-width: 1400px;
+            margin-left: 60px;
+            transition: margin-left 0.5s;
+        }
+
+        .container-expanded {
+            margin-left: 210px;
+        }
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            width: 200px;
+        }
+        .module {
+            background: rgba(10, 30, 60, 0.8);
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 8px 32px rgba(0, 100, 255, 0.2);
+            backdrop-filter: blur(6px);
+            border: 1px solid rgba(0, 180, 255, 0.3);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            display: none; /* 初始隐藏所有模块 */
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        .module-actions {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            display: flex;
+            gap: 6px;
+            z-index: 2;
+        }
+        .module-close {
+            width: 22px;
+            height: 22px;
+            border: 1px solid rgba(0,180,255,0.4);
+            background: rgba(0,120,255,0.25);
+            color: #e6f7ff;
+            border-radius: 4px;
+            cursor: pointer;
+            line-height: 18px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .module-close:hover {
+            background: rgba(255,80,80,0.45);
+            border-color: rgba(255,120,120,0.7);
+        }
+        
+        .module.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .module:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 120, 255, 0.3);
+        }
+        .module-toolbar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin: 0 60px 10px;
+        }
+        .add-module-btn {
+            padding: 8px 14px;
+            border: 1px solid rgba(0,180,255,0.5);
+            background: rgba(0,120,255,0.35);
+            color: #e6f7ff;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .add-module-btn:hover {
+            background: rgba(0,180,255,0.5);
+            box-shadow: 0 0 10px rgba(0,180,255,0.6);
+        }
+        .module h2 {
+            margin-top: 0;
+            color: #00b4ff;
+            padding-bottom: 5px;
+            font-size: 1.4em;
+            border-bottom: 1px solid rgba(0, 180, 255, 0.3);
+            display: flex;
+            align-items: center;
+        }
+        .module h2::before {
+            content: "";
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #00b4ff;
+            border-radius: 50%;
+            margin-right: 10px;
+            box-shadow: 0 0 8px #00b4ff;
+        }
+        .module p {
+            color: #b3e0ff;
+            line-height: 1.7;
+            margin-bottom: 10px;
+        }
+        .module-dataset {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            font-size: 12px;
+            color: #b3e0ff;
+        }
+        .module-dataset select {
+            flex: 1;
+            padding: 6px 8px;
+            background: rgba(0,40,80,0.5);
+            border: 1px solid rgba(0,180,255,0.3);
+            color: #e6f7ff;
+            border-radius: 4px;
+        }
+        .chart-container {
+            display: none;
+            width: 600px;
+            height: 400px;
+            background: rgba(0, 80, 160, 0.2);
+            border-radius: 6px;
+            border: 1px dashed rgba(0, 180, 255, 0.3);
+            color: #66c2ff;
+            font-size: 1.1em;
+            position: absolute;
+            top: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1;
+        }
+        .chart-container.show {
+            display: block;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00ff88;
+            box-shadow: 0 0 8px #00ff88;
+            margin-right: 8px;
+        }
+        .target-recognition-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 30px;
+        }
+        .target-recognition-module {
+            background: rgba(10, 30, 60, 0.8);
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 8px 32px rgba(0, 100, 255, 0.2);
+            backdrop-filter: blur(6px);
+            border: 1px solid rgba(0, 180, 255, 0.3);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            width: 600px;
+            height: 400px;
+            position: relative;
+        }
+        .target-recognition-module:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 120, 255, 0.3);
+        }
+        .target-recognition-module h2 {
+            margin-top: 0;
+            color: #00b4ff;
+            padding-bottom: 5px;
+            font-size: 1.4em;
+            border-bottom: 1px solid rgba(0, 180, 255, 0.3);
+            display: flex;
+            align-items: center;
+        }
+        .target-recognition-module h2::before {
+            content: "";
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #00b4ff;
+            border-radius: 50%;
+            margin-right: 10px;
+            box-shadow: 0 0 8px #00b4ff;
+        }
+        .target-recognition-module p {
+            color: #b3e0ff;
+            line-height: 1.7;
+            margin-bottom: 10px;
+        }
+        .recognition-box {
+            height: 300px;
+            background: rgba(0, 60, 120, 0.2);
+            border: 1px solid rgba(0, 180, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #66ffcc;
+            margin-top: 20px;
+            padding: 15px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .detect-button {
+            background: rgba(0, 200, 100, 0.3);
+            color: white;
+            border: 1px solid rgba(0, 255, 128, 0.5);
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+            margin-top: 15px;
+            display: none;
+        }
+        .detect-button:hover {
+            background: rgba(0, 200, 100, 0.5);
+        }
+        .detect-button:disabled {
+            background: rgba(100, 100, 100, 0.3);
+            cursor: not-allowed;
+        }
+    </style>
+    <style>
+        .upload-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding: 20px;
+            border: 2px dashed rgba(0, 180, 255, 0.5);
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        #upload-button {
+            background: rgba(0, 120, 255, 0.3);
+            color: white;
+            border: 1px solid rgba(0, 180, 255, 0.5);
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        #upload-button:hover {
+            background: rgba(0, 120, 255, 0.5);
+        }
+        .preview-container {
+            margin-top: 15px;
+            max-width: 100%;
+            max-height: 200px;
+            display: none;
+        }
+        .preview-container img {
+            max-width: 100%;
+            max-height: 100%;
+        }
+        .result-container {
+            display: none;
+            width: 100%;
+            height: calc(100% - 150px);
+        }
+        .detection-image {
+            width: 100%;
+            height: 70%;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        .detection-data {
+            width: 100%;
+            height: 30%;
+            overflow-y: auto;
+            padding: 10px;
+            background: rgba(0, 60, 120, 0.3);
+            border-radius: 4px;
+            color: #b3e0ff;
+        }
+        .loading {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #00b4ff;
+            font-size: 18px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/map/js/china.js"></script>
+    <script src="./auth.js" type="module"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 功能选项抽屉（可折叠）集中管理模块开关
+            const featureGroups = [
+                {
+                    title: '监控模块',
+                    items: [
+                        { id: 'real-time-monitor', label: '实时监控', defaultChecked: true },
+                        { id: 'temperature-monitor', label: '温度监控', defaultChecked: true },
+                        { id: 'humidity-monitor', label: '湿度监控', defaultChecked: false },
+                        { id: 'distribution-monitor', label: '分布监控', defaultChecked: false },
+                        { id: 'precipitation-monitor', label: '降水监控', defaultChecked: false }
+                    ]
+                },
+                {
+                    title: '识别与数据',
+                    items: [
+                        { id: 'target-recognition-module', label: '目标识别', defaultChecked: false }
+                    ]
+                },
+                {
+                    title: '账号',
+                    items: [
+                        { id: 'login-action', label: '登录 / 登出', type: 'action' }
+                    ]
+                }
+            ];
+
+            const optionDrawer = document.createElement('div');
+            optionDrawer.id = 'option-drawer';
+            const savedDrawerOpen = localStorage.getItem('optionDrawerOpen') === '1';
+            optionDrawer.className = `option-drawer${savedDrawerOpen ? ' open' : ''}`;
+            optionDrawer.innerHTML = `
+                <button class="drawer-toggle" type="button">${savedDrawerOpen ? '收起' : '功能'}</button>
+                <div class="drawer-body"></div>
+            `;
+            document.body.appendChild(optionDrawer);
+            const drawerBody = optionDrawer.querySelector('.drawer-body');
+            const drawerToggle = optionDrawer.querySelector('.drawer-toggle');
+
+            // ---- 动态模块增删与独立数据选择 ----
+            const moduleTypes = [
+                { id: 'realtime', label: '实时监控' },
+                { id: 'temperature', label: '温度监测' },
+                { id: 'humidity', label: '湿度监测' },
+                { id: 'distribution', label: '分布状况' },
+                { id: 'precipitation', label: '降水量' },
+                { id: 'custom', label: '自定义板块' }
+            ];
+
+            function attachModuleControls(moduleEl) {
+                if (!moduleEl) return;
+                moduleEl.classList.add('active');
+                const closeBtn = moduleEl.querySelector('.module-close');
+                if (closeBtn) {
+                    closeBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        moduleEl.remove();
+                    };
+                }
+                const datasetSelect = moduleEl.querySelector('.module-dataset-select');
+                if (datasetSelect) {
+                    datasetSelect.onchange = (e) => {
+                        const name = moduleEl.querySelector('h2')?.textContent?.trim() || '模块';
+                        console.log(`模块 [${name}] 切换数据集:`, e.target.value);
+                    };
+                }
+            }
+
+            function addModule(title = '自定义板块') {
+                const sidebar = document.querySelector('.sidebar');
+                if (!sidebar) return;
+                const id = `module-${Date.now()}`;
+                const module = document.createElement('div');
+                module.className = 'module active';
+                module.id = id;
+                module.innerHTML = `
+                    <div class="module-actions">
+                        <button class="module-close" title="删除">×</button>
+                    </div>
+                    <h2><span class="status-indicator"></span>${title}</h2>
+                    <div class="module-dataset">
+                        <span>数据集</span>
+                        <select class="module-dataset-select">
+                            <option value="default">默认</option>
+                            <option value="dataset-a">数据集A</option>
+                            <option value="dataset-b">数据集B</option>
+                            <option value="dataset-c">数据集C</option>
+                        </select>
+                    </div>
+                    <p>可独立加载不同数据源的板块</p>
+                    <div class="chart-container">
+                        <canvas id="chart-${id}"></canvas>
+                    </div>
+                `;
+                sidebar.appendChild(module);
+                attachModuleControls(module);
+            }
+
+            document.querySelectorAll('.module').forEach(attachModuleControls);
+            const addBtn = document.getElementById('add-module-btn');
+            if (addBtn) {
+                addBtn.addEventListener('click', () => {
+                    const choice = prompt(
+                        '输入板块名称，或选择类型: ' + moduleTypes.map(m => m.label).join(' / '),
+                        '自定义板块'
+                    );
+                    if (choice && choice.trim()) {
+                        addModule(choice.trim());
+                    }
+                });
+            }
+
+            function setDrawerState(open) {
+                optionDrawer.classList.toggle('open', open);
+                drawerToggle.textContent = open ? '收起' : '功能';
+                document.body.classList.toggle('drawer-open', open);
+                localStorage.setItem('optionDrawerOpen', open ? '1' : '0');
+            }
+            setDrawerState(savedDrawerOpen);
+            drawerToggle.addEventListener('click', () => {
+                setDrawerState(!optionDrawer.classList.contains('open'));
+            });
+
+            function toggleModuleVisibility(targetId, show) {
+                if (targetId === 'target-recognition-module') {
+                    const container = document.querySelector('.target-recognition-container');
+                    const module = document.getElementById(targetId);
+                    if (container && module) {
+                        container.style.display = show ? 'flex' : 'none';
+                        module.classList.toggle('active', show);
+                    }
+                    return;
+                }
+                const targetElement = document.getElementById(targetId);
+                if (targetElement) {
+                    targetElement.classList.toggle('active', show);
+                }
+            }
+
+            featureGroups.forEach(group => {
+                const section = document.createElement('div');
+                section.className = 'drawer-section';
+
+                const title = document.createElement('div');
+                title.className = 'drawer-section-title';
+                title.innerHTML = `<span>${group.title}</span><span class="section-arrow">▼</span>`;
+
+                const itemsWrap = document.createElement('div');
+                itemsWrap.className = 'drawer-items';
+
+                title.addEventListener('click', () => {
+                    section.classList.toggle('collapsed');
+                });
+
+                group.items.forEach(item => {
+                    const row = document.createElement('div');
+                    row.className = 'drawer-item';
+                    const label = document.createElement('span');
+                    label.textContent = item.label;
+                    row.appendChild(label);
+
+                    if (item.type === 'action') {
+                        const btn = document.createElement('button');
+                        btn.className = 'drawer-action';
+                        btn.textContent = localStorage.getItem('userToken') ? '登出' : '登录';
+                        btn.addEventListener('click', () => {
+                            if (localStorage.getItem('userToken')) {
+                                showLogoutPrompt();
+                            } else {
+                                showLoginPage();
+                            }
+                            btn.textContent = localStorage.getItem('userToken') ? '登出' : '登录';
+                        });
+                        row.appendChild(btn);
+                    } else {
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        const saved = localStorage.getItem(`featureToggle:${item.id}`);
+                        checkbox.checked = saved !== null ? saved === '1' : !!item.defaultChecked;
+                        toggleModuleVisibility(item.id, checkbox.checked);
+                        checkbox.addEventListener('change', () => {
+                            localStorage.setItem(`featureToggle:${item.id}`, checkbox.checked ? '1' : '0');
+                            toggleModuleVisibility(item.id, checkbox.checked);
+                        });
+                        row.appendChild(checkbox);
+                    }
+
+                    itemsWrap.appendChild(row);
+                });
+
+                section.appendChild(title);
+                section.appendChild(itemsWrap);
+                drawerBody.appendChild(section);
+            });
+
+            // 初始化可拖动图表
+            // 图表拖动配置
+            interact('.chart-container').draggable({
+                inertia: false,
+                autoScroll: false,
+                listeners: {
+                    move: dragMoveListener
+                }
+            });
+
+            // 监控模块拖动配置（排除目标识别模块）
+            interact('.module:not(#target-recognition-module)').draggable({
+                inertia: false,
+                autoScroll: false,
+                listeners: {
+                    move: dragMoveListener
+                }
+            });
+
+            function dragMoveListener(event) {
+                const target = event.target;
+                const x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
+                const y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
+
+                target.style.transform = `translate(${x}px, ${y}px)`;
+                target.setAttribute('data-x', x);
+                target.setAttribute('data-y', y);
+            }
+
+            // 图表点击切换显示/隐藏
+            document.querySelectorAll('.module h2').forEach(header => {
+                header.addEventListener('click', function() {
+                    const chartContainer = this.parentElement.querySelector('.chart-container');
+                    chartContainer.classList.toggle('show');
+                });
+            });
+            
+            // 初始隐藏目标识别容器
+            const targetContainer = document.querySelector('.target-recognition-container');
+            const targetModule = document.getElementById('target-recognition-module');
+            if (targetContainer && !(targetModule && targetModule.classList.contains('active'))) {
+                targetContainer.style.display = 'none';
+            }
+
+            // 登录页面元素
+            const loginPage = document.createElement('div');
+            loginPage.className = 'login-page';
+            loginPage.innerHTML = `
+            <div class="login-form-container">
+                <div class="auth-tabs">
+                    <button class="auth-tab active" data-tab="login">登录</button>
+                    <button class="auth-tab" data-tab="register">注册</button>
+                </div>
+                
+                <!-- 登录表单 -->
+                <div id="login-form" class="auth-form active">
+                    <h2>用户登录</h2>
+                    <input type="text" id="login-username" placeholder="用户名">
+                    <input type="password" id="login-password" placeholder="密码">
+                    <div class="login-options">
+                        <label class="remember-me">
+                            <input type="checkbox" id="remember-me"> 记住我
+                        </label>
+                        <a href="#" class="forgot-password">忘记密码?</a>
+                    </div>
+                    <div class="login-buttons">
+                        <button id="login-submit" class="login-submit">登录</button>
+                        <button id="login-cancel" class="login-cancel">取消</button>
+                    </div>
+                </div>
+                
+                <!-- 注册表单 -->
+                <div id="register-form" class="auth-form">
+                    <h2>用户注册</h2>
+                    <input type="text" id="register-username" placeholder="用户名">
+                    <input type="password" id="register-password" placeholder="密码">
+                    <input type="password" id="register-confirm" placeholder="确认密码">
+                    <div class="security-question">
+                        <select id="security-question">
+                            <option value="">选择安全问题</option>
+                        </select>
+                    </div>
+                    <input type="text" id="security-answer" placeholder="安全问题答案">
+                    <div class="login-buttons">
+                        <button id="register-submit" class="login-submit">注册</button>
+                        <button id="register-cancel" class="login-cancel">取消</button>
+                    </div>
+                </div>
+                
+                <!-- 找回密码表单 -->
+                <div id="recovery-form" class="auth-form">
+                    <h2>找回密码</h2>
+                    <div id="recovery-step1">
+                        <input type="text" id="recovery-username" placeholder="用户名">
+                        <button id="recovery-next" class="login-submit">下一步</button>
+                    </div>
+                    <div id="recovery-step2" style="display:none;">
+                        <p id="security-question-text"></p>
+                        <input type="text" id="recovery-answer" placeholder="请输入答案">
+                        <input type="password" id="new-password" placeholder="新密码">
+                        <input type="password" id="confirm-password" placeholder="确认新密码">
+                        <div class="login-buttons">
+                            <button id="recovery-submit" class="login-submit">重置密码</button>
+                            <button id="recovery-cancel" class="login-cancel">取消</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            `;
+            document.body.appendChild(loginPage);
+
+            // 登录/登出功能 - 更新为完整登录页
+            const loginUsername = document.getElementById('login-username');
+            const loginPassword = document.getElementById('login-password');
+            const rememberMe = document.getElementById('remember-me');
+            const forgotPassword = document.querySelector('.forgot-password');
+            const loginSubmit = document.getElementById('login-submit');
+            const loginCancel = document.getElementById('login-cancel');
+
+            // 显示登录页面
+            function showLoginPage() {
+                loginPage.style.display = 'flex';
+                // 检查是否有记住的登录信息
+                if (localStorage.getItem('rememberedUsername')) {
+                    loginUsername.value = localStorage.getItem('rememberedUsername');
+                    rememberMe.checked = true;
+                }
+            }
+
+            // 隐藏登录页面
+            function hideLoginPage() {
+                loginPage.style.display = 'none';
+                loginUsername.value = '';
+                loginPassword.value = '';
+            }
+
+            // 登出确认弹窗（复用登录弹窗样式）
+            function showLogoutPrompt() {
+                const existing = document.getElementById('logout-modal');
+                if (existing) existing.remove();
+                const modal = document.createElement('div');
+                modal.className = 'login-page';
+                modal.id = 'logout-modal';
+                modal.innerHTML = `
+                    <div class="login-form-container">
+                        <h2>登出确认</h2>
+                        <p style="margin: 12px 0 16px;">确定要退出当前账号吗？</p>
+                        <div class="login-buttons">
+                            <button id="logout-confirm" class="login-submit">登出</button>
+                            <button id="logout-cancel" class="login-cancel">取消</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                modal.querySelector('#logout-confirm').addEventListener('click', () => {
+                    logout();
+                    modal.remove();
+                });
+                modal.querySelector('#logout-cancel').addEventListener('click', () => modal.remove());
+            }
+
+            // 忘记密码处理
+            forgotPassword.addEventListener('click', function(e) {
+                e.preventDefault();
+                alert('请联系系统管理员重置密码');
+            });
+
+                        // --- 修改开始：登录逻辑 ---
+            loginSubmit.addEventListener('click', async function() {
+                const username = loginUsername.value.trim();
+                const password = loginPassword.value.trim();
+                if (!username || !password) {
+                    alert('请输入用户名和密码');
+                    return;
+                }
+                loginSubmit.textContent = '登录中...';
+                loginSubmit.disabled = true;
+                try {
+                    const res = await API.login(username, password);
+                    const token = res.data?.token;
+                    if (!token) throw new Error(res.data?.message || '未返回token');
+                    localStorage.setItem('userToken', token);
+                    localStorage.setItem('username', username);
+                    if (rememberMe.checked) {
+                        localStorage.setItem('rememberedUsername', username);
+                    } else {
+                        localStorage.removeItem('rememberedUsername');
+                    }
+                    // 获取用户积分并渲染（共用 renderLoggedIn）
+                    const profileRes = await API.getProfile().catch(() => null);
+                    renderLoggedIn(profileRes?.data, username);
+                    hideLoginPage();
+                } catch (error) {
+                    console.error('登录失败', error);
+                    const msg = error?.response?.data?.error 
+                        || error?.message 
+                        || '登录失败：请检查网络或凭据';
+                    alert(msg);
+                } finally {
+                    loginSubmit.textContent = '登录';
+                    loginSubmit.disabled = false;
+                }
+            });
+            // --- 修改结束 ---
+            // 取消登录
+            loginCancel.addEventListener('click', hideLoginPage);
+
+            // 从侧边栏登录项点击：未登录弹登录页，已登录弹登出确认
+            document.querySelectorAll('[data-target="login-form"]').forEach(el => {
+                el.addEventListener('click', () => {
+                    if (localStorage.getItem('userToken')) {
+                        showLogoutPrompt();
+                    } else {
+                        showLoginPage();
+                    }
+                });
+            });
+            const authStatus = document.getElementById('auth-status');
+            const loginBtn = document.getElementById('login-btn');
+            const loginForm = document.getElementById('login-form');
+            const submitLogin = document.getElementById('submit-login');
+            const cancelLogin = document.getElementById('cancel-login');
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+
+            // 显示登录表单
+            loginBtn.addEventListener('click', () => {
+                loginForm.style.display = 'block';
+            });
+
+            // 隐藏登录表单
+            cancelLogin.addEventListener('click', () => {
+                loginForm.style.display = 'none';
+                usernameInput.value = '';
+                passwordInput.value = '';
+            });
+
+            // 统一更新登录后状态
+            function updateSidebarLoginLabel(text) {
+                document.querySelectorAll('.sidebar-menu-item[data-target="login-form"]')
+                    .forEach(el => el.textContent = text);
+            }
+
+            function renderLoggedIn(profile, username) {
+                const name = profile?.username || username || '已登录';
+                const score = profile?.score ?? '—';
+                authStatus.innerHTML = `
+                    <span>👤 ${name} | 积分: ${score}</span>
+                    <button id="logout-btn" class="auth-btn">登出</button>
+                `;
+                updateSidebarLoginLabel(`已登录：${name} (积分 ${score})`);
+                loginForm.style.display = 'none';
+                usernameInput.value = '';
+                passwordInput.value = '';
+                document.getElementById('logout-btn').addEventListener('click', logout);
+            }
+
+            // 登出
+            function logout() {
+                localStorage.removeItem('userToken');
+                localStorage.removeItem('username');
+                authStatus.innerHTML = `
+                    <span>未登录</span>
+                    <button id="login-btn" class="auth-btn">登录</button>
+                `;
+                updateSidebarLoginLabel('登录');
+                document.getElementById('login-btn').addEventListener('click', () => {
+                    loginForm.style.display = 'block';
+                });
+            }
+
+            // 提交登录（调用后端）
+            submitLogin.addEventListener('click', async () => {
+                const username = usernameInput.value.trim();
+                const password = passwordInput.value.trim();
+                if (!username || !password) {
+                    alert('请输入用户名和密码');
+                    return;
+                }
+                submitLogin.disabled = true;
+                submitLogin.textContent = '登录中...';
+                try {
+                    const res = await window.API.login(username, password);
+                    const token = res.data?.token;
+                    if (!token) throw new Error(res.data?.message || '未返回 token');
+                    localStorage.setItem('userToken', token);
+                    localStorage.setItem('username', username);
+                    const profileRes = await window.API.getProfile().catch(() => null);
+                    renderLoggedIn(profileRes?.data, username);
+                } catch (err) {
+                    console.error('登录失败', err);
+                    const msg = err?.response?.data?.error || err.message || '登录失败';
+                    alert(msg);
+                } finally {
+                    submitLogin.disabled = false;
+                    submitLogin.textContent = '确认';
+                }
+            });
+
+            // 页面加载时如果已有 token，尝试恢复登录状态
+            (async () => {
+                const token = localStorage.getItem('userToken');
+                const username = localStorage.getItem('username');
+                if (!token) return;
+                try {
+                    const profileRes = await window.API.getProfile();
+                    renderLoggedIn(profileRes.data, username);
+                } catch (e) {
+                    // 仅在明确 401 时清理；其他错误保持登录态，至少显示用户名
+                    if (e?.response?.status === 401) {
+                        localStorage.removeItem('userToken');
+                        localStorage.removeItem('username');
+                    } else {
+                        renderLoggedIn(null, username);
+                    }
+                }
+            })();
+
+            // 原有上传和检测功能
+            const uploadButton = document.getElementById('upload-button');
+            const fileInput = document.getElementById('image-upload');
+            const previewContainer = document.getElementById('preview-container');
+            const resultContainer = document.getElementById('result-container');
+            const detectionImage = document.getElementById('detection-image');
+            const detectionData = document.getElementById('detection-data');
+            const uploadArea = document.getElementById('upload-area');
+            const detectButton = document.getElementById('detect-button');
+                
+                // 添加检测按钮点击事件
+
+
+            let currentFile = null;
+            
+            function handleFileSelect(event) {
+                const file = event.target.files[0];
+                if (!file.type.match('image.*')) {
+                    alert('请选择图片文件');
+                    return;
+                }
+
+                // Show preview
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewContainer.innerHTML = `<img src="${e.target.result}" alt="预览">`;
+                    previewContainer.style.display = 'block';
+                    uploadButton.textContent = '重新选择图片';
+                    currentFile = file;
+                    
+                    // Enable detect button
+                    detectButton.style.display = 'block';
+                    detectButton.disabled = false;
+                };
+                reader.readAsDataURL(file);
+            }
+            
+            function startDetection() {
+                if (currentFile) {
+                    detectObjects(currentFile);
+                }
+            }
+
+            function detectObjects(file) {
+                const formData = new FormData();
+                formData.append('image', file);
+                
+                    // 显示加载中
+                const loading = document.createElement('div');
+                loading.className = 'loading';
+                loading.textContent = '检测中...';
+                resultContainer.appendChild(loading);
+                loading.style.display = 'block';
+                
+                fetch('http://localhost:5050/api/detect', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    loading.style.display = 'none';
+                    
+                    if (data.status !== 'success') {
+                        alert('检测失败: ' + (data.message || '未知错误'));
+                        return;
+                    }
+                    
+                    // 显示结果
+                    resultContainer.style.display = 'flex';
+                    detectionData.innerHTML = `
+                        <h3>检测结果</h3>
+                        <pre>${JSON.stringify(data.test_result, null, 2)}</pre>
+                        <p>${data.message}</p>
+                    `;
+                    
+                    // 如果有检测图像数据，可以在这里显示
+                    if (data.image) {
+                        detectionImage.style.backgroundImage = `url(data:image/jpeg;base64,${data.image})`;
+                    }
+                })
+                .catch(error => {
+                    loading.style.display = 'none';
+                    alert('请求失败: ' + error.message);
+                });
+            }
+        });
+    </script>
+</head>
+<body>
+<div class="auth-container">
+    <div class="auth-status" id="auth-status">
+        <span>未登录</span>
+        <button id="login-btn" class="auth-btn">登录</button>
+        <button id="register-btn" class="auth-btn">注册</button>
+        <a href="simple_register.html" style="margin-left:10px;color:#1890ff;">[独立注册]</a>
+    </div>
+    <div class="login-form" id="login-form" style="display:none;">
+        <h3>用户登录</h3>
+        <input type="text" id="username" placeholder="用户名">
+        <input type="password" id="password" placeholder="密码">
+        <button id="submit-login" class="auth-btn">确认</button>
+        <button id="cancel-login" class="auth-btn">取消</button>
+    </div>
+    <div class="register-form" id="register-form" style="display:none;">
+        <h3>用户注册</h3>
+        <input type="text" id="reg-username" placeholder="用户名">
+        <input type="password" id="reg-password" placeholder="密码">
+        <button id="submit-register" class="auth-btn">注册</button>
+        <button id="cancel-register" class="auth-btn">取消</button>
+    </div>
+    <div class="logout-btn" id="logout-btn" style="display:none;">
+        <button id="do-logout" class="auth-btn">登出</button>
+    </div>
+</div>
+<h1>“空天地”一体化智能监测平台
+    <a href="tech_map.html" class="earth-button" title="科技地图"></a>
+</h1>
+<style>
+    .earth-button {
+        display: inline-block;
+        width: 40px;
+        height: 40px;
+        margin-left: 20px;
+        background: #1a2b5a;
+        border: 2px solid #0a2dae;
+        border-radius: 50%;
+        position: relative;
+        vertical-align: middle;
+        transition: all 0.3s;
+    }
+    .earth-button:hover {
+        transform: scale(1.1);
+        box-shadow: 0 0 15px rgba(42, 145, 216, 0.7);
+    }
+    .earth-button::before {
+        content: "";
+        position: absolute;
+        top: 5px;
+        left: 5px;
+        right: 5px;
+        bottom: 5px;
+        background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%232a91d8" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>') center no-repeat;
+        background-size: contain;
+        border-radius: 50%;
+    }
+</style>
+<div class="module-toolbar">
+    <button id="add-module-btn" class="add-module-btn">添加板块</button>
+</div>
+<div class="container">
+    <div class="map-container" id="china-map" style="width: 100%; height: 600px;"></div>
+    <div class="sidebar">
+        <div class="module" id="real-time-monitor">
+            <div class="module-actions">
+                <button class="module-close" title="删除">×</button>
+            </div>
+            <h2><span class="status-indicator"></span>实时监控</h2>
+            <div class="module-dataset">
+                <span>数据集</span>
+                <select class="module-dataset-select">
+                    <option value="default">默认</option>
+                    <option value="dataset-a">数据集A</option>
+                    <option value="dataset-b">数据集B</option>
+                    <option value="dataset-c">数据集C</option>
+                </select>
+            </div>
+            <p>系统运行状态实时监测</p>
+            <div class="chart-container" id="real-time-chart-container">
+                <canvas id="real-time-chart"></canvas>
+            </div>
+        </div>
+        <div class="module" id="temperature-monitor">
+            <div class="module-actions">
+                <button class="module-close" title="删除">×</button>
+            </div>
+            <h2><span class="status-indicator"></span>温度监测</h2>
+            <div class="module-dataset">
+                <span>数据集</span>
+                <select class="module-dataset-select">
+                    <option value="default">默认</option>
+                    <option value="dataset-a">数据集A</option>
+                    <option value="dataset-b">数据集B</option>
+                    <option value="dataset-c">数据集C</option>
+                </select>
+            </div>
+            <p>环境温度数据可视化</p>
+            <div class="chart-container" id="temperature-chart-container">
+                <canvas id="temperature-chart"></canvas>
+            </div>
+        </div>
+        <div class="module" id="humidity-monitor">
+            <div class="module-actions">
+                <button class="module-close" title="删除">×</button>
+            </div>
+            <h2><span class="status-indicator"></span>湿度监测</h2>
+            <div class="module-dataset">
+                <span>数据集</span>
+                <select class="module-dataset-select">
+                    <option value="default">默认</option>
+                    <option value="dataset-a">数据集A</option>
+                    <option value="dataset-b">数据集B</option>
+                    <option value="dataset-c">数据集C</option>
+                </select>
+            </div>
+            <p>环境湿度数据可视化</p>
+            <div class="chart-container" id="humidity-chart-container">
+                <canvas id="humidity-chart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="main-content">
+        <div class="chart-container" id="distribution-chart-container">
+            <canvas id="distribution-chart"></canvas>
+        </div>
+        <div class="chart-container" id="precipitation-chart-container">
+            <canvas id="precipitation-chart"></canvas>
+        </div>
+    </div>
+    <div class="sidebar">
+        <div class="module" id="distribution-monitor">
+            <div class="module-actions">
+                <button class="module-close" title="删除">×</button>
+            </div>
+            <h2><span class="status-indicator"></span>分布状况</h2>
+            <div class="module-dataset">
+                <span>数据集</span>
+                <select class="module-dataset-select">
+                    <option value="default">默认</option>
+                    <option value="dataset-a">数据集A</option>
+                    <option value="dataset-b">数据集B</option>
+                    <option value="dataset-c">数据集C</option>
+                </select>
+            </div>
+            <p>目标分布热力图展示</p>
+            <div class="chart-container" id="distribution-chart-container">
+                <canvas id="distribution-chart"></canvas>
+            </div>
+        </div>
+        <div class="module" id="precipitation-monitor">
+            <div class="module-actions">
+                <button class="module-close" title="删除">×</button>
+            </div>
+            <h2><span class="status-indicator"></span>降水量</h2>
+            <div class="module-dataset">
+                <span>数据集</span>
+                <select class="module-dataset-select">
+                    <option value="default">默认</option>
+                    <option value="dataset-a">数据集A</option>
+                    <option value="dataset-b">数据集B</option>
+                    <option value="dataset-c">数据集C</option>
+                </select>
+            </div>
+            <p>目标分布降水量展示</p>
+            <div class="chart-container" id="precipitation-chart-container">
+                <canvas id="precipitation-chart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="target-recognition-container" style="display:none;">
+    <div class="target-recognition-module" id="target-recognition-module">
+        <h2><span class="status-indicator"></span>目标识别</h2>
+        <!-- 此处可以添加额外文字-->
+        <div class="recognition-box">
+            <div class="upload-area" id="upload-area">
+                <input type="file" id="image-upload" accept="image/*" style="display:none">
+                <button id="upload-button">选择或拖放图片</button>
+                <div class="preview-container" id="preview-container"></div>
+                <button id="detect-button" class="detect-button" disabled>开始检测</button>
+            </div>
+            <div class="result-container" id="result-container">
+                <div class="detection-image" id="detection-image">
+                    <img id="dynamic-detection-image" alt="检测结果" style="max-width: 100%; height: auto; display: none;"
+                         onload="this.style.display='block';document.getElementById('loading').style.display='none';"
+                         onerror="showImageError()">
+                    <div id="loading" style="display:block;color:#00b4ff;">图片加载中...</div>
+                </div>
+                <div class="detection-data" id="detection-data"></div>
+            </div>
+            <script>
+                function showImageError() {
+                    const detectionImage = document.getElementById('detection-image');
+                    detectionImage.innerHTML = '<div style="color:#ff5555;">图片加载失败，请检查文件路径</div>';
+                }
+            </script>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.querySelectorAll('.module').forEach(module => {
+        module.addEventListener('click', function(event) {
+            // 检查点击的目标是否是模块本身而不是其子元素（如图表容器）
+            if (event.target.classList.contains('module')) {
+                const chartContainer = this.querySelector('.chart-container');
+                // 切换图表容器的显示状态
+                chartContainer.classList.toggle('show');
+            }
+        });
+    });
+
+    // 初始化每个图表
+    function createChart(canvasId) {
+        const ctx = document.getElementById(canvasId).getContext('2d');
+        return new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July'],
+                datasets: [{
+                    label: '数据曲线',
+                    data: [65, 59, 80, 81, 56, 55, 40],
+                    borderColor: '#00b4ff',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: '数据曲线图'
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'linear',
+                    }
+                }
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        createChart('real-time-chart');
+        createChart('temperature-chart');
+        createChart('humidity-chart');
+        createChart('distribution-chart');
+        createChart('precipitation-chart');
+
+        // 图片上传和检测功能
+        const uploadButton = document.getElementById('upload-button');
+        const detectButton = document.getElementById('detect-button');
+        const imageUpload = document.getElementById('image-upload');
+        const previewContainer = document.getElementById('preview-container');
+        const resultContainer = document.getElementById('result-container');
+        const detectionData = document.getElementById('detection-data');
+        const uploadArea = document.getElementById('upload-area');
+
+        let currentFile = null;
+        let isProcessing = false;
+
+        // 统一文件处理函数
+        function handleFile(file) {
+            if (!file?.type.match('image.*')) {
+                alert('请选择有效的图片文件');
+                return false;
+            }
+
+            if (isProcessing) return false;
+            isProcessing = true;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                previewContainer.innerHTML = `<img src="${event.target.result}" style="max-width:100%;max-height:200px;">`;
+                previewContainer.style.display = 'block';
+                uploadButton.textContent = '重新选择图片';
+                detectButton.style.display = 'block';
+                detectButton.disabled = false;
+                currentFile = file;
+                isProcessing = false;
+            };
+            reader.readAsDataURL(file);
+            return true;
+        }
+
+        // 统一处理文件选择
+        function processFileInput(files) {
+            if (files && files[0]) {
+                imageUpload.files = files;
+                return handleFile(files[0]);
+            }
+            return false;
+        }
+
+        // 文件选择按钮
+        uploadButton.addEventListener('click', () => {
+            imageUpload.value = '';
+            imageUpload.click();
+        });
+
+        // 文件输入变化
+        imageUpload.addEventListener('change', (e) => {
+            processFileInput(e.target.files);
+        });
+
+        // 拖放区域处理
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.border = '2px dashed #00b4ff';
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.border = '2px dashed rgba(0,180,255,0.3)';
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.border = '2px dashed rgba(0,180,255,0.3)';
+            processFileInput(e.dataTransfer.files);
+        });
+
+        // 检测按钮
+        detectButton.addEventListener('click', async () => {
+            if (!currentFile || isProcessing) return;
+
+            isProcessing = true;
+            detectButton.disabled = true;
+            detectButton.textContent = '检测中...';
+            resultContainer.style.display = 'flex';
+            detectionData.innerHTML = '<div class="loading">检测中...</div>';
+            
+            try {
+                const formData = new FormData();
+                formData.append('image', currentFile);
+
+                const response = await fetch('http://localhost:5050/api/detect', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    // 动态更新检测结果图像
+                    const detectionImage = document.getElementById('detection-image');
+                    detectionImage.innerHTML = `
+                        <img src="${data.image_url}" alt="检测结果" style="max-width: 100%; height: auto;"
+                             onload="this.style.display='block';document.getElementById('loading').style.display='none';"
+                             onerror="showImageError()">
+                        <div id="loading" style="display:block;color:#00b4ff;">图片加载中...</div>
+                    `;
+                    
+                    // 显示检测数据
+                    detectionData.innerHTML = JSON.stringify(data.result, null, 2);
+                    zoomModal.id = 'fitten-zoom-modal';
+                    zoomModal.innerHTML = `
+                        <div style="
+                            position: fixed;
+                            top: 0;
+                            left: 0;
+                            width: 100%;
+                            height: 100%;
+                            background: rgba(0,0,0,0.9);
+                            z-index: 9999;
+                            display: none;
+                        ">
+                            <img src="" style="
+                                max-width: 90%;
+                                max-height: 90%;
+                                position: absolute;
+                                top: 50%;
+                                left: 50%;
+                                transform: translate(-50%, -50%);
+                            ">
+                            <div style="
+                                position: absolute;
+                                top: 20px;
+                                right: 20px;
+                                color: white;
+                                font-size: 30px;
+                                cursor: pointer;
+                            ">×</div>
+                        </div>
+                    `;
+                    document.body.appendChild(zoomModal);
+                    console.log('模态框创建完成'); // 调试日志
+
+                    // 2. 显示检测结果图片
+                    const imgUrl = 'http://localhost:5050' + data.image_url;
+                    console.log('准备加载图片:', imgUrl); // 调试日志
+                    
+                    detectionImage.innerHTML = `
+                        <div style="position:relative; width:100%; height:100%;">
+                            <img id="detection-result-img" src="${imgUrl}" 
+                                style="max-width:100%; max-height:100%; display:block;">
+                            <div id="zoom-overlay" style="
+                                position:absolute;
+                                top:0;
+                                left:0;
+                                width:100%;
+                                height:100%;
+                                cursor:zoom-in;
+                                z-index:10;
+                            "></div>
+                        </div>
+                    `;
+                    console.log('检测结果图片已加载'); // 调试日志
+
+                    // 3. 绑定点击事件
+                    const overlay = document.getElementById('zoom-overlay');
+                    const modal = zoomModal.querySelector('div');
+                    const modalImg = zoomModal.querySelector('img');
+                    const closeBtn = zoomModal.querySelector('div > div');
+
+                    overlay.addEventListener('click', function() {
+                        console.log('点击事件触发'); // 调试日志
+                        const img = document.getElementById('detection-result-img');
+                        if(img && img.complete && img.naturalWidth > 0) {
+                            modalImg.src = img.src;
+                            modal.style.display = 'block';
+                            console.log('成功显示放大图片'); // 调试日志
+                        } else {
+                            console.error('图片加载异常');
+                        }
+                    });
+
+                    closeBtn.addEventListener('click', function() {
+                        modal.style.display = 'none';
+                    });
+
+                    // 4. 错误处理
+                    document.getElementById('detection-result-img').onerror = function() {
+                        console.error('图片加载失败:', this.src);
+                        detectionImage.innerHTML = '<div style="color:#ff5555;">图片加载失败</div>';
+                    };
+                    
+                    // 显示检测结果数据
+                    const result = JSON.parse(data.result);
+                    detectionData.innerHTML = `
+                        <h3>检测结果</h3>
+                        <p>检测数量: ${result.count}</p>
+                        <p>推理时间: ${result.inference_time.toFixed(2)}秒</p>
+                        <p>模型: ${result.model}</p>
+                        <p>保存路径: ${data.image_path}</p>
+                        <div class="detected-objects">
+                            <h4>检测到的目标:</h4>
+                            ${result.objects.map(obj => `
+                                <div class="object-item">
+                                    <span class="object-class">${obj.class}</span>
+                                    <span class="object-score">置信度: ${(obj.score * 100).toFixed(1)}%</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } else {
+                    detectionData.innerHTML = `<p style="color:#ff5555;">检测失败: ${data.error || '未知错误'}</p>`;
+                }
+            } catch (error) {
+                detectionData.innerHTML = `<p style="color:#ff5555;">网络错误: ${error.message}</p>`;
+            } finally {
+                detectButton.disabled = false;
+                detectButton.textContentsnt = '开始检测';
+                isProcessing = false;
+            }
+        });
+
+        // 添加结果展示样式
+        const style = document.createElement('style');
+        style.textContent = `
+            .detected-objects {
+                margin-top: 10px;
+                max-height: 120px;
+                overflow-y: auto;
+            }
+            .object-item {
+                padding: 5px;
+                margin: 3px 0;
+                background: rgba(0, 100, 200, 0.2);
+                border-left: 3px solid #00b4ff;
+            }
+            .object-class {
+                font-weight: bold;
+                color: #00b4ff;
+            }
+            .object-score {
+                float: right;
+                color: #66ff99;
+            }
+            .loading {
+                text-align: center;
+                color: #00b4ff;
+                font-size: 18px;
+                padding: 20px;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // 使用interact.js来处理拖动和缩放功能
+        interact('.chart-container')
+            .draggable({
+                listeners: {
+                    move: function (event) {
+                        const target = event.target;
+                        let x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
+                        let y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
+                        target.style.transform = `translate(${x}px, ${y}px)`;
+                        target.setAttribute('data-x', x);
+                        target.setAttribute('data-y', y);
+                    }
+                }
+            })
+            .resizable({
+                edges: { left: true, right: true, bottom: true, top: true },
+                listeners: {
+                    move: function (event) {
+                        const target = event.target;
+                        target.style.width = event.rect.width + 'px';
+                        target.style.height = event.rect.height + 'px';
+                        const chartId = target.querySelector('canvas').id;
+                        const chart = Chart.instances[document.getElementById(chartId)];
+                        if (chart) {
+                            chart.resize();
+                        }
+                    }
+                }
+            });
+
+        // 目标识别模块拖动和缩放
+        interact('.target-recognition-module')
+            .draggable({
+                listeners: {
+                    move: function (event) {
+                        const target = event.target;
+                        let x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
+                        let y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
+                        target.style.transform = `translate(${x}px, ${y}px)`;
+                        target.setAttribute('data-x', x);
+                        target.setAttribute('data-y', y);
+                    }
+                }
+            })
+            .resizable({
+                edges: { left: true, right: true, bottom: true, top: true },
+                listeners: {
+                    move: function (event) {
+                        const target = event.target;
+                        target.style.width = event.rect.width + 'px';
+                        target.style.height = event.rect.height + 'px';
+                    }
+                }
+            });
+    });
+</script>
+
+</body>
+</html>

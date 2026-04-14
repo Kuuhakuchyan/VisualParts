@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>"空天地"一体化智能监测平台</title>
+    <style>
+        /* 批量处理新增样式 */
+        .batch-mode-toggle {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 120, 255, 0.3);
+            border: 1px solid rgba(0, 180, 255, 0.5);
+            padding: 5px 10px;
+            border-radius: 15px;
+            cursor: pointer;
+            color: white;
+            font-size: 12px;
+            transition: all 0.3s;
+            z-index: 10;
+        }
+        
+        .batch-mode-toggle:hover {
+            background: rgba(0, 120, 255, 0.5);
+        }
+        
+        .batch-mode-toggle.active {
+            background: rgba(0, 200, 100, 0.3);
+            border-color: rgba(0, 255, 128, 0.5);
+        }
+        
+        .batch-upload-container {
+            display: none;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .batch-file-list {
+            max-height: 150px;
+            overflow-y: auto;
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(0, 40, 80, 0.3);
+            border-radius: 4px;
+            display: none;
+        }
+        
+        .batch-file-item {
+            padding: 3px 5px;
+            margin: 2px 0;
+            background: rgba(0, 100, 200, 0.2);
+            border-left: 3px solid #00b4ff;
+            font-size: 11px;
+            color: #b3e0ff;
+        }
+        
+        .batch-results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            padding: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .batch-result-item {
+            background: rgba(0, 40, 80, 0.5);
+            border: 1px solid rgba(0, 180, 255, 0.3);
+            border-radius: 4px;
+            padding: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .batch-result-item:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(0, 180, 255, 0.5);
+        }
+        
+        .batch-result-item img {
+            width: 100%;
+            height: 100px;
+            object-fit: contain;
+            background: rgba(0, 20, 40, 0.5);
+        }
+        
+        .batch-result-info {
+            font-size: 10px;
+            color: #b3e0ff;
+            margin-top: 5px;
+        }
+        
+        .batch-summary {
+            background: rgba(0, 60, 120, 0.3);
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            display: none;
+        }
+        
+        .batch-summary-stats {
+            display: flex;
+            justify-content: space-around;
+            color: #b3e0ff;
+        }
+        
+        .batch-stat-item {
+            text-align: center;
+        }
+        
+        .batch-stat-value {
+            font-size: 20px;
+            color: #00ff88;
+            font-weight: bold;
+        }
+        
+        .batch-stat-label {
+            font-size: 11px;
+            margin-top: 3px;
+        }
+        
+        .batch-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .batch-download-btn, .batch-clear-btn {
+            flex: 1;
+            padding: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 1px solid rgba(0, 180, 255, 0.5);
+            color: white;
+            transition: all 0.3s;
+        }
+        
+        .batch-download-btn {
+            background: rgba(0, 200, 100, 0.3);
+        }
+        
+        .batch-clear-btn {
+            background: rgba(255, 50, 50, 0.3);
+        }
+        
+        .batch-processing-overlay {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 10, 20, 0.9);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .batch-processing-overlay.show {
+            display: flex;
+        }
+        
+        .batch-processing-content {
+            text-align: center;
+            color: #00b4ff;
+        }
+        
+        .batch-spinner {
+            border: 3px solid rgba(0, 180, 255, 0.3);
+            border-top: 3px solid #00b4ff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* 认证标签页样式 */
+        .auth-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(0, 180, 255, 0.3);
+        }
+        .auth-tab {
+            flex: 1;
+            padding: 10px;
+            background: none;
+            border: none;
+            color: #b3e0ff;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        .auth-tab.active {
+            color: #00b4ff;
+            border-bottom: 2px solid #00b4ff;
+        }
+        .auth-form {
+            display: none;
+        }
+        .auth-form.active {
+            display: block;
+        }
+        .security-question select {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            background: rgba(0, 40, 80, 0.5);
+            border: 1px solid rgba(0, 180, 255, 0.3);
+            color: white;
+            border-radius: 4px;
+        }
+        /* 个人资料图标样式 */
+        .profile-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(0, 180, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 10px auto;
+            cursor: pointer;
+            border: 2px solid rgba(0, 180, 255, 0.5);
+            transition: all 0.3s;
+        }
+        .profile-icon:hover {
+            transform: scale(1.1);
+            background: rgba(0, 180, 255, 0.3);
+        }
+        .profile-icon img {
+            width: 24px;
+            height: 24px;
+        }
+        /* 登录模块样式 */
+        .auth-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        .auth-status {
+            background: rgba(10, 30, 60, 0.8);
+            padding: 10px 15px;
+            border-radius: 20px;
+            color: #b3e0ff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .auth-btn {
+            background: rgba(0, 120, 255, 0.3);
+            color: white;
+            border: 1px solid rgba(0, 180, 255, 0.5);
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .auth-btn:hover {
+            background: rgba(0, 120, 255, 0.5);
+        }
+        /* 登录页面样式 */
+        .login-page {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 10, 20, 0.9);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-form-container {
+            background: rgba(10, 30, 60, 0.95);
+            padding: 30px;
+            border-radius: 10px;
+            width: 350px;
+            box-shadow: 0 0 50px rgba(0, 100, 255, 0.3);
+            border: 1px solid rgba(0, 180, 255, 0.5);
+        }
+        .login-form-container h2 {
+            color: #00b4ff;
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 1.8em;
+        }
+        .login-form-container input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            background: rgba(0, 40, 80, 0.5);
+            border: 1px solid rgba(0, 180, 255, 0.3);
+            color: white;
+            border-radius: 4px;
+        }
+        .login-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 15px 0;
+            font-size: 0.9em;
+        }
+        .remember-me {
+            display: flex;
+            align-items: center;
+        }
+        .remember-me input {
+            width: auto;
+            margin-right: 8px;
+        }
+        .forgot-password {
+            color: #00b4ff;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .forgot-password:hover {
+            text-decoration: underline;
+        }
+        .login-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .login-buttons button {
+            flex: 1;
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .login-submit {
+            background: rgba(0, 120, 255, 0.5);
+            border: 1px solid rgba(0, 180, 255, 0.5);
+            color: white;
+        }
+        .login-submit:hover {
+            background: rgba(0, 120, 255, 0.7);
+        }
+        .login-cancel {
+            background: rgba(255, 50, 50, 0.3);
+            border: 1px solid rgba(255, 100, 100, 0.5);
+            color: white;
+        }
+        .login-cancel:hover {
+            background: rgba(255, 50, 50, 0.5);
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            background: #0a1625;
+            color: #fff;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+            transition: margin-left 0.5s;
+        }
+
+        /* 侧边栏样式 */
+        .sidebar-collapsed {
+            width: 50px;
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            background: rgba(10, 30, 60, 0.9);
+            z-index: 1000;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding-top: 20px;
+            border-right: 1px solid rgba(0, 180, 255, 0.3);
+            transition: width 0.3s;
+        }
+
+        .sidebar-expanded {
+            width: 200px;
+        }
+
+        .sidebar-icon {
+            font-size: 24px;
+            color: #00b4ff;
+            margin: 15px 0;
+            transition: all 0.3s;
+        }
+
+        .sidebar-icon:hover {
+            transform: scale(1.2);
+            color: #00ff88;
+        }
+
+        .sidebar-menu {
+            display: none;
+            width: 100%;
+            padding: 10px;
+        }
+
+        .sidebar-expanded .sidebar-menu {
+            display: block;
+        }
+
+        .sidebar-menu-item {
+            padding: 10px;
+            color: #b3e0ff;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(0, 180, 255, 0.2);
+            transition: all 0.3s;
+        }
+
+        .sidebar-menu-item:hover {
+            background: rgba(0, 100, 255, 0.2);
+            color: #00ff88;
+        }
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                linear-gradient(rgba(0, 120, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 120, 255, 0.1) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: -1;
+        }
+        h1 {
+            text-align: center;
+            padding: 25px;
+            font-size: 2.8em;
+            text-shadow: 0 0 15px rgba(0, 180, 255, 0.7);
+            margin: 0;
+            background: rgba(0, 40, 80, 0.5);
+            border-bottom: 1px solid rgba(0, 180, 255, 0.3);
+        }
+        .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 30px;
+            max-width: 1400px;
+            margin-left: 60px;
+            transition: margin-left 0.5s;
+        }
+
+        .container-expanded {
+            margin-left: 210px;
+        }
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            width: 200px;
+        }
+        .module {
+            background: rgba(10, 30, 60, 0.8);
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 8px 32px rgba(0, 100, 255, 0.2);
+            backdrop-filter: blur(6px);
+            border: 1px solid rgba(0, 180, 255, 0.3);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            display: none;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        
+        .module.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .module:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 120, 255, 0.3);
+        }
+        .module h2 {
+            margin-top: 0;
+            color: #00b4ff;
+            padding-bottom: 5px;
+            font-size: 1.4em;
+            border-bottom: 1px solid rgba(0, 180, 255, 0.3);
+            display: flex;
+            align-items: center;
+        }
+        .module h2::before {
+            content: "";
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #00b4ff;
+            border-radius: 50%;
+            margin-right: 10px;
+            box-shadow: 0 0 8px #00b4ff;
+        }
+        .module p {
+            color: #b3e0ff;
+            line-height: 1.7;
+            margin-bottom: 10px;
+        }
+        .chart-container {
+            display: none;
+            width: 600px;
+            height: 400px;
+            background: rgba(0, 80, 160, 0.2);
+            border-radius: 6px;
+            border: 1px dashed rgba(0, 180, 255, 0.3);
+            color: #66c2ff;
+            font-size: 1.1em;
+            position: absolute;
+            top: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1;
+        }
+        .chart-container.show {
+            display: block;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00ff88;
+            box-shadow: 0 0 8px #00ff88;
+            margin-right: 8px;
+        }
+        .target-recognition-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 30px;
+        }
+        .target-recognition-module {
+            background: rgba(10, 30, 60, 0.8);
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 8px 32px rgba(0, 100, 255, 0.2);
+            backdrop-filter: blur(6px);
+            border: 1px solid rgba(0, 180, 255, 0.3);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            width: 600px;
+            height: 400px;
+            position: relative;
+        }
+        .target-recognition-module:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 120, 255, 0.3);
+        }
+        .target-recognition-module h2 {
+            margin-top: 0;
+            color: #00b4ff;
+            padding-bottom: 5px;
+            font-size: 1.4em;
+            border-bottom: 1px solid rgba(0, 180, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .target-recognition-module h2::before {
+            content: "";
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #00b4ff;
+            border-radius: 50%;
+            margin-right: 10px;
+            box-shadow: 0 0 8px #00b4ff;
+        }
+        .target-recognition-module p {
+            color: #b3e0ff;
+            line-height: 1.7;
+            margin-bottom: 10px;
+        }
+        .recognition-box {
+            height: 300px;
+            background: rgba(0, 60, 120, 0.2);
+            border: 1px solid rgba(0, 180, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #66ffcc;
+            margin-top: 20px;
+            padding: 15px;
+            width: 100%;
+            box-sizing: border-box;
+            position: relative;
+        }
+        .detect-button {
+            background: rgba(0, 200, 100, 0.3);
+            color: white;
+            border: 1px solid rgba(0, 255, 128, 0.5);
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+            margin-top: 15px;
+            display: none;
+        }
+        .detect-button:hover {
+            background: rgba(0, 200, 100, 0.5);
+        }
+        .detect-button:disabled {
+            background: rgba(100, 100, 100, 0.3);
+            cursor: not-allowed;
+        }
+        .upload-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding: 20px;
+            border: 2px dashed rgba(0, 180, 255, 0.5);
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        #upload-button, #batch-upload-button {
+            background: rgba(0, 120, 255, 0.3);
+            color: white;
+            border: 1px solid rgba(0, 180, 255, 0.5);
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        #upload-button:hover, #batch-upload-button:hover {
+            background: rgba(0, 120, 255, 0.5);
+        }
+        .preview-container {
+            margin-top: 15px;
+            max-width: 100%;
+            max-height: 200px;
+            display: none;
+        }
+        .preview-container img {
+            max-width: 100%;
+            max-height: 100%;
+        }
+        .result-container {
+            display: none;
+            width: 100%;
+            height: calc(100% - 150px);
+        }
+        .detection-image {
+            width: 100%;
+            height: 70%;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        .detection-data {
+            width: 100%;
+            height: 30%;
+            overflow-y: auto;
+            padding: 10px;
+            background: rgba(0, 60, 120, 0.3);
+            border-radius: 4px;
+            color: #b3e0ff;
+        }
+        .loading {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #00b4ff;
+            font-size: 18px;
+        }
+        .earth-button {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            margin-left: 20px;
+            background: #1a2b5a;
+            border: 2px solid #0a2dae;
+            border-radius: 50%;
+            position: relative;
+            vertical-align: middle;
+            transition: all 0.3s;
+        }
+        .earth-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 15px rgba(42, 145, 216, 0.7);
+        }
+        .earth-button::before {
+            content: "";
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            right: 5px;
+            bottom: 5px;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%232a91d8" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>') center no-repeat;
+            background-size: contain;
+            border-radius: 50%;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/map/js/china.js"></script>
+    <script src="./auth.js" type="module"></script>
+    <script>
+        // 批量处理相关变量
+        let batchMode = false;
+        let batchFiles = [];
+        let batchResults = [];
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // 所有原有的初始化代码保持不变...
+            // 侧边栏交互
+            const sidebar = document.createElement('div');
+            sidebar.className = 'sidebar-collapsed';
+            sidebar.innerHTML = `
+                <div class="profile-icon">
+                    <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJDNi40NzkgMiAyIDYuNDc5IDIgMTJzNC40NzkgMTAgMTAgMTAgMTAtNC40NzkgMTAtMTBTMTcuNTIxIDIgMTIgMnptMCAyYzQuNDE5IDAgOCAzLjU4MSA4IDhzLTMuNTgxIDgtOCA4LTgtMy41ODEtOC04IDMuNTgxLTggOC04em0wIDJjLTIuMjA5IDAtNCAxLjc5MS00IDQgMCAxLjMwMy43ODcgMi40MDQgMS45NzcgMi45MDFDNy45MjUgMTIuODQ0IDcgMTEuNTU3IDcgMTBjMC0yLjc2MSAyLjIzOS01IDUtNXM1IDIuMjM5IDUgNWMwIDEuNTU3LS45MjUgMi44NDQtMi4yNzcgMy40MDFDMTYuMjEzIDEyLjQwNCAxNyAxMS4zMDMgMTcgMTBjMC0yLjIwOS0xLjc5MS00LTQtNHoiIGZpbGw9IiMwMGI0ZmYiLz48L3N2Zz4=" alt="Profile">
+                </div>
+                <div class="sidebar-menu">
+                    <div class="sidebar-menu-item" data-target="login-form">登录</div>
+                    <div class="sidebar-menu-item" data-target="real-time-monitor">实时监控</div>
+                    <div class="sidebar-menu-item" data-target="temperature-monitor">温度监控</div>
+                    <div class="sidebar-menu-item" data-target="humidity-monitor">湿度监控</div>
+                    <div class="sidebar-menu-item" data-target="distribution-monitor">分布监控</div>
+                    <div class="sidebar-menu-item" data-target="precipitation-monitor">降水监控</div>
+                    <div class="sidebar-menu-item" data-target="target-recognition-module">目标识别</div>
+                </div>
+            `;
+            document.body.insertBefore(sidebar, document.body.firstChild);
+
+            // 侧边栏展开/收起
+            sidebar.addEventListener('click', function(e) {
+                if (e.target.classList.contains('sidebar-icon') || 
+                    e.target.classList.contains('sidebar-collapsed')) {
+                    sidebar.classList.toggle('sidebar-expanded');
+                    document.querySelector('.container').classList.toggle('container-expanded');
+                }
+            });
+
+            // 菜单项点击事件
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('sidebar-menu-item')) {
+                    const targetId = e.target.getAttribute('data-target');
+                    const targetElement = document.getElementById(targetId);
+                    if (targetElement) {
+                        targetElement.classList.toggle('active');
+                        
+                        if (targetId === 'target-recognition-module') {
+                            const container = document.querySelector('.target-recognition-container');
+                            container.style.display = container.style.display === 'none' ? 'flex' : 'none';
+                        }
+                    }
+                }
+            });
+
+            // 初始化可拖动图表
+            interact('.chart-container').draggable({
+                inertia: false,
+                autoScroll: false,
+                listeners: {
+                    move: dragMoveListener
+                }
+            });
+
+            interact('.module:not(#target-recognition-module)').draggable({
+                inertia: false,
+                autoScroll: false,
+                listeners: {
+                    move: dragMoveListener
+                }
+            });
+
+            function dragMoveListener(event) {
+                const target = event.target;
+                const x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
+                const y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
+
+                target.style.transform = `translate(${x}px, ${y}px)`;
+                target.setAttribute('data-x', x);
+                target.setAttribute('data-y', y);
+            }
+
+            // 图表点击切换显示/隐藏
+            document.querySelectorAll('.module h2').forEach(header => {
+                header.addEventListener('click', function() {
+                    const chartContainer = this.parentElement.querySelector('.chart-container');
+                    if (chartContainer) {
+                        chartContainer.classList.toggle('show');
+                    }
+                });
+            });
+            
+            // 初始隐藏目标识别容器
+            document.querySelector('.target-recognition-container').style.display = 'none';
+
+            // 个人资料图标点击事件
+            document.querySelector('.profile-icon').addEventListener('click', function() {
+                document.querySelector('.sidebar-collapsed').classList.toggle('sidebar-expanded');
+                document.querySelector('.container').classList.toggle('container-expanded');
+            });
+
+            // 登录功能（保持原有代码）
+            const loginPage = document.createElement('div');
+            loginPage.className = 'login-page';
+            loginPage.innerHTML = `
+            <div class="login-form-container">
+                <div class="auth-tabs">
+                    <button class="auth-tab active" data-tab="login">登录</button>
+                    <button class="auth-tab" data-tab="register">注册</button>
+                </div>
+                
+                <div id="login-form" class="auth-form active">
+                    <h2>用户登录</h2>
+                    <input type="text" id="login-username" placeholder="用户名">
+                    <input type="password" id="login-password" placeholder="密码">
+                    <div class="login-options">
+                        <label class="remember-me">
+                            <input type="checkbox" id="remember-me"> 记住我
+                        </label>
+                        <a href="#" class="forgot-password">忘记密码?</a>
+                    </div>
+                    <div class="login-buttons">
+                        <button id="login-submit" class="login-submit">登录</button>
+                        <button id="login-cancel" class="login-cancel">取消</button>
+                    </div>
+                </div>
+                
+                <div id="register-form" class="auth-form">
+                    <h2>用户注册</h2>
+                    <input type="text" id="register-username" placeholder="用户名">
+                    <input type="password" id="register-password" placeholder="密码">
+                    <input type="password" id="register-confirm" placeholder="确认密码">
+                    <div class="security-question">
+                        <select id="security-question">
+                            <option value="">选择安全问题</option>
+                        </select>
+                    </div>
+                    <input type="text" id="security-answer" placeholder="安全问题答案">
+                    <div class="login-buttons">
+                        <button id="register-submit" class="login-submit">注册</button>
+                        <button id="register-cancel" class="login-cancel">取消</button>
+                    </div>
+                </div>
+            </div>
+            `;
+            document.body.appendChild(loginPage);
+
+            // 模拟用户数据
+            const users = {
+                'admin': 'admin123',
+                'user': 'user123'
+            };
+
+            // 批量处理功能初始化
+            initBatchProcessing();
+        });
+
+        // 批量处理功能
+        function initBatchProcessing() {
+            // 在目标识别模块标题中添加切换按钮
+            const recognitionModule = document.querySelector('.target-recognition-module h2');
+            if (recognitionModule) {
+                const toggleBtn = document.createElement('button');
+                toggleBtn.className = 'batch-mode-toggle';
+                toggleBtn.textContent = '批量模式';
+                toggleBtn.onclick = toggleBatchMode;
+                recognitionModule.appendChild(toggleBtn);
+            }
+        }
+
+        function toggleBatchMode() {
+            batchMode = !batchMode;
+            const toggleBtn = document.querySelector('.batch-mode-toggle');
+            const uploadArea = document.getElementById('upload-area');
+            const uploadButton = document.getElementById('upload-button');
+            const detectButton = document.getElementById('detect-button');
+            
+            if (batchMode) {
+                toggleBtn.classList.add('active');
+                toggleBtn.textContent = '单张模式';
+                
+                // 创建批量上传界面
+                if (!document.getElementById('batch-upload-container')) {
+                    createBatchUploadUI();
+                }
+                
+                // 切换到批量界面
+                uploadArea.style.display = 'none';
+                document.getElementById('batch-upload-container').style.display = 'flex';
+            } else {
+                toggleBtn.classList.remove('active');
+                toggleBtn.textContent = '批量模式';
+                
+                // 切换回单张界面
+                uploadArea.style.display = 'flex';
+                const batchContainer = document.getElementById('batch-upload-container');
+                if (batchContainer) {
+                    batchContainer.style.display = 'none';
+                }
+            }
+        }
+
+        function createBatchUploadUI() {
+            const recognitionBox = document.querySelector('.recognition-box');
+            
+            const batchContainer = document.createElement('div');
+            batchContainer.id = 'batch-upload-container';
+            batchContainer.className = 'batch-upload-container';
+            batchContainer.style.display = 'none';
+            batchContainer.innerHTML = `
+                <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
+                    <div class="upload-area" style="min-height: 150px;">
+                        <input type="file" id="batch-image-upload" accept="image/*" multiple style="display:none">
+                        <button id="batch-upload-button">选择多个图片</button>
+                        <div class="batch-file-list" id="batch-file-list"></div>
+                    </div>
+                    <button id="batch-detect-button" class="detect-button" style="display:none;">批量检测</button>
+                    <div class="batch-summary" id="batch-summary">
+                        <div class="batch-summary-stats">
+                            <div class="batch-stat-item">
+                                <div class="batch-stat-value" id="batch-total-images">0</div>
+                                <div class="batch-stat-label">总图片</div>
+                            </div>
+                            <div class="batch-stat-item">
+                                <div class="batch-stat-value" id="batch-total-birds">0</div>
+                                <div class="batch-stat-label">检测鸟类</div>
+                            </div>
+                            <div class="batch-stat-item">
+                                <div class="batch-stat-value" id="batch-avg-time">0</div>
+                                <div class="batch-stat-label">平均用时(秒)</div>
+                            </div>
+                        </div>
+                        <div class="batch-controls">
+                            <button class="batch-download-btn" onclick="downloadBatchResults()">下载结果</button>
+                            <button class="batch-clear-btn" onclick="clearBatchResults()">清空</button>
+                        </div>
+                    </div>
+                    <div class="batch-results-grid" id="batch-results-grid"></div>
+                    <div class="batch-processing-overlay" id="batch-processing-overlay">
+                        <div class="batch-processing-content">
+                            <div class="batch-spinner"></div>
+                            <div>正在处理...</div>
+                            <div id="batch-progress">0 / 0</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            recognitionBox.appendChild(batchContainer);
+            
+            // 绑定批量上传事件
+            document.getElementById('batch-upload-button').addEventListener('click', () => {
+                document.getElementById('batch-image-upload').click();
+            });
+            
+            document.getElementById('batch-image-upload').addEventListener('change', handleBatchFileSelect);
+            document.getElementById('batch-detect-button').addEventListener('click', processBatchDetection);
+        }
+
+        function handleBatchFileSelect(event) {
+            batchFiles = Array.from(event.target.files);
+            const fileList = document.getElementById('batch-file-list');
+            
+            if (batchFiles.length > 0) {
+                fileList.style.display = 'block';
+                fileList.innerHTML = `<div style="color:#00b4ff;margin-bottom:5px;">已选择 ${batchFiles.length} 个文件:</div>`;
+                
+                batchFiles.forEach(file => {
+                    const item = document.createElement('div');
+                    item.className = 'batch-file-item';
+                    item.textContent = file.name;
+                    fileList.appendChild(item);
+                });
+                
+                document.getElementById('batch-detect-button').style.display = 'block';
+            }
+        }
+
+        async function processBatchDetection() {
+            if (batchFiles.length === 0) return;
+            
+            const overlay = document.getElementById('batch-processing-overlay');
+            overlay.classList.add('show');
+            
+            const formData = new FormData();
+            batchFiles.forEach(file => {
+                formData.append('images', file);
+            });
+            
+            try {
+                const response = await fetch('http://localhost:5050/api/batch_detect', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayBatchResults(data);
+                } else {
+                    alert('批量检测失败: ' + data.error);
+                }
+            } catch (error) {
+                alert('请求失败: ' + error.message);
+            } finally {
+                overlay.classList.remove('show');
+            }
+        }
+
+        function displayBatchResults(data) {
+            batchResults = data.results;
+            
+            // 更新统计
+            document.getElementById('batch-total-images').textContent = data.total_images;
+            document.getElementById('batch-total-birds').textContent = data.total_birds;
+            const avgTime = data.results.reduce((sum, r) => sum + (r.inference_time || 0), 0) / data.results.length;
+            document.getElementById('batch-avg-time').textContent = avgTime.toFixed(2);
+            
+            document.getElementById('batch-summary').style.display = 'block';
+            
+            // 显示结果网格
+            const grid = document.getElementById('batch-results-grid');
+            grid.innerHTML = '';
+            
+            data.results.forEach(result => {
+                if (result.success) {
+                    const item = document.createElement('div');
+                    item.className = 'batch-result-item';
+                    item.innerHTML = `
+                        <img src="data:image/png;base64,${result.image}" alt="${result.filename}">
+                        <div class="batch-result-info">
+                            <div style="font-weight:bold;">${result.filename}</div>
+                            <div>鸟类: ${result.count}</div>
+                        </div>
+                    `;
+                    grid.appendChild(item);
+                }
+            });
+        }
+
+        async function downloadBatchResults() {
+            if (batchResults.length === 0) return;
+            
+            const response = await fetch('http://localhost:5050/api/download_results', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    images: batchResults.filter(r => r.success).map(r => ({
+                        filename: 'result_' + r.filename,
+                        image: r.image
+                    }))
+                })
+            });
+            
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'bird_detection_results.zip';
+            a.click();
+        }
+
+        function clearBatchResults() {
+            batchFiles = [];
+            batchResults = [];
+            document.getElementById('batch-file-list').innerHTML = '';
+            document.getElementById('batch-file-list').style.display = 'none';
+            document.getElementById('batch-results-grid').innerHTML = '';
+            document.getElementById('batch-summary').style.display = 'none';
+            document.getElementById('batch-detect-button').style.display = 'none';
+        }
+    </script>
+</head>
+<body>
+<!-- 原有的HTML结构完全保持不变 -->
+<div class="auth-container">
+    <div class="auth-status" id="auth-status">
+        <span>未登录</span>
+        <button id="login-btn" class="auth-btn">登录</button>
+        <button id="register-btn" class="auth-btn">注册</button>
+        <a href="simple_register.html" style="margin-left:10px;color:#1890ff;">[独立注册]</a>
+    </div>
+</div>
+<h1>"空天地"一体化智能监测平台
+    <a href="tech_map.html" class="earth-button" title="科技地图"></a>
+</h1>
+<div class="container">
+    <div class="map-container" id="china-map" style="width: 100%; height: 600px;"></div>
+    <div class="sidebar">
+        <div class="module" id="real-time-monitor">
+            <h2><span class="status-indicator"></span>实时监控</h2>
+            <p>系统运行状态实时监测</p>
+            <div class="chart-container" id="real-time-chart-container">
+                <canvas id="real-time-chart"></canvas>
+            </div>
+        </div>
+        <div class="module" id="temperature-monitor">
+            <h2><span class="status-indicator"></span>温度监测</h2>
+            <p>环境温度数据可视化</p>
+            <div class="chart-container" id="temperature-chart-container">
+                <canvas id="temperature-chart"></canvas>
+            </div>
+        </div>
+        <div class="module" id="humidity-monitor">
+            <h2><span class="status-indicator"></span>湿度监测</h2>
+            <p>环境湿度数据可视化</p>
+            <div class="chart-container" id="humidity-chart-container">
+                <canvas id="humidity-chart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="main-content">
+        <div class="chart-container" id="distribution-chart-container">
+            <canvas id="distribution-chart"></canvas>
+        </div>
+        <div class="chart-container" id="precipitation-chart-container">
+            <canvas id="precipitation-chart"></canvas>
+        </div>
+    </div>
+    <div class="sidebar">
+        <div class="module" id="distribution-monitor">
+            <h2><span class="status-indicator"></span>分布状况</h2>
+            <p>目标分布热力图展示</p>
+            <div class="chart-container" id="distribution-chart-container2">
+                <canvas id="distribution-chart2"></canvas>
+            </div>
+        </div>
+        <div class="module" id="precipitation-monitor">
+            <h2><span class="status-indicator"></span>降水量</h2>
+            <p>目标分布降水量展示</p>
+            <div class="chart-container" id="precipitation-chart-container2">
+                <canvas id="precipitation-chart2"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="target-recognition-container" style="display:none;">
+    <div class="target-recognition-module" id="target-recognition-module">
+        <h2><span class="status-indicator"></span>目标识别</h2>
+        <div class="recognition-box">
+            <div class="upload-area" id="upload-area">
+                <input type="file" id="image-upload" accept="image/*" style="display:none">
+                <button id="upload-button">选择或拖放图片</button>
+                <div class="preview-container" id="preview-container"></div>
+                <button id="detect-button" class="detect-button" disabled>开始检测</button>
+            </div>
+            <div class="result-container" id="result-container">
+                <div class="detection-image" id="detection-image"></div>
+                <div class="detection-data" id="detection-data"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 保持原有的所有脚本功能 -->
+<script>
+    // 原有的所有功能代码...
+    document.addEventListener('DOMContentLoaded', function() {
+        // 原有的图表创建和事件处理代码
+        function createChart(canvasId) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            return new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July'],
+                    datasets: [{
+                        label: '数据曲线',
+                        data: [65, 59, 80, 81, 56, 55, 40],
+                        borderColor: '#00b4ff',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: '数据曲线图'
+                        }
+                    }
+                }
+            });
+        }
+
+        createChart('real-time-chart');
+        createChart('temperature-chart');
+        createChart('humidity-chart');
+        createChart('distribution-chart');
+        createChart('precipitation-chart');
+
+        // 原有的单张图片上传和检测功能
+        const uploadButton = document.getElementById('upload-button');
+        const detectButton = document.getElementById('detect-button');
+        const imageUpload = document.getElementById('image-upload');
+        const previewContainer = document.getElementById('preview-container');
+        const resultContainer = document.getElementById('result-container');
+        const detectionData = document.getElementById('detection-data');
+        const uploadArea = document.getElementById('upload-area');
+
+        let currentFile = null;
+        let isProcessing = false;
+
+        function handleFile(file) {
+            if (!file?.type.match('image.*')) {
+                alert('请选择有效的图片文件');
+                return false;
+            }
+
+            if (isProcessing) return false;
+            isProcessing = true;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                previewContainer.innerHTML = `<img src="${event.target.result}" style="max-width:100%;max-height:200px;">`;
+                previewContainer.style.display = 'block';
+                uploadButton.textContent = '重新选择图片';
+                detectButton.style.display = 'block';
+                detectButton.disabled = false;
+                currentFile = file;
+                isProcessing = false;
+            };
+            reader.readAsDataURL(file);
+            return true;
+        }
+
+        function processFileInput(files) {
+            if (files && files[0]) {
+                imageUpload.files = files;
+                return handleFile(files[0]);
+            }
+            return false;
+        }
+
+        uploadButton.addEventListener('click', () => {
+            imageUpload.value = '';
+            imageUpload.click();
+        });
+
+        imageUpload.addEventListener('change', (e) => {
+            processFileInput(e.target.files);
+        });
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.border = '2px dashed #00b4ff';
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.border = '2px dashed rgba(0,180,255,0.3)';
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.border = '2px dashed rgba(0,180,255,0.3)';
+            processFileInput(e.dataTransfer.files);
+        });
+
+        detectButton.addEventListener('click', async () => {
+            if (!currentFile || isProcessing) return;
+
+            isProcessing = true;
+            detectButton.disabled = true;
+            detectButton.textContent = '检测中...';
+            resultContainer.style.display = 'flex';
+            detectionData.innerHTML = '<div class="loading">检测中...</div>';
+            
+            try {
+                const formData = new FormData();
+                formData.append('image', currentFile);
+
+                const response = await fetch('http://localhost:5050/api/detect', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    const detectionImage = document.getElementById('detection-image');
+                    detectionImage.innerHTML = `
+                        <img src="data:image/png;base64,${data.image}" style="max-width: 100%; height: auto;">
+                    `;
+                    
+                    const result = JSON.parse(data.result);
+                    detectionData.innerHTML = `
+                        <h3>检测结果</h3>
+                        <p>检测数量: ${result.count}</p>
+                        <p>推理时间: ${result.inference_time.toFixed(2)}秒</p>
+                        <p>模型: ${result.model}</p>
+                        <div class="detected-objects">
+                            <h4>检测到的目标:</h4>
+                            ${result.objects.map(obj => `
+                                <div class="object-item">
+                                    <span class="object-class">${obj.class}</span>
+                                    <span class="object-score">置信度: ${(obj.score * 100).toFixed(1)}%</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } else {
+                    detectionData.innerHTML = `<p style="color:#ff5555;">检测失败: ${data.message || '未知错误'}</p>`;
+                }
+            } catch (error) {
+                detectionData.innerHTML = `<p style="color:#ff5555;">网络错误: ${error.message}</p>`;
+            } finally {
+                detectButton.disabled = false;
+                detectButton.textContent = '开始检测';
+                isProcessing = false;
+            }
+        });
+    });
+</script>
+
+</body>
+</html>

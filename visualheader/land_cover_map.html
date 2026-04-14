@@ -1,0 +1,4607 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>郑州黄河湿地"空天地"一体化智能监测平台</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    
+    <script src="https://unpkg.com/leaflet.canvas-markers@1.0.1/dist/leaflet.canvas-markers.js"></script>
+    
+    <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
+    <script src="https://unpkg.com/geotiff@2.0.7/dist-browser/geotiff.js"></script>
+    <script src="https://unpkg.com/shpjs@4.0.4/dist/shp.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/proj4@2.9.0/dist/proj4.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chroma-js@2.4.2/chroma.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/simple-statistics@7.8.2/dist/simple-statistics.min.js"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="../js/api.js"></script>
+    
+    <style>
+        :root {
+            --primary: #2980b9;
+            --secondary: #27ae60;
+            --danger: #e74c3c;
+            --warning: #f39c12;
+            --info: #3498db;
+            --dark: #2c3e50;
+            --light: #ecf0f1;
+            --panel-bg: rgba(44, 62, 80, 0.95);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #34495e;
+            color: var(--light);
+            overflow: hidden;
+        }
+        
+        /* 布局 */
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        .header {
+            background: var(--panel-bg);
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid var(--primary);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            z-index: 1000;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .header-title {
+            font-size: 20px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--info);
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            position: relative;
+        }
+        
+        .btn {
+            padding: 8px 15px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .btn-success { background: var(--secondary); }
+        .btn-danger { background: var(--danger); }
+        .btn-warning { background: var(--warning); }
+        .btn-info { background: var(--info); }
+
+        /* 可折叠工具栏 */
+        .options-wrapper {
+            position: relative;
+        }
+        .options-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .options-panel {
+            position: absolute;
+            right: 0;
+            top: 110%;
+            background: var(--panel-bg);
+            border: 1px solid rgba(52, 152, 219, 0.3);
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+            padding: 12px;
+            min-width: 520px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            z-index: 1200;
+        }
+        .options-panel.collapsed {
+            display: none;
+        }
+        .options-section {
+            flex: 1 1 240px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(52, 152, 219, 0.15);
+            border-radius: 6px;
+            padding: 0;
+        }
+        .options-accordion-header {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: var(--info);
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .options-accordion-header .label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .options-accordion-header .caret {
+            transition: transform 0.2s ease;
+        }
+        .options-accordion-header.collapsed .caret {
+            transform: rotate(-90deg);
+        }
+        .options-accordion-body {
+            padding: 0 10px 10px 10px;
+            display: block;
+        }
+        .options-accordion-body.collapsed {
+            display: none;
+        }
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 8px;
+        }
+        .options-section .btn {
+            width: 100%;
+            justify-content: center;
+        }
+        .options-tip {
+            font-size: 12px;
+            color: #95a5a6;
+            margin-top: 4px;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .main-content {
+            flex: 1;
+            display: flex;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .sidebar {
+            width: 350px;
+            background: var(--panel-bg);
+            border-right: 1px solid rgba(52, 152, 219, 0.3);
+            overflow-y: auto;
+            transition: transform 0.3s;
+        }
+        
+        .sidebar.collapsed {
+            transform: translateX(-350px);
+        }
+        
+        .sidebar-toggle {
+            position: absolute;
+            left: 350px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 30px;
+            height: 60px;
+            background: var(--panel-bg);
+            border: 1px solid rgba(52, 152, 219, 0.3);
+            border-left: none;
+            border-radius: 0 5px 5px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 100;
+            transition: left 0.3s;
+        }
+        
+        .sidebar.collapsed + .sidebar-toggle {
+            left: 0;
+        }
+        
+        .panel {
+            padding: 15px;
+            border-bottom: 1px solid rgba(52, 152, 219, 0.2);
+        }
+        
+        .panel h3 {
+            color: var(--info);
+            font-size: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        
+        #statsMap {
+            width: 100%;
+            height: 100%;
+            display: none;
+            background: #0f1621;
+        }
+        
+        /* 图层项 */
+        .layer-item {
+            background: rgba(52, 152, 219, 0.1);
+            border: 1px solid rgba(52, 152, 219, 0.3);
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 8px;
+        }
+        
+        .layer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .layer-name {
+            font-weight: 500;
+            color: var(--light);
+        }
+        
+        .layer-controls {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .layer-btn {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: rgba(52, 152, 219, 0.3);
+            color: var(--info);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .layer-btn:hover {
+            background: var(--info);
+            color: white;
+        }
+        
+        .layer-info {
+            font-size: 12px;
+            color: #95a5a6;
+            margin-top: 5px;
+        }
+        
+        /* 工具栏 */
+        .toolbar {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--panel-bg);
+            border: 1px solid rgba(52, 152, 219, 0.3);
+            border-radius: 5px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            z-index: 400;
+        }
+        
+        .tool-btn {
+            width: 40px;
+            height: 40px;
+            border: none;
+            background: rgba(52, 152, 219, 0.2);
+            color: var(--info);
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        
+        .tool-btn:hover, .tool-btn.active {
+            background: var(--info);
+            color: white;
+        }
+        
+        /* 信息弹窗 */
+        .info-popup {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: var(--panel-bg);
+            border: 1px solid rgba(52, 152, 219, 0.3);
+            border-radius: 5px;
+            padding: 15px;
+            max-width: 300px;
+            z-index: 400;
+            display: none;
+        }
+        
+        .info-popup.active {
+            display: block;
+        }
+        
+        /* 加载动画 */
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            display: none;
+        }
+        
+        .loading.active {
+            display: flex;
+        }
+        
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: var(--info);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        .loading-text {
+            color: white;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        
+        .loading-progress {
+            color: #bdc3c7;
+            font-size: 14px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* 通知 */
+        .toast {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            background: var(--panel-bg);
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid var(--info);
+            min-width: 250px;
+            z-index: 9999;
+            animation: slideIn 0.3s;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .toast.success { border-left-color: var(--secondary); }
+        .toast.error { border-left-color: var(--danger); }
+        .toast.warning { border-left-color: var(--warning); }
+        
+        /* 属性表面板 */
+        .attribute-panel {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            width: 520px;
+            max-height: 70vh;
+            background: var(--panel-bg);
+            border: 1px solid rgba(52, 152, 219, 0.3);
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+            z-index: 1200;
+            display: none;
+            backdrop-filter: blur(4px);
+        }
+        .attribute-panel.active { display: flex; flex-direction: column; }
+        .attribute-header {
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(52, 152, 219, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            cursor: move;
+            user-select: none;
+        }
+        .attribute-header h4 {
+            margin: 0;
+            color: var(--info);
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .attribute-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .attribute-select {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(52,152,219,0.35);
+            color: var(--light);
+            padding: 6px 8px;
+            border-radius: 4px;
+            min-width: 160px;
+        }
+        .attribute-close {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(52,152,219,0.25);
+            color: var(--light);
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .attribute-body {
+            padding: 10px 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .attribute-summary {
+            font-size: 12px;
+            color: #95a5a6;
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .attribute-table-wrapper {
+            overflow: auto;
+            max-height: 45vh;
+            border: 1px solid rgba(52,152,219,0.2);
+            border-radius: 4px;
+            background: rgba(0,0,0,0.15);
+        }
+        .attribute-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        .attribute-table thead {
+            background: rgba(52,152,219,0.15);
+            position: sticky;
+            top: 0;
+        }
+        .attribute-table th, .attribute-table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            border-right: 1px solid rgba(255,255,255,0.05);
+            white-space: nowrap;
+        }
+        .attribute-table th:last-child, .attribute-table td:last-child { border-right: none; }
+        .attribute-pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: #95a5a6;
+        }
+        .attribute-pagination button {
+            background: rgba(52,152,219,0.2);
+            border: 1px solid rgba(52,152,219,0.3);
+            color: var(--light);
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        /* 样式调节面板 */
+        .style-panel {
+            position: fixed;
+            right: 560px;
+            bottom: 20px;
+            width: 320px;
+            background: var(--panel-bg);
+            border: 1px solid rgba(52, 152, 219, 0.3);
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+            z-index: 1200;
+            display: none;
+        }
+        .style-panel.active { display: flex; flex-direction: column; }
+        .style-header {
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(52, 152, 219, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            cursor: move;
+            user-select: none;
+        }
+        .style-header h4 {
+            margin: 0;
+            color: var(--info);
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .style-body {
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .style-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+        .style-row label {
+            font-size: 12px;
+            color: #95a5a6;
+            min-width: 90px;
+        }
+        .style-row input[type="number"] {
+            width: 80px;
+            padding: 4px 6px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(52,152,219,0.35);
+            color: var(--light);
+            border-radius: 4px;
+        }
+        .style-row input[type="color"] {
+            width: 60px;
+            height: 26px;
+            padding: 0;
+            border: 1px solid rgba(52,152,219,0.35);
+            border-radius: 4px;
+            background: transparent;
+        }
+        
+        /* 统计图表 */
+        .chart-container {
+            width: 100%;
+            height: 200px;
+            margin-top: 10px;
+        }
+        
+        /* 分析工具网格 */
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        
+        .tools-grid .btn {
+            font-size: 12px;
+            padding: 8px;
+        }
+        
+        /* 坐标显示 */
+        .coordinates {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 400;
+        }
+        
+        /* 图例 */
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: var(--panel-bg);
+            border: 1px solid rgba(52, 152, 219, 0.3);
+            border-radius: 5px;
+            padding: 15px;
+            z-index: 400;
+            min-width: 150px;
+            display: none;
+        }
+        
+        .legend.active {
+            display: block;
+        }
+        
+        .legend h4 {
+            color: var(--info);
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+            font-size: 12px;
+        }
+        
+        .legend-symbol {
+            width: 20px;
+            height: 15px;
+            margin-right: 8px;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        /* 地图切换控制 */
+        .map-toggle {
+            position: absolute;
+            top: 20px;
+            left: 10px;
+            background: var(--panel-bg);
+            border: 1px solid rgba(52, 152, 219, 0.3);
+            border-radius: 5px;
+            padding: 10px;
+            z-index: 500;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        
+        .map-toggle h4 {
+            color: var(--info);
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .map-toggle-btn {
+            display: block;
+            width: 100%;
+            margin: 3px 0;
+            padding: 5px 10px;
+            background: rgba(52, 152, 219, 0.2);
+            color: var(--light);
+            border: 1px solid rgba(52, 152, 219, 0.3);
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+        
+        .map-toggle-btn:hover {
+            background: var(--info);
+        }
+        
+        .map-toggle-btn.active {
+            background: var(--info);
+            color: white;
+        }
+
+        /* 性能监控面板 */
+        .performance-panel {
+            background: rgba(52, 152, 219, 0.1);
+            border: 1px solid rgba(52, 152, 219, 0.3);
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 12px;
+        }
+
+        .performance-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 3px 0;
+        }
+
+        .performance-value {
+            color: var(--info);
+            font-weight: 600;
+        }
+
+        /* 数据处理设置 */
+        .processing-settings {
+            background: rgba(52, 152, 219, 0.1);
+            border: 1px solid rgba(52, 152, 219, 0.3);
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .setting-item {
+            margin: 8px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .setting-label {
+            font-size: 12px;
+            color: var(--light);
+        }
+
+        .setting-input {
+            width: 60px;
+            padding: 2px 5px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 3px;
+            color: white;
+            font-size: 11px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 40px;
+            height: 20px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .toggle-switch.active {
+            background: var(--secondary);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: all 0.3s;
+        }
+
+        .toggle-switch.active::after {
+            left: 22px;
+        }
+        
+        /* 样式配置面板 */
+        .style-config-panel {
+            background: rgba(52, 152, 219, 0.1);
+            border: 1px solid rgba(52, 152, 219, 0.3);
+            border-radius: 5px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        
+        .style-option {
+            margin: 8px 0;
+        }
+        
+        .style-option label {
+            display: block;
+            color: #95a5a6;
+            margin-bottom: 4px;
+            font-size: 11px;
+        }
+        
+        .style-select {
+            width: 100%;
+            padding: 4px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 3px;
+            color: white;
+            font-size: 11px;
+        }
+        
+        .color-ramp-preview {
+            height: 25px;
+            border-radius: 3px;
+            margin-top: 5px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">
+        <div class="loading-spinner"></div>
+        <div class="loading-text" id="loadingText">正在处理数据...</div>
+        <div class="loading-progress" id="loadingProgress">请稍候</div>
+    </div>
+    
+    <button class="back-button" onclick="window.location.href='henan.html'" style="position: fixed; top: 20px; left: 20px; padding: 8px 16px; background: #1a2b5a; color: #fff; border: 1px solid #0a2dae; border-radius: 4px; cursor: pointer; z-index: 1000;">← 返回河南</button>
+    <div class="app-container">
+        <div class="header">
+            <div class="header-left">
+                <div class="header-title">
+                    <i class="fas fa-map-marked-alt"></i>
+                    郑州黄河湿地"空天地"一体化智能监测平台
+                </div>
+                <div class="options-wrapper">
+                    <button class="btn btn-info options-toggle" onclick="app.toggleOptionsPanel()">
+                        <i class="fas fa-sliders"></i> 工具面板
+                    </button>
+                    <div class="options-panel collapsed" id="optionsPanel">
+                        <div class="options-section">
+                            <button class="options-accordion-header" data-accordion="view">
+                                <span class="label"><i class="fas fa-map-pin"></i> 视图定位</span>
+                                <i class="fas fa-chevron-down caret"></i>
+                            </button>
+                            <div class="options-accordion-body" data-accordion-body="view">
+                                <div class="options-grid">
+                                    <button class="btn btn-success" onclick="app.focusProvince()">
+                                        <i class="fas fa-location-dot"></i> 全省
+                                    </button>
+                                    <button class="btn btn-success" onclick="app.focusWetland()">
+                                        <i class="fas fa-water"></i> 黄河湿地
+                                    </button>
+                                    <button class="btn btn-warning" onclick="app.resetMapView()">
+                                        <i class="fas fa-home"></i> 重置视图
+                                    </button>
+                                    <button class="btn btn-warning" onclick="window.location.href='henan.html'">
+                                        <i class="fas fa-arrow-left"></i> 返回河南地图
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="options-section">
+                            <button class="options-accordion-header" data-accordion="data">
+                                <span class="label"><i class="fas fa-folder-plus"></i> 数据加载</span>
+                                <i class="fas fa-chevron-down caret"></i>
+                            </button>
+                            <div class="options-accordion-body" data-accordion-body="data">
+                                <div class="options-grid">
+                                    <label for="shpFile" class="btn btn-info">
+                                        <i class="fas fa-map"></i> 加载Shp
+                                    </label>
+                                    <label for="shpDir" class="btn btn-info">
+                                        <i class="fas fa-folder-open"></i> 加载Shp目录
+                                    </label>
+                                    <label for="demFile" class="btn btn-info">
+                                        <i class="fas fa-mountain"></i> 栅格数据
+                                    </label>
+                                    <label for="jsonFile" class="btn btn-info">
+                                        <i class="fas fa-code"></i> GeoJSON
+                                    </label>
+                                    <button class="btn btn-warning" onclick="app.loadSampleData()">
+                                        <i class="fas fa-database"></i> 示例数据
+                                    </button>
+                                </div>
+                                <div class="options-tip">支持 zip/shp/dbf/shx/prj/qml/sld、GeoTIFF、GeoJSON</div>
+                            </div>
+                        </div>
+                        <div class="options-section">
+                            <button class="options-accordion-header" data-accordion="tools">
+                                <span class="label"><i class="fas fa-wrench"></i> 工具与导出</span>
+                                <i class="fas fa-chevron-down caret"></i>
+                            </button>
+                            <div class="options-accordion-body" data-accordion-body="tools">
+                                <div class="options-grid">
+                                    <button class="btn btn-info" onclick="app.toggleAttributePanel()">
+                                        <i class="fas fa-table"></i> 属性表
+                                    </button>
+                                    <button class="btn btn-info" onclick="app.toggleStylePanel()">
+                                        <i class="fas fa-palette"></i> 样式调节
+                                    </button>
+                                    <button class="btn btn-danger" onclick="app.exportMap()">
+                                        <i class="fas fa-download"></i> 导出
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-warning" onclick="window.location.href='henan.html'">
+                    <i class="fas fa-arrow-left"></i> 返回河南地图
+                </button>
+                <input type="file" id="shpFile" class="file-input" accept=".zip,.shp,.dbf,.shx,.prj,.qml,.sld" multiple>
+                <input type="file" id="shpDir" class="file-input" accept=".zip,.shp,.dbf,.shx,.prj,.qml,.sld" webkitdirectory directory multiple>
+                <input type="file" id="demFile" class="file-input" accept=".tif,.tiff,.geotiff">
+                <input type="file" id="jsonFile" class="file-input" accept=".json,.geojson">
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="sidebar" id="sidebar">
+                <div class="panel">
+                    <h3><i class="fas fa-tachometer-alt"></i> 性能监控</h3>
+                    <div class="performance-panel">
+                        <div class="performance-item">
+                            <span>内存使用:</span>
+                            <span class="performance-value" id="memoryUsage">0 MB</span>
+                        </div>
+                        <div class="performance-item">
+                            <span>渲染帧率:</span>
+                            <span class="performance-value" id="renderFPS">60 FPS</span>
+                        </div>
+                        <div class="performance-item">
+                            <span>活跃要素:</span>
+                            <span class="performance-value" id="activeFeatures">0</span>
+                        </div>
+                        <div class="performance-item">
+                            <span>可见要素:</span>
+                            <span class="performance-value" id="visibleFeatures">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h3><i class="fas fa-cog"></i> 渲染设置</h3>
+                    <div class="processing-settings">
+                        <div class="setting-item">
+                            <span class="setting-label">聚合阈值:</span>
+                            <input type="number" class="setting-input" id="clusterThreshold" value="1000" min="100" max="10000">
+                        </div>
+                        <div class="setting-item">
+                            <span class="setting-label">简化距离:</span>
+                            <input type="number" class="setting-input" id="simplifyTolerance" value="0.001" min="0.0001" max="0.01" step="0.0001">
+                        </div>
+                        <div class="setting-item">
+                            <span class="setting-label">启用聚合:</span>
+                            <div class="toggle-switch active" id="enableClustering" onclick="app.toggleSetting('clustering')"></div>
+                        </div>
+                        <div class="setting-item">
+                            <span class="setting-label">虚拟化渲染:</span>
+                            <div class="toggle-switch active" id="enableVirtualization" onclick="app.toggleSetting('virtualization')"></div>
+                        </div>
+                        <div class="setting-item">
+                            <span class="setting-label">异步加载:</span>
+                            <div class="toggle-switch active" id="enableAsyncLoading" onclick="app.toggleSetting('asyncLoading')"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="panel">
+                    <h3><i class="fas fa-layer-group"></i> 图层管理</h3>
+                    <div id="layerList">
+                        <p style="color: #95a5a6; text-align: center; font-size: 13px;">暂无图层</p>
+                    </div>
+                </div>
+                
+                <div class="panel">
+                    <h3><i class="fas fa-tools"></i> 空间分析</h3>
+                    <div class="tools-grid">
+                        <button class="btn btn-info" onclick="app.bufferAnalysis()">
+                            <i class="fas fa-circle"></i> 缓冲区
+                        </button>
+                        <button class="btn btn-info" onclick="app.intersectAnalysis()">
+                            <i class="fas fa-object-group"></i> 相交
+                        </button>
+                        <button class="btn btn-info" onclick="app.unionAnalysis()">
+                            <i class="fas fa-plus"></i> 合并
+                        </button>
+                        <button class="btn btn-info" onclick="app.clipAnalysis()">
+                            <i class="fas fa-crop"></i> 裁剪
+                        </button>
+                        <button class="btn btn-info" onclick="app.heatmapAnalysis()">
+                            <i class="fas fa-fire"></i> 热力图
+                        </button>
+                        <button class="btn btn-info" onclick="app.contourAnalysis()">
+                            <i class="fas fa-water"></i> 等值线
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="panel">
+                    <h3><i class="fas fa-chart-bar"></i> 数据统计</h3>
+                    <div style="font-size: 13px;">
+                        <div style="display: flex; justify-content: space-between; padding: 5px 0;">
+                            <span>图层数量:</span>
+                            <span id="layerCount" style="color: var(--info); font-weight: 600;">0</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 5px 0;">
+                            <span>要素总数:</span>
+                            <span id="featureCount" style="color: var(--info); font-weight: 600;">0</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 5px 0;">
+                            <span>覆盖面积:</span>
+                            <span id="areaCount" style="color: var(--info); font-weight: 600;">0 km²</span>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="statsChart"></canvas>
+                    </div>
+                    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(52, 152, 219, 0.2);">
+                        <h4 style="color: var(--info); font-size: 14px; margin-bottom: 8px;">郑州黄河湿地自然保护区基本信息</h4>
+                        <div style="font-size: 12px; color: #95a5a6;">
+                            <div style="padding: 3px 0;">面积: 45,200公顷</div>
+                            <div style="padding: 3px 0;">鸟种: 260余种</div>
+                            <div style="padding: 3px 0;">国家级保护动物: 48种</div>
+                            <div style="padding: 3px 0;">植物种类: 800余种</div>
+                            <div style="padding: 3px 0;">范围： 郑州市</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="sidebar-toggle" onclick="app.toggleSidebar()">
+                <i class="fas fa-chevron-left" id="toggleIcon"></i>
+            </div>
+            
+            <div class="map-container">
+                <div id="map"></div>
+                
+                <div id="statsMap"></div>
+                
+                <div class="map-toggle">
+                    <h4>地图类型</h4>
+                    <button class="map-toggle-btn active" onclick="app.switchToGISMap()">
+                        <i class="fas fa-map"></i> GIS地图
+                    </button>
+                    <button class="map-toggle-btn" onclick="app.switchToStatsMap()">
+                        <i class="fas fa-chart-area"></i> 统计地图
+                    </button>
+                </div>
+                
+                <div class="toolbar">
+                    <button class="tool-btn" onclick="app.activateTool('pan')" title="平移">
+                        <i class="fas fa-hand"></i>
+                    </button>
+                    <button class="tool-btn" onclick="app.activateTool('select')" title="选择">
+                        <i class="fas fa-mouse-pointer"></i>
+                    </button>
+                    <button class="tool-btn" onclick="app.activateTool('measure')" title="测量">
+                        <i class="fas fa-ruler"></i>
+                    </button>
+                    <button class="tool-btn" onclick="app.activateTool('draw')" title="绘制">
+                        <i class="fas fa-pencil"></i>
+                    </button>
+                    <button class="tool-btn" onclick="app.activateTool('info')" title="信息">
+                        <i class="fas fa-info-circle"></i>
+                    </button>
+                </div>
+                
+                <div class="info-popup" id="infoPopup">
+                    <h4 style="color: var(--info); margin-bottom: 10px;">要素信息</h4>
+                    <div id="infoContent"></div>
+                </div>
+                
+                <div class="legend" id="legend">
+                    <h4>图例</h4>
+                    <div id="legendContent"></div>
+                </div>
+                
+                <div class="coordinates" id="coordinates">
+                    经度: 0.0000, 纬度: 0.0000
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 属性表面板 -->
+    <div class="attribute-panel" id="attributePanel">
+        <div class="attribute-header" id="attributePanelHeader">
+            <h4><i class="fas fa-table"></i> 属性表</h4>
+            <div class="attribute-actions">
+                <select id="attributeLayerSelect" class="attribute-select"></select>
+                <button class="attribute-close" onclick="app.closeAttributePanel()">&times;</button>
+            </div>
+        </div>
+        <div class="attribute-body">
+            <div class="attribute-summary" id="attributeSummary"></div>
+            <div class="attribute-table-wrapper" id="attributeTableWrapper">
+                <table class="attribute-table" id="attributeTable"></table>
+            </div>
+            <div class="attribute-pagination">
+                <div id="attributePageInfo">第 1 页</div>
+                <div>
+                    <button onclick="app.changeAttributePage(-1)">上一页</button>
+                    <button onclick="app.changeAttributePage(1)">下一页</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 样式调节面板 -->
+    <div class="style-panel" id="stylePanel">
+        <div class="style-header" id="stylePanelHeader">
+            <h4><i class="fas fa-palette"></i> 样式调节</h4>
+            <button class="attribute-close" onclick="app.closeStylePanel()">&times;</button>
+        </div>
+        <div class="style-body">
+            <div class="style-row">
+                <label>图层</label>
+                <select id="styleLayerSelect" class="attribute-select" style="flex:1;"></select>
+            </div>
+            <div class="style-row">
+                <label>点大小</label>
+                <input type="number" id="stylePointSize" min="1" max="30" step="1" value="8">
+            </div>
+            <div class="style-row">
+                <label>点填充色</label>
+                <input type="color" id="stylePointFill" value="#67a9cf">
+            </div>
+            <div class="style-row">
+                <label>点轮廓色</label>
+                <input type="color" id="stylePointStroke" value="#2166ac">
+            </div>
+            <div class="style-row">
+                <label>线颜色</label>
+                <input type="color" id="styleLineColor" value="#2166ac">
+            </div>
+            <div class="style-row">
+                <label>线宽</label>
+                <input type="number" id="styleLineWidth" min="1" max="10" step="0.5" value="2">
+            </div>
+            <div class="style-row">
+                <label>面填充色</label>
+                <input type="color" id="stylePolyFill" value="#f7f7f7">
+            </div>
+            <div class="style-row">
+                <label>面边框色</label>
+                <input type="color" id="stylePolyStroke" value="#67a9cf">
+            </div>
+            <div class="style-row">
+                <label>面不透明度</label>
+                <input type="number" id="stylePolyOpacity" min="0" max="1" step="0.05" value="0.7">
+            </div>
+            <div class="style-row" style="justify-content:flex-end;">
+                <button class="btn btn-info" onclick="app.applyStyleChanges()">应用</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // QGIS样式处理增强类
+        class QGISStyleProcessor {
+            constructor() {
+                // QGIS RdBu色带定义
+                this.RdBu = {
+                    3: ['#ef8a62', '#f7f7f7', '#67a9cf'],
+                    4: ['#ca0020', '#f4a582', '#92c5de', '#0571b0'],
+                    5: ['#ca0020', '#f4a582', '#f7f7f7', '#92c5de', '#0571b0'],
+                    6: ['#b2182b', '#ef8a62', '#fddbc7', '#d1e5f0', '#67a9cf', '#2166ac'],
+                    7: ['#b2182b', '#ef8a62', '#fddbc7', '#f7f7f7', '#d1e5f0', '#67a9cf', '#2166ac'],
+                    8: ['#b2182b', '#d6604d', '#f4a582', '#fddbc7', '#d1e5f0', '#92c5de', '#4393c3', '#2166ac'],
+                    9: ['#b2182b', '#d6604d', '#f4a582', '#fddbc7', '#f7f7f7', '#d1e5f0', '#92c5de', '#4393c3', '#2166ac'],
+                    10: ['#67001f', '#b2182b', '#d6604d', '#f4a582', '#fddbc7', '#d1e5f0', '#92c5de', '#4393c3', '#2166ac', '#053061'],
+                    11: ['#67001f', '#b2182b', '#d6604d', '#f4a582', '#fddbc7', '#f7f7f7', '#d1e5f0', '#92c5de', '#4393c3', '#2166ac', '#053061']
+                };
+                
+                this.currentColorRamp = 'RdBu';
+            }
+            
+            // 解析QML样式文件
+            parseQML(qmlContent) {
+                const style = {
+                    type: 'simple',
+                    renderer: {},
+                    classification: null
+                };
+                
+                try {
+                    // 检测渲染类型
+                    if (qmlContent.includes('<renderer-v2') && qmlContent.includes('type="graduatedSymbol"')) {
+                        style.type = 'graduated';
+                        style.classification = this.parseGraduatedStyle(qmlContent);
+                    } else if (qmlContent.includes('<renderer-v2') && qmlContent.includes('type="categorizedSymbol"')) {
+                        style.type = 'categorized';
+                        style.classification = this.parseCategorizedStyle(qmlContent);
+                    } else if (qmlContent.includes('<renderer-v2') && qmlContent.includes('type="singleSymbol"')) {
+                        style.type = 'simple';
+                        style.renderer = this.parseSimpleStyle(qmlContent);
+                    }
+                    
+                    // 解析透明度
+                    const opacityMatch = qmlContent.match(/alpha="([^"]+)"/);
+                    if (opacityMatch) {
+                        style.renderer.opacity = parseFloat(opacityMatch[1]) / 255;
+                    }
+                    
+                    // 解析线宽
+                    const widthMatch = qmlContent.match(/width="([^"]+)"/);
+                    if (widthMatch) {
+                        style.renderer.weight = parseFloat(widthMatch[1]);
+                    }
+                    
+                } catch (error) {
+                    console.warn('QML解析错误:', error);
+                }
+                
+                return style;
+            }
+            
+            // 解析分级样式
+            parseGraduatedStyle(qmlContent) {
+                const classification = {
+                    field: '',
+                    method: 'quantile',
+                    classes: []
+                };
+                
+                // 提取分类字段
+                const fieldMatch = qmlContent.match(/attr="([^"]+)"/);
+                if (fieldMatch) {
+                    classification.field = fieldMatch[1];
+                }
+                
+                // 提取分类方法
+                if (qmlContent.includes('mode="quantile"')) {
+                    classification.method = 'quantile';
+                } else if (qmlContent.includes('mode="equal"')) {
+                    classification.method = 'equal';
+                } else if (qmlContent.includes('mode="jenks"')) {
+                    classification.method = 'natural';
+                }
+                
+                // 提取分类范围
+                const rangeRegex = /<range\s+symbol="([^"]+)"\s+lower="([^"]+)"\s+upper="([^"]+)"[^>]*\/>/g;
+                let match;
+                while ((match = rangeRegex.exec(qmlContent)) !== null) {
+                    classification.classes.push({
+                        symbol: match[1],
+                        min: parseFloat(match[2]),
+                        max: parseFloat(match[3])
+                    });
+                }
+                
+                // 提取符号样式
+                const symbolRegex = /<symbol\s+.*?name="([^"]+)"[^>]*>([\s\S]*?)<\/symbol>/g;
+                const symbols = {};
+                while ((match = symbolRegex.exec(qmlContent)) !== null) {
+                    const symbolName = match[1];
+                    const symbolContent = match[2];
+                    
+                    const colorMatch = symbolContent.match(/color="([^"]+)"/);
+                    if (colorMatch) {
+                        symbols[symbolName] = colorMatch[1];
+                    }
+                }
+                
+                // 将符号颜色应用到分类
+                classification.classes.forEach(cls => {
+                    if (symbols[cls.symbol]) {
+                        cls.color = symbols[cls.symbol];
+                    }
+                });
+                
+                return classification;
+            }
+            
+            // 解析分类样式
+            parseCategorizedStyle(qmlContent) {
+                const classification = {
+                    field: '',
+                    categories: {}
+                };
+                
+                // 提取分类字段
+                const fieldMatch = qmlContent.match(/attr="([^"]+)"/);
+                if (fieldMatch) {
+                    classification.field = fieldMatch[1];
+                }
+                
+                // 提取分类值
+                const categoryRegex = /<category\s+symbol="([^"]+)"\s+value="([^"]+)"[^>]*\/>/g;
+                let match;
+                while ((match = categoryRegex.exec(qmlContent)) !== null) {
+                    classification.categories[match[2]] = {
+                        symbol: match[1]
+                    };
+                }
+                
+                return classification;
+            }
+            
+            // 解析简单样式
+            parseSimpleStyle(qmlContent) {
+                const style = {
+                    fillColor: '#3498db',
+                    color: '#2980b9',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.7
+                };
+                
+                // 提取填充颜色
+                const fillMatch = qmlContent.match(/fill\s+color="([^"]+)"/);
+                if (fillMatch) {
+                    style.fillColor = fillMatch[1];
+                }
+                
+                // 提取边框颜色
+                const borderMatch = qmlContent.match(/outline\s+color="([^"]+)"/);
+                if (borderMatch) {
+                    style.color = borderMatch[1];
+                }
+                
+                return style;
+            }
+            
+            // 生成分级颜色
+            generateGraduatedColors(numClasses) {
+                const classCount = Math.min(11, Math.max(3, numClasses));
+                return this.RdBu[classCount] || this.RdBu[5];
+            }
+            
+            // 应用QGIS样式到Leaflet图层
+            applyStyleToLayer(geoJson, styleInfo, attributes) {
+                const colors = this.generateGraduatedColors(5);
+                
+                if (styleInfo.type === 'graduated' && styleInfo.classification) {
+                    return {
+                        style: (feature) => {
+                            const value = feature.properties[styleInfo.classification.field];
+                            const classIndex = this.findClassIndex(value, styleInfo.classification.classes);
+                            const color = colors[Math.min(classIndex, colors.length - 1)];
+                            
+                            return {
+                                fillColor: color,
+                                color: chroma(color).darken(1).hex(),
+                                weight: styleInfo.renderer.weight || 2,
+                                opacity: styleInfo.renderer.opacity || 1,
+                                fillOpacity: 0.7
+                            };
+                        },
+                        pointToLayer: (feature, latlng) => {
+                            const value = feature.properties[styleInfo.classification.field];
+                            const classIndex = this.findClassIndex(value, styleInfo.classification.classes);
+                            const color = colors[Math.min(classIndex, colors.length - 1)];
+                            
+                            return L.circleMarker(latlng, {
+                                radius: 6,
+                                fillColor: color,
+                                color: chroma(color).darken(1).hex(),
+                                weight: 1,
+                                opacity: 1,
+                                fillOpacity: 0.8
+                            });
+                        }
+                    };
+                } else if (styleInfo.type === 'categorized' && styleInfo.classification) {
+                    return {
+                        style: (feature) => {
+                            const value = feature.properties[styleInfo.classification.field];
+                            const categoryIndex = Object.keys(styleInfo.classification.categories).indexOf(value);
+                            const color = colors[categoryIndex % colors.length];
+                            
+                            return {
+                                fillColor: color,
+                                color: chroma(color).darken(1).hex(),
+                                weight: styleInfo.renderer.weight || 2,
+                                opacity: styleInfo.renderer.opacity || 1,
+                                fillOpacity: 0.7
+                            };
+                        }
+                    };
+                } else {
+                    // 简单样式
+                    return {
+                        style: styleInfo.renderer || {
+                            fillColor: '#67a9cf',
+                            color: '#2166ac',
+                            weight: 2,
+                            opacity: 1,
+                            fillOpacity: 0.7
+                        }
+                    };
+                }
+            }
+            
+            // 查找分类索引
+            findClassIndex(value, classes) {
+                for (let i = 0; i < classes.length; i++) {
+                    if (value >= classes[i].min && value <= classes[i].max) {
+                        return i;
+                    }
+                }
+                return 0;
+            }
+            
+            // 分析属性数据用于智能分级
+            analyzeAttributesForClassification(geoJson, field) {
+                const values = [];
+                
+                geoJson.features.forEach(feature => {
+                    if (feature.properties && feature.properties[field] != null) {
+                        const value = parseFloat(feature.properties[field]);
+                        if (!isNaN(value)) {
+                            values.push(value);
+                        }
+                    }
+                });
+                
+                if (values.length === 0) return null;
+                
+                values.sort((a, b) => a - b);
+                
+                return {
+                    min: values[0],
+                    max: values[values.length - 1],
+                    mean: values.reduce((a, b) => a + b, 0) / values.length,
+                    median: values[Math.floor(values.length / 2)],
+                    values: values,
+                    quantiles: this.calculateQuantiles(values, 5)
+                };
+            }
+            
+            // 计算分位数
+            calculateQuantiles(values, numClasses) {
+                const quantiles = [];
+                for (let i = 0; i <= numClasses; i++) {
+                    const index = Math.floor((values.length - 1) * (i / numClasses));
+                    quantiles.push(values[index]);
+                }
+                return quantiles;
+            }
+            
+            // 生成自动分级
+            generateAutoClassification(values, numClasses, method = 'quantile') {
+                const classes = [];
+                const colors = this.generateGraduatedColors(numClasses);
+                
+                let breaks = [];
+                
+                switch (method) {
+                    case 'quantile':
+                        breaks = this.calculateQuantiles(values, numClasses);
+                        break;
+                    case 'equal':
+                        const min = Math.min(...values);
+                        const max = Math.max(...values);
+                        const interval = (max - min) / numClasses;
+                        for (let i = 0; i <= numClasses; i++) {
+                            breaks.push(min + i * interval);
+                        }
+                        break;
+                    case 'natural':
+                        // 简化的自然间断
+                        breaks = this.calculateNaturalBreaks(values, numClasses);
+                        break;
+                }
+                
+                for (let i = 0; i < breaks.length - 1; i++) {
+                    classes.push({
+                        min: breaks[i],
+                        max: breaks[i + 1],
+                        color: colors[i],
+                        label: `${breaks[i].toFixed(2)} - ${breaks[i + 1].toFixed(2)}`
+                    });
+                }
+                
+                return classes;
+            }
+            
+            // 计算自然间断（简化版）
+            calculateNaturalBreaks(values, numClasses) {
+                // 简化的Jenks自然间断算法
+                const breaks = [Math.min(...values)];
+                const step = Math.floor(values.length / numClasses);
+                
+                for (let i = 1; i < numClasses; i++) {
+                    breaks.push(values[i * step]);
+                }
+                breaks.push(Math.max(...values));
+                
+                return breaks;
+            }
+        }
+
+        // 数据处理类（保持原有的）
+        class DataProcessor {
+            static simplifyGeometry(geometry, tolerance = 0.001) {
+                if (!geometry || !geometry.coordinates) return geometry;
+                
+                if (geometry.type === 'Point') {
+                    return geometry;
+                }
+                
+                if (geometry.type === 'LineString') {
+                    geometry.coordinates = this.simplifyCoords(geometry.coordinates, tolerance);
+                } else if (geometry.type === 'Polygon') {
+                    geometry.coordinates = geometry.coordinates.map(ring => 
+                        this.simplifyCoords(ring, tolerance)
+                    );
+                } else if (geometry.type === 'MultiPolygon') {
+                    geometry.coordinates = geometry.coordinates.map(polygon =>
+                        polygon.map(ring => this.simplifyCoords(ring, tolerance))
+                    );
+                }
+                
+                return geometry;
+            }
+            
+            static simplifyCoords(coords, tolerance) {
+                if (coords.length < 3) return coords;
+                
+                const simplified = [coords[0]];
+                
+                for (let i = 1; i < coords.length - 1; i++) {
+                    const prev = coords[i - 1];
+                    const curr = coords[i];
+                    const next = coords[i + 1];
+                    
+                    const distance = this.distanceToLine(curr, prev, next);
+                    if (distance > tolerance) {
+                        simplified.push(curr);
+                    }
+                }
+                
+                simplified.push(coords[coords.length - 1]);
+                return simplified;
+            }
+            
+            static distanceToLine(point, lineStart, lineEnd) {
+                const A = point[0] - lineStart[0];
+                const B = point[1] - lineStart[1];
+                const C = lineEnd[0] - lineStart[0];
+                const D = lineEnd[1] - lineStart[1];
+                
+                const dot = A * C + B * D;
+                const lenSq = C * C + D * D;
+                
+                if (lenSq === 0) return Math.sqrt(A * A + B * B);
+                
+                const param = dot / lenSq;
+                
+                let xx, yy;
+                if (param < 0) {
+                    xx = lineStart[0];
+                    yy = lineStart[1];
+                } else if (param > 1) {
+                    xx = lineEnd[0];
+                    yy = lineEnd[1];
+                } else {
+                    xx = lineStart[0] + param * C;
+                    yy = lineStart[1] + param * D;
+                }
+                
+                const dx = point[0] - xx;
+                const dy = point[1] - yy;
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+            
+            static async processFeatures(features, options = {}) {
+                const {
+                    simplify = true,
+                    tolerance = 0.001,
+                    maxFeatures = 10000,
+                    onProgress = null
+                } = options;
+                
+                let processed = features;
+                
+                // 如果要素数量过多，进行采样
+                if (processed.length > maxFeatures) {
+                    if (onProgress) onProgress(`采样数据: ${processed.length} -> ${maxFeatures}`);
+                    const step = Math.ceil(processed.length / maxFeatures);
+                    processed = processed.filter((_, index) => index % step === 0);
+                }
+                
+                // 分批简化几何（避免阻塞UI）
+                if (simplify && processed.length > 0) {
+                    const batchSize = 100;
+                    const simplifiedFeatures = [];
+                    
+                    for (let i = 0; i < processed.length; i += batchSize) {
+                        const batch = processed.slice(i, Math.min(i + batchSize, processed.length));
+                        
+                        const simplifiedBatch = batch.map(feature => {
+                            if (feature.geometry) {
+                                feature.geometry = this.simplifyGeometry(feature.geometry, tolerance);
+                            }
+                            return feature;
+                        });
+                        
+                        simplifiedFeatures.push(...simplifiedBatch);
+                        
+                        // 更新进度
+                        const progress = Math.round(((i + batch.length) / processed.length) * 100);
+                        if (onProgress) onProgress(`简化几何: ${progress}%`);
+                        
+                        // 让出控制权，保持UI响应
+                        if (i % (batchSize * 5) === 0) {
+                            await new Promise(resolve => setTimeout(resolve, 1));
+                        }
+                    }
+                    
+                    processed = simplifiedFeatures;
+                }
+                
+                return processed;
+            }
+            
+            static async processLargeDataset(data, options = {}) {
+                const {
+                    batchSize = 1000,
+                    onProgress = null,
+                    onBatchComplete = null
+                } = options;
+                
+                const results = [];
+                
+                for (let i = 0; i < data.length; i += batchSize) {
+                    const batch = data.slice(i, Math.min(i + batchSize, data.length));
+                    
+                    // 处理批次
+                    const processedBatch = await this.processFeatures(batch, {
+                        ...options,
+                        onProgress: (msg) => {
+                            if (onProgress) {
+                                const globalProgress = Math.round(((i + batch.length) / data.length) * 100);
+                                onProgress(`批次 ${Math.floor(i / batchSize) + 1}: ${msg} (总进度: ${globalProgress}%)`);
+                            }
+                        }
+                    });
+                    
+                    results.push(...processedBatch);
+                    
+                    if (onBatchComplete) {
+                        onBatchComplete(processedBatch, i / batchSize + 1);
+                    }
+                    
+                    // 让出控制权
+                    await new Promise(resolve => setTimeout(resolve, 10));
+                }
+                
+                return results;
+            }
+        }
+
+        // 应用主对象（增强SHP处理）
+        const app = {
+            map: null,
+            statsChart: null,
+            layers: [],
+            currentTool: null,
+            drawnItems: null,
+            measureLayer: null,
+            currentMapType: 'gis',
+            
+            // 性能相关
+            performanceMonitor: null,
+            dataProcessor: DataProcessor,
+            qgisProcessor: new QGISStyleProcessor(), // 添加QGIS处理器
+            settings: {
+                clustering: true,
+                virtualization: true,
+                asyncLoading: true,
+                clusterThreshold: 1000,
+                simplifyTolerance: 0.001
+            },
+            // 属性表状态
+            attributePanelOpen: false,
+            attributeLayerId: null,
+            attributePage: 1,
+            attributePageSize: 50,
+            stylePanelOpen: false,
+            styleLayerId: null,
+            optionsPanelOpen: false,
+            accordionState: {
+                view: true,
+                data: true,
+                tools: true
+            },
+            saveStateTimer: null,
+            
+            // 初始化（保持原有）
+            init() {
+                this.initMap();
+                this.initStatsMap();
+                this.setupEventListeners();
+                this.addWetlandBoundary();
+                this.startPerformanceMonitoring();
+                this.initOptionsAccordion();
+                this.restoreStateFromStorage();
+                console.log('优化GIS平台初始化完成 - QGIS兼容版');
+                this.showToast('系统就绪', '欢迎使用QGIS兼容版GIS平台', 'success');
+            },
+            
+            // 增强的SHP处理方法：支持 zip、目录选择、仅 shp（无 dbf）也可加载几何
+            async handleSHP(files) {
+                this.showLoading(true, '处理SHP文件', '读取文件...');
+                
+                try {
+                    const groups = this.groupShpFiles(files);
+                    if (!groups.length) {
+                        this.showToast('提示', '未找到可处理的 Shapefile 组件', 'warning');
+                        this.showLoading(false);
+                        return;
+                    }
+                    
+                    for (const group of groups) {
+                        await this.processShpGroup(group);
+                    }
+                } catch (error) {
+                    console.error('SHP处理错误:', error);
+                    this.showToast('错误', `无法处理SHP文件: ${error.message}`, 'error');
+                } finally {
+                    this.showLoading(false);
+                }
+            },
+            
+            groupShpFiles(fileList) {
+                const files = Array.from(fileList);
+                
+                // 若包含 zip，直接单独作为一个组
+                const zips = files.filter(f => f.name.toLowerCase().endsWith('.zip'));
+                if (zips.length) {
+                    return zips.map(zip => ({ zip }));
+                }
+                
+                // 按基名分组（相同文件名不含扩展名），兼容 webkitRelativePath
+                const groups = {};
+                files.forEach(file => {
+                    const ext = file.name.split('.').pop().toLowerCase();
+                    const base = file.name.replace(/\.[^.]+$/, '');
+                    const key = file.webkitRelativePath ? 
+                        (file.webkitRelativePath.split('/')[0] + '|' + base) : base;
+                    groups[key] = groups[key] || {};
+                    groups[key][ext] = file;
+                });
+                
+                return Object.values(groups);
+            },
+            
+            async processShpGroup(fileMap) {
+                let geoJson;
+                let projection = null;
+                let styleInfo = null;
+                
+                // 读取SHP数据
+                if (fileMap.zip) {
+                    this.updateLoadingProgress('解析ZIP文件', '提取SHP组件...');
+                    const buffer = await fileMap.zip.arrayBuffer();
+                    geoJson = await shp(buffer);
+                } else if (fileMap.shp && fileMap.dbf) {
+                    this.updateLoadingProgress('解析SHP文件', '读取几何和属性...');
+                    const shpBuffer = await fileMap.shp.arrayBuffer();
+                    const dbfBuffer = await fileMap.dbf.arrayBuffer();
+                    
+                    const shapes = await shp.parseShp(shpBuffer);
+                    const records = await shp.parseDbf(dbfBuffer);
+                    
+                    geoJson = {
+                        type: "FeatureCollection",
+                        features: shapes.map((shape, i) => ({
+                            type: "Feature",
+                            geometry: shape,
+                            properties: records[i] || {}
+                        }))
+                    };
+                } else if (fileMap.shp) {
+                    // 仅有 shp：加载几何，属性为空
+                    this.updateLoadingProgress('解析SHP文件', '仅几何，缺少DBF属性...');
+                    const shpBuffer = await fileMap.shp.arrayBuffer();
+                    const shapes = await shp.parseShp(shpBuffer);
+                    geoJson = {
+                        type: "FeatureCollection",
+                        features: shapes.map(shape => ({
+                            type: "Feature",
+                            geometry: shape,
+                            properties: {}
+                        }))
+                    };
+                    this.showToast('提示', '未提供 DBF，已加载几何（无属性）', 'warning');
+                } else {
+                    this.showToast('提示', '未找到 shp/dbf/zip 组件，请选择包含所有文件的目录或zip', 'warning');
+                    return;
+                }
+                
+                // 读取投影信息
+                if (fileMap.prj) {
+                    this.updateLoadingProgress('读取投影信息', '解析坐标系...');
+                    projection = await fileMap.prj.text();
+                    console.log('检测到投影信息:', projection);
+                    
+                    if (projection && !projection.includes('WGS84') && !projection.includes('4326')) {
+                        this.updateLoadingProgress('坐标转换', '转换到WGS84...');
+                        geoJson = await this.transformProjection(geoJson, projection);
+                    }
+                }
+                
+                // 读取样式
+                if (fileMap.qml) {
+                    this.updateLoadingProgress('读取QML样式', '解析QGIS样式...');
+                    const qmlText = await fileMap.qml.text();
+                    styleInfo = this.qgisProcessor.parseQML(qmlText);
+                } else if (fileMap.sld) {
+                    this.updateLoadingProgress('读取SLD样式', '解析OGC样式...');
+                    const sldText = await fileMap.sld.text();
+                    styleInfo = this.parseSLDStyle(sldText);
+                }
+                
+                // 分析属性数据
+                this.updateLoadingProgress('分析数据', '统计属性信息...');
+                const attributes = this.analyzeShpAttributes(geoJson);
+                
+                if (!styleInfo) {
+                    styleInfo = this.generateQGISStyle(geoJson, attributes);
+                }
+                
+                const layerName = fileMap.zip ? fileMap.zip.name.replace('.zip', '') :
+                                 fileMap.shp ? fileMap.shp.name.replace('.shp', '') :
+                                 'SHP图层';
+                
+                this.addQGISStyledLayer(geoJson, layerName, styleInfo, attributes);
+                
+                this.showToast('加载成功', 
+                    `已加载: ${layerName}\n要素数: ${geoJson.features.length}\n样式: ${styleInfo.type}`, 
+                    'success');
+            },
+            
+            // 分析SHP属性数据
+            analyzeShpAttributes(geoJson) {
+                const attributes = {
+                    fields: {},
+                    stats: {},
+                    uniqueValues: {}
+                };
+                
+                if (!geoJson.features || geoJson.features.length === 0) {
+                    return attributes;
+                }
+                
+                // 获取所有字段
+                const firstFeature = geoJson.features[0];
+                if (firstFeature.properties) {
+                    for (let field in firstFeature.properties) {
+                        attributes.fields[field] = {
+                            name: field,
+                            type: typeof firstFeature.properties[field],
+                            values: []
+                        };
+                        attributes.uniqueValues[field] = new Set();
+                    }
+                }
+                
+                // 收集所有值
+                geoJson.features.forEach(feature => {
+                    if (feature.properties) {
+                        for (let field in feature.properties) {
+                            const value = feature.properties[field];
+                            if (attributes.fields[field]) {
+                                attributes.fields[field].values.push(value);
+                                attributes.uniqueValues[field].add(value);
+                            }
+                        }
+                    }
+                });
+                
+                // 计算数值字段的统计信息
+                for (let field in attributes.fields) {
+                    const fieldInfo = attributes.fields[field];
+                    const values = fieldInfo.values.filter(v => v != null);
+                    
+                    if (fieldInfo.type === 'number' || !isNaN(parseFloat(values[0]))) {
+                        const numValues = values.map(v => parseFloat(v)).filter(n => !isNaN(n));
+                        if (numValues.length > 0) {
+                            attributes.stats[field] = {
+                                min: Math.min(...numValues),
+                                max: Math.max(...numValues),
+                                mean: numValues.reduce((a, b) => a + b, 0) / numValues.length,
+                                values: numValues
+                            };
+                        }
+                    }
+                    
+                    // 转换Set为数组
+                    attributes.uniqueValues[field] = Array.from(attributes.uniqueValues[field]);
+                }
+                
+                return attributes;
+            },
+            
+            // 生成QGIS风格样式
+            generateQGISStyle(geoJson, attributes) {
+                // 查找合适的数值字段用于分级渲染
+                let numericField = null;
+                let maxRange = 0;
+                
+                for (let field in attributes.stats) {
+                    const stats = attributes.stats[field];
+                    if (stats && stats.max - stats.min > maxRange) {
+                        numericField = field;
+                        maxRange = stats.max - stats.min;
+                    }
+                }
+                
+                if (numericField) {
+                    // 使用RdBu色带进行分级渲染
+                    const stats = attributes.stats[numericField];
+                    const classes = this.qgisProcessor.generateAutoClassification(
+                        stats.values, 
+                        5, 
+                        'quantile'
+                    );
+                    
+                    return {
+                        type: 'graduated',
+                        classification: {
+                            field: numericField,
+                            method: 'quantile',
+                            classes: classes
+                        },
+                        renderer: {
+                            weight: 2,
+                            opacity: 1
+                        }
+                    };
+                } else {
+                    // 简单样式，使用RdBu色带的中间色
+                    return {
+                        type: 'simple',
+                        renderer: {
+                            fillColor: '#f7f7f7',
+                            color: '#67a9cf',
+                            weight: 2,
+                            opacity: 1,
+                            fillOpacity: 0.7
+                        }
+                    };
+                }
+            },
+            
+            // 添加QGIS样式图层
+            addQGISStyledLayer(geoJson, layerName, styleInfo, attributes) {
+                let leafletLayer;
+                
+                // 获取样式选项
+                const styleOptions = this.qgisProcessor.applyStyleToLayer(geoJson, styleInfo, attributes);
+                
+                // 创建Leaflet图层
+                leafletLayer = L.geoJSON(geoJson, {
+                    style: styleOptions.style,
+                    pointToLayer: styleOptions.pointToLayer,
+                    onEachFeature: (feature, layer) => {
+                        this.bindFeaturePopup(feature, layer, styleInfo);
+                    }
+                });
+                
+                leafletLayer.addTo(this.map);
+                
+                // 添加到图层列表
+                const layerInfo = {
+                    id: 'shp_' + Date.now(),
+                    name: layerName,
+                    layer: leafletLayer,
+                    type: 'vector',
+                    visible: true,
+                    features: geoJson.features.length,
+                    originalData: geoJson,
+                    style: styleInfo,
+                    attributes: attributes,
+                    qgisStyled: true
+                };
+                
+                this.layers.push(layerInfo);
+                this.updateLayerList();
+                this.updateStatistics();
+                
+                // 生成图例
+                if (styleInfo.type === 'graduated' && styleInfo.classification) {
+                    this.updateLegend(styleInfo.classification);
+                }
+                
+                // 缩放到图层范围
+                try {
+                    this.map.fitBounds(leafletLayer.getBounds());
+                } catch (e) {
+                    console.warn('无法自动缩放到图层范围');
+                }
+            },
+            
+            // 绑定要素弹窗
+            bindFeaturePopup(feature, layer, styleInfo) {
+                if (!feature.properties) return;
+                
+                let content = '<div style="max-height: 300px; overflow-y: auto;">';
+                content += '<table style="width: 100%; font-size: 12px;">';
+                
+                // 如果有分级字段，优先显示
+                if (styleInfo && styleInfo.classification && styleInfo.classification.field) {
+                    const field = styleInfo.classification.field;
+                    const value = feature.properties[field];
+                    content += `<tr style="background: rgba(52, 152, 219, 0.1);">
+                        <td style="font-weight: bold; padding: 5px;">${field}:</td>
+                        <td style="padding: 5px; color: #3498db; font-weight: bold;">${value}</td>
+                    </tr>`;
+                }
+                
+                // 显示其他属性
+                for (let key in feature.properties) {
+                    if (styleInfo && styleInfo.classification && key === styleInfo.classification.field) {
+                        continue; // 跳过已显示的分级字段
+                    }
+                    const value = feature.properties[key];
+                    if (value != null) {
+                        content += `<tr>
+                            <td style="font-weight: bold; padding: 3px;">${key}:</td>
+                            <td style="padding: 3px;">${value}</td>
+                        </tr>`;
+                    }
+                }
+                
+                content += '</table></div>';
+                layer.bindPopup(content);
+            },
+            
+            // 更新图例
+            updateLegend(classification) {
+                const legendContent = document.getElementById('legendContent');
+                if (!legendContent) return;
+                
+                legendContent.innerHTML = '';
+                
+                if (classification.classes) {
+                    classification.classes.forEach(cls => {
+                        const item = document.createElement('div');
+                        item.className = 'legend-item';
+                        item.innerHTML = `
+                            <div class="legend-symbol" style="background: ${cls.color};"></div>
+                            <span>${cls.label}</span>
+                        `;
+                        legendContent.appendChild(item);
+                    });
+                }
+                
+                document.getElementById('legend').classList.add('active');
+            },
+            
+            // 坐标系转换
+            async transformProjection(geoJson, projectionString) {
+                try {
+                    if (!projectionString) return geoJson;
+                    
+                    // 优先使用 proj4 完成精确转换
+                    if (typeof proj4 !== 'undefined') {
+                        let src = null;
+                        try {
+                            // proj4 可直接接受 WKT / PRJ（支持度有限），若失败再做 UTM 识别
+                            src = proj4(projectionString);
+                        } catch (e) {
+                            const utm = projectionString.match(/UTM[_\s]*Zone[_\s]*(\d+)\s*([NnSs]?)/);
+                            if (utm && utm[1]) {
+                                const zone = parseInt(utm[1], 10);
+                                const north = !utm[2] || utm[2].toUpperCase() !== 'S';
+                                src = proj4(`+proj=utm +zone=${zone} ${north ? '+north' : ''} +datum=WGS84 +units=m +no_defs`);
+                                console.log(`识别为 UTM Zone ${zone}${north ? 'N' : 'S'}`);
+                            }
+                        }
+                        
+                        if (src) {
+                            const dest = proj4('WGS84');
+                            const reproj = (coord) => {
+                                const p = proj4(src, dest, coord);
+                                return [p[0], p[1]]; // lng, lat
+                            };
+                            
+                            const walk = (geom) => {
+                                if (!geom || !geom.type) return;
+                                switch (geom.type) {
+                                    case 'Point':
+                                        geom.coordinates = reproj(geom.coordinates);
+                                        break;
+                                    case 'MultiPoint':
+                                    case 'LineString':
+                                        geom.coordinates = geom.coordinates.map(reproj);
+                                        break;
+                                    case 'MultiLineString':
+                                    case 'Polygon':
+                                        geom.coordinates = geom.coordinates.map(ring => ring.map(reproj));
+                                        break;
+                                    case 'MultiPolygon':
+                                        geom.coordinates = geom.coordinates.map(poly => poly.map(ring => ring.map(reproj)));
+                                        break;
+                                }
+                            };
+                            
+                            geoJson.features?.forEach(f => walk(f.geometry));
+                            return geoJson;
+                        }
+                    }
+                    
+                    console.warn('未能使用 proj4 转换投影，保留原始坐标');
+                    return geoJson;
+                } catch (error) {
+                    console.warn('投影转换失败，使用原始坐标:', error);
+                    return geoJson;
+                }
+            },
+            
+            // 转换几何坐标
+            transformGeometry(geometry) {
+                if (!geometry || !geometry.coordinates) return;
+                
+                // 占位：保持向后兼容，真实投影转换在 transformProjection 中完成
+                return;
+            },
+            
+            // 解析SLD样式
+            parseSLDStyle(sldText) {
+                const style = {
+                    type: 'simple',
+                    renderer: {}
+                };
+                
+                try {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(sldText, 'text/xml');
+                    
+                    // 查找规则
+                    const rules = doc.getElementsByTagName('Rule');
+                    if (rules.length > 1) {
+                        style.type = 'categorized';
+                    }
+                    
+                    // 提取样式信息
+                    const fill = doc.getElementsByTagName('Fill')[0];
+                    if (fill) {
+                        const color = fill.getElementsByTagName('CssParameter')[0];
+                        if (color) {
+                            style.renderer.fillColor = color.textContent;
+                        }
+                    }
+                    
+                    const stroke = doc.getElementsByTagName('Stroke')[0];
+                    if (stroke) {
+                        const color = stroke.querySelector('CssParameter[name="stroke"]');
+                        const width = stroke.querySelector('CssParameter[name="stroke-width"]');
+                        if (color) style.renderer.color = color.textContent;
+                        if (width) style.renderer.weight = parseFloat(width.textContent);
+                    }
+                    
+                } catch (error) {
+                    console.warn('SLD解析错误:', error);
+                }
+                
+                return style;
+            },
+            
+            // 处理数据（保持原有）
+            async processDataAsync(features, options = {}) {
+                const defaultOptions = {
+                    simplify: true,
+                    tolerance: this.settings.simplifyTolerance,
+                    maxFeatures: this.settings.clusterThreshold,
+                    onProgress: (msg) => {
+                        this.updateLoadingProgress('处理数据', msg);
+                    }
+                };
+                
+                const finalOptions = { ...defaultOptions, ...options };
+                
+                try {
+                    const processed = await this.dataProcessor.processLargeDataset(features, finalOptions);
+                    return processed;
+                } catch (error) {
+                    console.error('数据处理错误:', error);
+                    throw error;
+                }
+            },
+            
+            // 开始性能监控
+            startPerformanceMonitoring() {
+                this.performanceMonitor = setInterval(() => {
+                    this.updatePerformanceStats();
+                }, 1000);
+            },
+            
+            // 更新性能统计
+            updatePerformanceStats() {
+                // 内存使用（估算）
+                const memoryUsage = (performance.memory ? 
+                    (performance.memory.usedJSHeapSize / 1048576).toFixed(1) : 
+                    'N/A') + ' MB';
+                
+                // 活跃要素数量
+                let activeFeatures = 0;
+                let visibleFeatures = 0;
+                
+                this.layers.forEach(layer => {
+                    if (layer.features) {
+                        activeFeatures += layer.features;
+                        if (layer.visible) {
+                            visibleFeatures += layer.features;
+                        }
+                    }
+                });
+                
+                document.getElementById('memoryUsage').textContent = memoryUsage;
+                document.getElementById('activeFeatures').textContent = activeFeatures;
+                document.getElementById('visibleFeatures').textContent = visibleFeatures;
+                
+                // 渲染帧率（简化）
+                const fps = this.map ? (this.map.getZoom() > 10 ? '30-60' : '60') + ' FPS' : '60 FPS';
+                document.getElementById('renderFPS').textContent = fps;
+            },
+            
+            // 切换设置
+            toggleSetting(setting) {
+                this.settings[setting] = !this.settings[setting];
+                
+                const element = document.getElementById(`enable${setting.charAt(0).toUpperCase() + setting.slice(1)}`);
+                if (element) {
+                    element.classList.toggle('active', this.settings[setting]);
+                }
+                
+                // 应用设置变化
+                this.applySettings();
+                
+                this.showToast('设置更新', 
+                    `${this.getSettingLabel(setting)}: ${this.settings[setting] ? '开启' : '关闭'}`, 
+                    'info');
+            },
+            
+            // 获取设置标签
+            getSettingLabel(setting) {
+                const labels = {
+                    clustering: '聚合渲染',
+                    virtualization: '虚拟化渲染',
+                    asyncLoading: '异步加载'
+                };
+                return labels[setting] || setting;
+            },
+            
+            // 应用设置
+            applySettings() {
+                // 更新聚合阈值
+                const clusterInput = document.getElementById('clusterThreshold');
+                if (clusterInput) {
+                    this.settings.clusterThreshold = parseInt(clusterInput.value);
+                }
+                
+                // 更新简化容差
+                const simplifyInput = document.getElementById('simplifyTolerance');
+                if (simplifyInput) {
+                    this.settings.simplifyTolerance = parseFloat(simplifyInput.value);
+                }
+                
+                // 重新处理现有图层
+                this.layers.forEach(async (layer) => {
+                    if (layer.type === 'vector' && layer.originalData) {
+                        await this.processVectorLayer(layer);
+                    }
+                });
+                
+                this.scheduleSaveState();
+            },
+            
+            // 初始化传统地图 - 已适配天地图
+            initMap() {
+                // 1. 创建地图实例
+                this.map = L.map('map', {
+                    center: [34.917, 113.644], // 郑州黄河湿地中心点
+                    zoom: 11,
+                    zoomControl: true,
+                    preferCanvas: true, // 性能优化
+                    renderer: L.canvas()
+                });
+
+                // 2. 配置天地图参数
+                const tdtKey = '3f612f90e997ebccbf74793fdf6d9264';
+                const subdomains = ['0', '1', '2', '3', '4', '5', '6', '7']; // 负载均衡子域
+
+                // --- 街道地图组合 (矢量底图 + 矢量注记) ---
+                const vecLayer = L.tileLayer(`https://t{s}.tianditu.gov.cn/DataServer?T=vec_w&x={x}&y={y}&l={z}&tk=${tdtKey}`, {
+                    subdomains: subdomains,
+                    maxZoom: 18,
+                    attribution: '天地图'
+                });
+                const cvaLayer = L.tileLayer(`https://t{s}.tianditu.gov.cn/DataServer?T=cva_w&x={x}&y={y}&l={z}&tk=${tdtKey}`, {
+                    subdomains: subdomains,
+                    maxZoom: 18,
+                    zIndex: 10 // 确保文字显示在最上层
+                });
+                const streetMap = L.layerGroup([vecLayer, cvaLayer]);
+
+                // --- 卫星地图组合 (影像底图 + 影像注记) ---
+                const imgLayer = L.tileLayer(`https://t{s}.tianditu.gov.cn/DataServer?T=img_w&x={x}&y={y}&l={z}&tk=${tdtKey}`, {
+                    subdomains: subdomains,
+                    maxZoom: 18,
+                    attribution: '天地图-影像'
+                });
+                const ciaLayer = L.tileLayer(`https://t{s}.tianditu.gov.cn/DataServer?T=cia_w&x={x}&y={y}&l={z}&tk=${tdtKey}`, {
+                    subdomains: subdomains,
+                    maxZoom: 18,
+                    zIndex: 10 // 确保文字显示在最上层
+                });
+                const satelliteMap = L.layerGroup([imgLayer, ciaLayer]);
+
+                // 3. 默认加载街道地图
+                this.map.addLayer(streetMap);
+
+                // 4. 添加底图切换控件 (位置：右下角)
+                const baseMaps = {
+                    "街道地图": streetMap,
+                    "卫星地图": satelliteMap
+                };
+                L.control.layers(baseMaps, {}, {
+                    position: 'bottomright'
+                }).addTo(this.map);
+
+                // 5. 添加比例尺
+                L.control.scale({
+                    imperial: false
+                }).addTo(this.map);
+
+                // 6. 初始化绘制图层组 (用于后续的绘制工具)
+                this.drawnItems = new L.FeatureGroup();
+                this.map.addLayer(this.drawnItems);
+
+                // 7. 绑定基础交互事件
+                this.map.on('mousemove', (e) => {
+                    if (this.currentMapType === 'gis') {
+                        const coordsDiv = document.getElementById('coordinates');
+                        if (coordsDiv) {
+                            coordsDiv.innerHTML = 
+                                `经度: ${e.latlng.lng.toFixed(4)}, 纬度: ${e.latlng.lat.toFixed(4)}`;
+                        }
+                    }
+                });
+
+                // 缩放优化
+                this.map.on('zoomstart', () => {
+                    this.optimizeForZoom();
+                });
+
+                // 视图变化时保存状态
+                this.map.on('moveend', () => this.scheduleSaveState());
+            },
+            
+            // 根据缩放级别优化渲染
+            optimizeForZoom() {
+                const zoom = this.map.getZoom();
+                
+                this.layers.forEach(layer => {
+                    if (layer.type === 'vector' && layer.visible) {
+                        // 根据缩放级别调整渲染策略
+                        if (zoom < 8) {
+                            // 低缩放级别：强制聚合
+                            this.enableClusteringForLayer(layer);
+                        } else if (zoom > 15) {
+                            // 高缩放级别：显示详细信息
+                            this.disableClusteringForLayer(layer);
+                        }
+                    }
+                });
+            },
+            
+            // 为图层启用聚合
+            enableClusteringForLayer(layer) {
+                if (layer.cluster) return;
+                
+                if (layer.features > this.settings.clusterThreshold) {
+                    // 创建聚合图层
+                    const markers = L.markerClusterGroup({
+                        chunkedLoading: true,
+                        chunkInterval: 200,
+                        chunkDelay: 50
+                    });
+                    
+                    // 移动现有标记到聚合组
+                    if (layer.layer.getLayers) {
+                        layer.layer.getLayers().forEach(sublayer => {
+                            markers.addLayer(sublayer);
+                        });
+                        
+                        this.map.removeLayer(layer.layer);
+                        this.map.addLayer(markers);
+                        
+                        layer.originalLayer = layer.layer;
+                        layer.layer = markers;
+                        layer.cluster = true;
+                    }
+                }
+            },
+            
+            // 为图层禁用聚合
+            disableClusteringForLayer(layer) {
+                if (!layer.cluster) return;
+                
+                if (layer.originalLayer) {
+                    this.map.removeLayer(layer.layer);
+                    this.map.addLayer(layer.originalLayer);
+                    
+                    layer.layer = layer.originalLayer;
+                    delete layer.originalLayer;
+                    layer.cluster = false;
+                }
+            },
+            
+            // 初始化统计地图
+            initStatsMap() {
+                this.statsChart = echarts.init(document.getElementById('statsMap'));
+                
+                // 加载河南省地图数据
+                this.loadHenanGeoJSON();
+            },
+            
+            // 加载河南省地图数据
+            loadHenanGeoJSON() {
+                $.get('https://geo.datav.aliyun.com/areas_v3/bound/410000_full.json')
+                    .done((geoJson) => {
+                        echarts.registerMap('河南', geoJson);
+                        this.updateStatsMap();
+                    })
+                    .fail(() => {
+                        console.log('无法加载地图数据，使用默认配置');
+                        this.updateStatsMap();
+                    });
+            },
+            
+            // 更新统计地图
+            updateStatsMap() {
+                const option = {
+                    backgroundColor: '#0f1621',
+                    title: {
+                        text: '河南省科技统计地图',
+                        left: 'center',
+                        top: 20,
+                        textStyle: {
+                            color: '#fff',
+                            fontSize: 20
+                        }
+                    },
+                    tooltip: {
+                        trigger: 'item',
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        borderColor: '#0a2dae',
+                        textStyle: {
+                            color: '#fff'
+                        }
+                    },
+                    legend: {
+                        show: true,
+                        left: 'left',
+                        top: 'bottom',
+                        textStyle: {
+                            color: '#fff'
+                        },
+                        data: ['自然保护区']
+                    },
+                    geo: {
+                        map: '河南',
+                        roam: true,
+                        zoom: 1.2,
+                        center: [113.65, 34.76],
+                        label: {
+                            show: true,
+                            color: '#fff',
+                            fontSize: 10
+                        },
+                        itemStyle: {
+                            areaColor: '#1a2b5a',
+                            borderColor: '#0a2dae',
+                            borderWidth: 1
+                        },
+                        emphasis: {
+                            label: {
+                                show: true,
+                                color: '#fff'
+                            },
+                            itemStyle: {
+                                areaColor: '#2a91d8'
+                            }
+                        }
+                    },
+                    series: [
+                        {
+                            name: '自然保护区',
+                            type: 'effectScatter',
+                            coordinateSystem: 'geo',
+                            data: [
+                                {
+                                    name: '郑州黄河湿地自然保护区',
+                                    value: [113.644, 34.917],
+                                    type: '湿地自然保护区',
+                                    area: '45,200公顷'
+                                }
+                            ],
+                            symbolSize: 20,
+                            showEffectOn: 'render',
+                            rippleEffect: {
+                                brushType: 'stroke',
+                                color: '#ff4757',
+                                period: 4,
+                                scale: 2.5
+                            },
+                            hoverAnimation: true,
+                            label: {
+                                show: true,
+                                position: 'right',
+                                color: '#ff4757',
+                                fontWeight: 'bold',
+                                fontSize: 12,
+                                formatter: '{b}'
+                            },
+                            itemStyle: {
+                                color: '#ff4757',
+                                shadowBlur: 10,
+                                shadowColor: '#ff4757'
+                            }
+                        }
+                    ]
+                };
+                
+                this.statsChart.setOption(option);
+            },
+            
+            // 切换到GIS地图
+            switchToGISMap() {
+                document.getElementById('map').style.display = 'block';
+                document.getElementById('statsMap').style.display = 'none';
+                this.currentMapType = 'gis';
+                
+                // 更新按钮状态
+                document.querySelectorAll('.map-toggle-btn').forEach(btn => btn.classList.remove('active'));
+                event.target.classList.add('active');
+                
+                // 重新计算地图大小
+                setTimeout(() => {
+                    this.map.invalidateSize();
+                }, 100);
+                
+                this.showToast('地图切换', '已切换到GIS地图模式', 'info');
+            },
+            
+            // 切换到统计地图
+            switchToStatsMap() {
+                document.getElementById('map').style.display = 'none';
+                document.getElementById('statsMap').style.display = 'block';
+                this.currentMapType = 'stats';
+                
+                // 更新按钮状态
+                document.querySelectorAll('.map-toggle-btn').forEach(btn => btn.classList.remove('active'));
+                event.target.classList.add('active');
+                
+                // 重新计算图表大小
+                setTimeout(() => {
+                    this.statsChart.resize();
+                }, 100);
+                
+                this.showToast('地图切换', '已切换到统计地图模式', 'info');
+            },
+            
+            // 重置地图视图
+            resetMapView() {
+                if (this.currentMapType === 'gis') {
+                    this.map.setView([34.746, 113.625], 7);
+                    console.log('GIS地图视图已重置');
+                } else {
+                    this.statsChart.setOption({
+                        geo: {
+                            center: [113.65, 34.76],
+                            zoom: 1.2
+                        }
+                    });
+                    console.log('统计地图视图已重置');
+                }
+                this.showToast('视图重置', '地图视图已恢复到默认状态', 'success');
+            },
+            
+            // 定位到河南省
+            focusProvince() {
+                const henanCenter = [34.746, 113.625];
+                const henanZoom = 7;
+                
+                if (this.currentMapType === 'gis') {
+                    this.map.setView(henanCenter, henanZoom);
+                    console.log('GIS地图已定位到河南省');
+                } else {
+                    this.statsChart.setOption({
+                        geo: {
+                            center: [113.65, 34.76],
+                            zoom: 1.2
+                        }
+                    });
+                    console.log('统计地图已定位到河南省');
+                }
+                this.showToast('定位成功', '已定位到河南省', 'success');
+            },
+            
+            // 添加湿地边界
+            addWetlandBoundary() {
+                const bounds = [
+                    [34.890, 113.580],
+                    [34.890, 113.710],
+                    [34.945, 113.710],
+                    [34.945, 113.580],
+                    [34.890, 113.580]
+                ];
+                
+                const wetland = L.polygon(bounds, {
+                    color: '#27ae60',
+                    weight: 3,
+                    opacity: 0.8,
+                    fillColor: '#27ae60',
+                    fillOpacity: 0.1,
+                    dashArray: '10, 5'
+                }).addTo(this.map);
+                
+                wetland.bindPopup('<b>郑州黄河湿地自然保护区</b><br>面积: 45,200公顷');
+                
+                // 添加到图层列表
+                this.layers.push({
+                    id: 'wetland',
+                    name: '湿地保护区边界',
+                    layer: wetland,
+                    type: 'polygon',
+                    visible: true
+                });
+                
+                this.updateLayerList();
+            },
+            
+            // 加载示例数据
+            loadSampleData() {
+                this.showLoading(true, '加载示例数据', '生成监测点...');
+                
+                // 模拟大量数据
+                const generateLargeDataset = () => {
+                    const points = [];
+                    const baseCoords = [34.917, 113.644];
+                    
+                    for (let i = 0; i < 5000; i++) {
+                        const lat = baseCoords[0] + (Math.random() - 0.5) * 0.2;
+                        const lng = baseCoords[1] + (Math.random() - 0.5) * 0.2;
+                        
+                        points.push({
+                            coords: [lat, lng],
+                            name: `监测点${i + 1}`,
+                            type: ['环境监测', '生态监测', '管理设施', '教育', '保护'][Math.floor(Math.random() * 5)],
+                            value: Math.random() * 100
+                        });
+                    }
+                    
+                    return points;
+                };
+                
+                setTimeout(() => {
+                    this.updateLoadingProgress('处理数据...', '正在优化渲染...');
+                    
+                    const points = generateLargeDataset();
+                    
+                    if (this.settings.asyncLoading) {
+                        this.loadDataAsync(points);
+                    } else {
+                        this.loadDataSync(points);
+                    }
+                }, 100);
+            },
+            
+            // 异步加载数据
+            loadDataAsync(points) {
+                const batchSize = 500;
+                let processed = 0;
+                
+                const processNextBatch = () => {
+                    const batch = points.slice(processed, processed + batchSize);
+                    
+                    if (batch.length === 0) {
+                        this.finishDataLoading(points);
+                        return;
+                    }
+                    
+                    this.processBatch(batch, processed);
+                    processed += batchSize;
+                    
+                    const progress = Math.round((processed / points.length) * 100);
+                    this.updateLoadingProgress(`处理批次 ${Math.ceil(processed / batchSize)}`, 
+                        `进度: ${progress}% (${processed}/${points.length})`);
+                    
+                    // 使用requestAnimationFrame保持UI响应
+                    requestAnimationFrame(processNextBatch);
+                };
+                
+                processNextBatch();
+            },
+            
+            // 同步加载数据
+            loadDataSync(points) {
+                this.updateLoadingProgress('同步处理...', '正在创建图层...');
+                
+                setTimeout(() => {
+                    this.createOptimizedLayer(points);
+                    this.finishDataLoading(points);
+                }, 100);
+            },
+            
+            // 处理批次
+            processBatch(batch, offset) {
+                // 这里可以进行批次处理，比如几何简化等
+                console.log(`处理批次: ${offset + 1} - ${offset + batch.length}`);
+            },
+            
+            // 创建优化图层
+            createOptimizedLayer(points) {
+                let layer;
+                
+                if (this.settings.clustering && points.length > this.settings.clusterThreshold) {
+                    // 使用聚合渲染
+                    layer = L.markerClusterGroup({
+                        chunkedLoading: true,
+                        chunkInterval: 200,
+                        chunkDelay: 50,
+                        spiderfyOnMaxZoom: false,
+                        showCoverageOnHover: false,
+                        zoomToBoundsOnClick: false,
+                        maxClusterRadius: 80
+                    });
+                    
+                    points.forEach(point => {
+                        const marker = L.marker(point.coords)
+                            .bindPopup(`<b>${point.name}</b><br>类型: ${point.type}<br>数值: ${point.value.toFixed(2)}`);
+                        layer.addLayer(marker);
+                    });
+                } else {
+                    // 使用热力图
+                    const heatPoints = points.map(p => [p.coords[0], p.coords[1], p.value / 100]);
+                    layer = L.heatLayer(heatPoints, {
+                        radius: 25,
+                        blur: 15,
+                        maxZoom: 17,
+                        gradient: {
+                            0.0: 'blue',
+                            0.5: 'lime',
+                            1.0: 'red'
+                        }
+                    });
+                }
+                
+                this.map.addLayer(layer);
+                
+                // 添加到图层列表
+                this.layers.push({
+                    id: 'sample_' + Date.now(),
+                    name: `示例数据 (${points.length}点)`,
+                    layer: layer,
+                    type: 'point',
+                    visible: true,
+                    features: points.length,
+                    originalData: points,
+                    optimized: true
+                });
+            },
+            
+            // 完成数据加载
+            finishDataLoading(points) {
+                this.updateLayerList();
+                this.updateStatistics();
+                
+                setTimeout(() => {
+                    this.showLoading(false);
+                    this.showToast('加载完成', 
+                        `已加载 ${points.length} 个数据点\n${this.settings.clustering ? '使用聚合渲染' : '使用标准渲染'}`, 
+                        'success');
+                }, 500);
+            },
+            
+            // 处理DEM文件（保持原有）
+            async handleDEM(file) {
+                // 保持原有的DEM处理逻辑
+                this.showLoading(true, '处理栅格文件', '读取GeoTIFF...');
+                
+                try {
+                    console.log('开始处理DEM文件:', file.name);
+                    const arrayBuffer = await file.arrayBuffer();
+                    
+                    this.updateLoadingProgress('解析GeoTIFF', '读取元数据...');
+                    const tiff = await GeoTIFF.fromArrayBuffer(arrayBuffer);
+                    const image = await tiff.getImage();
+                    
+                    // 获取图像基本信息
+                    const width = image.getWidth();
+                    const height = image.getHeight();
+                    const totalPixels = width * height;
+                    
+                    console.log(`DEM尺寸: ${width} x ${height}, 总像素: ${totalPixels}`);
+                    
+                    // 大文件预警
+                    if (totalPixels > 10000000) {
+                        const confirm = await this.showConfirm(
+                            '大文件警告', 
+                            `文件包含 ${(totalPixels / 1000000).toFixed(1)}M 像素，处理可能较慢。是否继续？`
+                        );
+                        if (!confirm) {
+                            this.showLoading(false);
+                            return;
+                        }
+                    }
+                    
+                    this.updateLoadingProgress('获取坐标信息', '计算边界...');
+                    
+                    // 获取边界框
+                    const bbox = image.getBoundingBox();
+                    console.log('原始边界框:', bbox);
+                    
+                    if (!bbox || bbox.length !== 4 || 
+                        !isFinite(bbox[0]) || !isFinite(bbox[1]) || 
+                        !isFinite(bbox[2]) || !isFinite(bbox[3])) {
+                        throw new Error('DEM文件边界信息无效');
+                    }
+                    
+                    // 检测并转换坐标系
+                    let convertedBbox = bbox;
+                    let needsConversion = false;
+                    let skipAutoFit = false;
+                    
+                    if (Math.abs(bbox[0]) > 180 || Math.abs(bbox[2]) > 180 ||
+                        Math.abs(bbox[1]) > 90 || Math.abs(bbox[3]) > 90) {
+                        console.log('检测到投影坐标系，尝试转换...');
+                        needsConversion = true;
+                        
+                        this.updateLoadingProgress('转换坐标系', '处理投影坐标...');
+                        convertedBbox = await this.convertProjectedCoordinates(bbox, image);
+                        
+                        if (convertedBbox) {
+                            console.log('坐标转换成功:', convertedBbox);
+                        } else {
+                            console.log('自动转换失败，尝试经验转换...');
+                            convertedBbox = this.fallbackCoordinateConversion(bbox);
+                        }
+                    }
+                    
+                    // 合理性检查，防止异常范围导致地图缩到极小
+                    const safe = (Array.isArray(convertedBbox) && convertedBbox.length === 4 &&
+                        convertedBbox.every(Number.isFinite) &&
+                        this.isValidLngLat([convertedBbox[0], convertedBbox[1]]) &&
+                        this.isValidLngLat([convertedBbox[2], convertedBbox[3]]));
+                    
+                    const spanLng = Math.abs(convertedBbox[2] - convertedBbox[0]);
+                    const spanLat = Math.abs(convertedBbox[3] - convertedBbox[1]);
+                    
+                    if (!safe || spanLng > 15 || spanLat > 15) { // 超过约 1500km 视为异常
+                        console.warn('检测到异常范围，采用安全范围避免缩放过小', convertedBbox);
+                        convertedBbox = this.fallbackCoordinateConversion(bbox);
+                        skipAutoFit = true;
+                        this.showToast('提示', '未能识别栅格坐标系，已使用安全范围并跳过自动缩放', 'warning');
+                    }
+                    
+                    console.log('最终使用的边界框:', convertedBbox);
+                    
+                    this.updateLoadingProgress('读取栅格数据', '分析数值...');
+                    
+                    // 读取栅格数据
+                    const rasters = await image.readRasters();
+                    const data = rasters[0];
+                    console.log('数据类型:', data.constructor.name, '数据长度:', data.length);
+                    
+                    // 计算高程统计
+                    let min = Infinity, max = -Infinity;
+                    let validCount = 0;
+                    let sum = 0;
+                    
+                    this.updateLoadingProgress('统计数据', '计算范围...');
+                    
+                    // 分批处理大数据
+                    const batchSize = 100000;
+                    for (let i = 0; i < data.length; i += batchSize) {
+                        const batch = data.slice(i, Math.min(i + batchSize, data.length));
+                        
+                        for (let j = 0; j < batch.length; j++) {
+                            const value = batch[j];
+                            if (value !== -9999 && value !== -32768 && value !== null && 
+                                !isNaN(value) && isFinite(value) && value >= 0 && value < 65535) {
+                                min = Math.min(min, value);
+                                max = Math.max(max, value);
+                                sum += value;
+                                validCount++;
+                            }
+                        }
+                        
+                        // 更新进度
+                        const progress = Math.round(((i + batch.length) / data.length) * 100);
+                        this.updateLoadingProgress('统计数据', `${progress}% 完成`);
+                        
+                        // 让出控制权，保持UI响应
+                        if (i % (batchSize * 10) === 0) {
+                            await new Promise(resolve => setTimeout(resolve, 10));
+                        }
+                    }
+                    
+                    if (validCount === 0) {
+                        throw new Error('DEM文件中没有有效数据');
+                    }
+                    
+                    const avg = sum / validCount;
+                    console.log(`数据统计 - 最小值: ${min}, 最大值: ${max}, 平均值: ${avg.toFixed(2)}, 有效像素: ${validCount}`);
+                    
+                    this.updateLoadingProgress('创建图层', '生成热力点...');
+                    
+                    // 创建Leaflet边界
+                    const bounds = L.latLngBounds([
+                        [convertedBbox[1], convertedBbox[0]], // 西南角
+                        [convertedBbox[3], convertedBbox[2]]  // 东北角
+                    ]);
+                    
+                    if (!bounds.isValid()) {
+                        throw new Error('转换后的边界坐标无效');
+                    }
+                    
+                    // 智能采样创建热力图显示点
+                    const heatPoints = await this.createDEMHeatPointsOptimized(
+                        data, width, height, convertedBbox, min, max
+                    );
+                    
+                    if (heatPoints.length === 0) {
+                        throw new Error('无法生成有效的显示点，请检查坐标系是否正确');
+                    }
+                    
+                    console.log(`生成了 ${heatPoints.length} 个热力点`);
+                    
+                    this.updateLoadingProgress('构建图层', '配置渲染...');
+                    
+                    // 创建DEM图层组
+                    const demLayerGroup = L.layerGroup();
+                    
+                    // 根据数据特征选择合适的颜色方案
+                    let gradient;
+                    if (file.name.toLowerCase().includes('ntl') || file.name.toLowerCase().includes('light')) {
+                        gradient = {
+                            0.0: '#000033',  0.2: '#000066',  0.4: '#003399',  
+                            0.6: '#FFAA00',  0.8: '#FF6600',  1.0: '#FFFF00'
+                        };
+                    } else {
+                        gradient = {
+                            0.0: '#000080',  0.2: '#0040FF',  0.4: '#00FFFF',  
+                            0.6: '#40FF40',  0.8: '#FFFF00',  1.0: '#FF4040'
+                        };
+                    }
+                    
+                    // 创建热力图层
+                    const heatLayer = L.heatLayer(heatPoints, {
+                        radius: Math.max(15, Math.min(40, Math.sqrt(width * height) / 200)),
+                        blur: 20,
+                        maxZoom: 18,
+                        minOpacity: 0.3,
+                        gradient: gradient
+                    });
+                    
+                    demLayerGroup.addLayer(heatLayer);
+                    
+                    // 添加边界框
+                    const boundaryRect = L.rectangle(bounds, {
+                        color: needsConversion ? '#ff6b6b' : '#4CAF50',
+                        weight: 2,
+                        fillOpacity: 0,
+                        dashArray: '8, 4'
+                    });
+                    
+                    demLayerGroup.addLayer(boundaryRect);
+                    
+                    // 创建信息弹窗
+                    const dataType = file.name.toLowerCase().includes('ntl') || file.name.toLowerCase().includes('light') ? '夜光数据' : '地形数据';
+                    const coordSystem = needsConversion ? '投影坐标系(已转换)' : 'WGS84';
+                    
+                    const popupContent = `
+                        <div style="min-width: 240px;">
+                            <h4 style="margin: 0 0 10px 0; color: #2c3e50;">${dataType}: ${file.name}</h4>
+                            <div style="font-size: 13px; line-height: 1.5;">
+                                <div><strong>数据类型:</strong> ${dataType}</div>
+                                <div><strong>坐标系:</strong> ${coordSystem}</div>
+                                <div><strong>分辨率:</strong> ${width} × ${height}</div>
+                                <div><strong>数值范围:</strong> ${min.toFixed(2)} - ${max.toFixed(2)}</div>
+                                <div><strong>平均值:</strong> ${avg.toFixed(2)}</div>
+                                <div><strong>有效像素:</strong> ${validCount.toLocaleString()}</div>
+                                <div><strong>数据覆盖率:</strong> ${((validCount / data.length) * 100).toFixed(1)}%</div>
+                                <div><strong>热力点数:</strong> ${heatPoints.length}</div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    boundaryRect.bindPopup(popupContent);
+                    
+                    // 添加到地图
+                    if (this.currentMapType === 'gis') {
+                        demLayerGroup.addTo(this.map);
+                    }
+                    
+                    // 添加到图层管理
+                    this.layers.push({
+                        id: 'dem_' + Date.now(),
+                        name: `${dataType}: ${file.name.replace(/\.(tif|tiff)$/i, '')}`,
+                        layer: demLayerGroup,
+                        type: 'raster',
+                        visible: true,
+                        features: heatPoints.length,
+                        statistics: {
+                            min: min.toFixed(2),
+                            max: max.toFixed(2),
+                            avg: avg.toFixed(2),
+                            resolution: `${width}×${height}`,
+                            coverage: `${((validCount / data.length) * 100).toFixed(1)}%`,
+                            coordSystem: coordSystem
+                        }
+                    });
+                    
+                    this.updateLayerList();
+                    this.updateStatistics();
+                    
+                    // 智能缩放
+                    if (this.currentMapType === 'gis' && !skipAutoFit) {
+                        const center = bounds.getCenter();
+                        if (Math.abs(center.lat) <= 85 && Math.abs(center.lng) <= 180) {
+                            this.map.fitBounds(bounds, {
+                                padding: [30, 30],
+                                maxZoom: 12
+                            });
+                        }
+                    }
+                    
+                    this.showToast('数据加载成功', 
+                        `${dataType}已加载\n优化渲染: ${heatPoints.length} 点`, 'success');
+                    
+                } catch (error) {
+                    console.error('DEM处理错误:', error);
+                    this.showToast('数据处理失败', 
+                        `文件: ${file.name}\n错误: ${error.message}`, 'error');
+                } finally {
+                    this.showLoading(false);
+                }
+            },
+            
+            // 优化的热力点创建（异步版本）
+            async createDEMHeatPointsOptimized(data, width, height, bbox, min, max) {
+                const heatPoints = [];
+                const elevationRange = max - min;
+                
+                if (elevationRange <= 0) {
+                    console.warn('高程范围无效');
+                    return heatPoints;
+                }
+                
+                // 智能采样策略
+                const totalPixels = width * height;
+                let step;
+                
+                if (totalPixels > 5000000) {
+                    step = Math.floor(Math.sqrt(totalPixels) / 50);  // 超大文件：极稀疏采样
+                } else if (totalPixels > 1000000) {
+                    step = Math.floor(Math.sqrt(totalPixels) / 80);  // 大文件：稀疏采样
+                } else if (totalPixels > 100000) {
+                    step = Math.floor(Math.sqrt(totalPixels) / 60);  // 中等文件：中等采样
+                } else {
+                    step = Math.max(1, Math.floor(Math.sqrt(totalPixels) / 40));  // 小文件：密集采样
+                }
+                
+                step = Math.max(1, step);
+                console.log(`DEM采样步长: ${step}, 总像素: ${totalPixels}`);
+                
+                let pointCount = 0;
+                const maxPoints = 3000; // 增加最大点数限制
+                const batchSize = 1000;  // 批处理大小
+                
+                // 分批处理以保持响应性
+                for (let y = 0; y < height && pointCount < maxPoints; y += step) {
+                    const batchPoints = [];
+                    
+                    for (let x = 0; x < width && pointCount < maxPoints; x += step) {
+                        const idx = y * width + x;
+                        const value = data[idx];
+                        
+                        if (value !== -9999 && value !== -32768 && value !== null && 
+                            !isNaN(value) && isFinite(value) && 
+                            value >= min && value <= max) {
+                            
+                            // 计算地理坐标
+                            const lat = bbox[1] + (y / height) * (bbox[3] - bbox[1]);
+                            const lng = bbox[0] + (x / width) * (bbox[2] - bbox[0]);
+                            
+                            if (isFinite(lat) && isFinite(lng) && 
+                                Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+                                
+                                const intensity = Math.max(0.1, (value - min) / elevationRange);
+                                batchPoints.push([lat, lng, intensity]);
+                                pointCount++;
+                            }
+                        }
+                    }
+                    
+                    heatPoints.push(...batchPoints);
+                    
+                    // 每处理一定数量的行就让出控制权
+                    if (y % (step * 50) === 0) {
+                        this.updateLoadingProgress('生成热力点', 
+                            `已处理 ${Math.round((y / height) * 100)}%`);
+                        await new Promise(resolve => setTimeout(resolve, 1));
+                    }
+                }
+                
+                console.log(`生成 ${heatPoints.length} 个有效热力点`);
+                return heatPoints;
+            },
+            
+            // 坐标系转换功能
+            async convertProjectedCoordinates(bbox, image) {
+                try {
+                    const geoKeys = image.getGeoKeys?.();
+                    console.log('GeoTIFF坐标系信息:', geoKeys);
+                    
+                    // 优先使用 EPSG 编码 + proj4 精确转换
+                    const epsgCode = geoKeys?.ProjectedCSTypeGeoKey;
+                    if (epsgCode && typeof proj4 !== 'undefined') {
+                        const projCode = `EPSG:${epsgCode}`;
+                        try {
+                            const sw = proj4(projCode, 'WGS84', [bbox[0], bbox[1]]);
+                            const ne = proj4(projCode, 'WGS84', [bbox[2], bbox[3]]);
+                            if (this.isValidLngLat(sw) && this.isValidLngLat(ne)) {
+                                console.log(`使用 ${projCode} 完成坐标转换`);
+                                return [sw[0], sw[1], ne[0], ne[1]];
+                            }
+                        } catch (err) {
+                            console.warn('proj4 转换失败，尝试启发式处理', err);
+                        }
+                    }
+                    
+                    if (bbox[0] >= 100000 && bbox[0] <= 1000000) {
+                        console.log('疑似UTM坐标系');
+                        return this.convertUTMToWGS84(bbox);
+                    }
+                    
+                    if (bbox[0] >= 10000000) {
+                        console.log('疑似Web Mercator坐标系');
+                        return this.convertWebMercatorToWGS84(bbox);
+                    }
+                    
+                    if (bbox[0] >= 1000000 && bbox[0] <= 50000000) {
+                        console.log('疑似中国常用投影坐标系');
+                        return this.convertChinaProjectionToWGS84(bbox);
+                    }
+                    
+                    return null;
+                } catch (error) {
+                    console.warn('坐标系转换失败:', error);
+                    return null;
+                }
+            },
+            
+            isValidLngLat(pair) {
+                return Array.isArray(pair) && pair.length === 2 &&
+                    Number.isFinite(pair[0]) && Number.isFinite(pair[1]) &&
+                    Math.abs(pair[0]) <= 180 && Math.abs(pair[1]) <= 90;
+            },
+            
+            // UTM转WGS84
+            convertUTMToWGS84(bbox) {
+                try {
+                    const centralMeridian = 117;
+                    const falseEasting = 500000;
+                    const scale = 0.9996;
+                    
+                    const lng1 = centralMeridian + (bbox[0] - falseEasting) / (111320 * scale);
+                    const lng2 = centralMeridian + (bbox[2] - falseEasting) / (111320 * scale);
+                    const lat1 = bbox[1] / 111320;
+                    const lat2 = bbox[3] / 111320;
+                    
+                    return [lng1, lat1, lng2, lat2];
+                } catch (error) {
+                    console.warn('UTM转换失败:', error);
+                    return null;
+                }
+            },
+            
+            // Web Mercator转WGS84
+            convertWebMercatorToWGS84(bbox) {
+                try {
+                    const lng1 = bbox[0] / 20037508.34 * 180;
+                    const lng2 = bbox[2] / 20037508.34 * 180;
+                    
+                    let lat1 = bbox[1] / 20037508.34 * 180;
+                    let lat2 = bbox[3] / 20037508.34 * 180;
+                    
+                    lat1 = 180 / Math.PI * (2 * Math.atan(Math.exp(lat1 * Math.PI / 180)) - Math.PI / 2);
+                    lat2 = 180 / Math.PI * (2 * Math.atan(Math.exp(lat2 * Math.PI / 180)) - Math.PI / 2);
+                    
+                    return [lng1, lat1, lng2, lat2];
+                } catch (error) {
+                    console.warn('Web Mercator转换失败:', error);
+                    return null;
+                }
+            },
+            
+            // 中国投影坐标系转WGS84
+            convertChinaProjectionToWGS84(bbox) {
+                try {
+                    const scale = 0.00001;
+                    const offsetX = 12500000;
+                    const offsetY = 4100000;
+                    
+                    const lng1 = (bbox[0] - offsetX) * scale + 113;
+                    const lng2 = (bbox[2] - offsetX) * scale + 113;
+                    const lat1 = (bbox[1] - offsetY) * scale + 34;
+                    const lat2 = (bbox[3] - offsetY) * scale + 34;
+                    
+                    if (lng1 >= 70 && lng1 <= 140 && lng2 >= 70 && lng2 <= 140 &&
+                        lat1 >= 10 && lat1 <= 55 && lat2 >= 10 && lat2 <= 55) {
+                        return [lng1, lat1, lng2, lat2];
+                    }
+                    
+                    return null;
+                } catch (error) {
+                    console.warn('中国投影转换失败:', error);
+                    return null;
+                }
+            },
+            
+            // 备用坐标转换方法
+            fallbackCoordinateConversion(bbox) {
+                try {
+                    console.log('使用备用转换方法...');
+                    const center = this.map?.getCenter() || { lat: 34.917, lng: 113.644 };
+                    const delta = 0.25; // 约 25km 范围，避免无限缩小
+                    return [center.lng - delta, center.lat - delta, center.lng + delta, center.lat + delta];
+                } catch (error) {
+                    console.warn('备用转换也失败:', error);
+                    return [110, 30, 120, 40];
+                }
+            },
+            
+            // 确认对话框
+            showConfirm(title, message) {
+                return new Promise((resolve) => {
+                    const result = confirm(`${title}\n\n${message}`);
+                    resolve(result);
+                });
+            },
+            
+            // 处理GeoJSON文件
+            async handleGeoJSON(file) {
+                this.showLoading(true, '处理GeoJSON', '读取文件...');
+                
+                try {
+                    const text = await file.text();
+                    const geoJson = JSON.parse(text);
+                    
+                    this.updateLoadingProgress('解析数据', '处理要素...');
+                    
+                    if (geoJson.features && geoJson.features.length > 1000) {
+                        await this.processGeoJSONAsync(geoJson, file.name);
+                    } else {
+                        this.addGeoJSONLayer(geoJson, file.name);
+                    }
+                } catch (error) {
+                    console.error('GeoJSON处理错误:', error);
+                    this.showToast('错误', '无法处理GeoJSON文件', 'error');
+                } finally {
+                    this.showLoading(false);
+                }
+            },
+            
+            // 使用异步处理处理GeoJSON
+            async processGeoJSONAsync(geoJson, fileName) {
+                try {
+                    this.updateLoadingProgress('异步处理数据', `${geoJson.features.length} 个要素`);
+                    
+                    const processed = await this.processDataAsync(geoJson.features, {
+                        simplify: true,
+                        tolerance: this.settings.simplifyTolerance,
+                        maxFeatures: this.settings.clusterThreshold,
+                        onProgress: (msg) => {
+                            this.updateLoadingProgress('处理要素', msg);
+                        }
+                    });
+                    
+                    geoJson.features = processed;
+                    this.addGeoJSONLayer(geoJson, fileName);
+                    
+                } catch (error) {
+                    console.error('GeoJSON处理失败:', error);
+                    this.showToast('处理失败', error.message, 'error');
+                }
+            },
+            
+            // 添加GeoJSON图层
+            addGeoJSONLayer(geoJson, name, options = {}) {
+                const {
+                    skipFitBounds = false,
+                    fromRestore = false,
+                    visible = true,
+                    style = null,
+                    styleOverrides = null
+                } = options;
+                
+                const featureCount = geoJson.features ? geoJson.features.length : 1;
+                
+                this.updateLoadingProgress('创建图层', `渲染 ${featureCount} 个要素...`);
+                
+                let layer;
+                
+                // 根据要素数量选择渲染策略
+                if (featureCount > this.settings.clusterThreshold && this.settings.clustering) {
+                    // 使用聚合渲染
+                    const markers = L.markerClusterGroup({
+                        chunkedLoading: true,
+                        chunkInterval: 100,
+                        chunkDelay: 25
+                    });
+                    
+                    if (geoJson.features) {
+                        geoJson.features.forEach(feature => {
+                            if (feature.geometry.type === 'Point') {
+                                const [lng, lat] = feature.geometry.coordinates;
+                                const marker = L.marker([lat, lng])
+                                    .bindPopup(this.createFeaturePopup(feature));
+                                markers.addLayer(marker);
+                            }
+                        });
+                    }
+                    
+                    layer = markers;
+                } else {
+                    // 标准渲染
+                    layer = L.geoJSON(geoJson, {
+                        style: style || {
+                            color: this.getRandomColor(),
+                            weight: 2,
+                            opacity: 0.8,
+                            fillOpacity: 0.3
+                        },
+                        onEachFeature: (feature, layer) => {
+                            if (feature.properties) {
+                                layer.bindPopup(this.createFeaturePopup(feature));
+                            }
+                        },
+                        pointToLayer: (feature, latlng) => {
+                            return L.circleMarker(latlng, {
+                                radius: 6,
+                                fillColor: this.getRandomColor(),
+                                color: "#000",
+                                weight: 1,
+                                opacity: 1,
+                                fillOpacity: 0.8
+                            });
+                        }
+                    });
+                }
+                
+                layer.addTo(this.map);
+                
+                const layerInfo = {
+                    id: 'layer_' + Date.now(),
+                    name: name.replace(/\.(shp|json|geojson|zip)$/i, ''),
+                    layer: layer,
+                    type: 'vector',
+                    visible: visible,
+                    features: featureCount,
+                    originalData: geoJson,
+                    optimized: featureCount > this.settings.clusterThreshold,
+                    style,
+                    styleOverrides
+                };
+                
+                this.layers.push(layerInfo);
+                
+                // 应用样式覆盖（例如恢复时）
+                if (styleOverrides) {
+                    this.applyStyleToLeafletLayer(layerInfo, styleOverrides);
+                }
+                
+                // 控制可见性
+                if (!visible) {
+                    this.map.removeLayer(layer);
+                }
+                
+                this.updateLayerList();
+                this.updateStatistics();
+                
+                if (!skipFitBounds) {
+                    try {
+                        this.map.fitBounds(layer.getBounds());
+                    } catch (e) {
+                        console.warn('无法自动缩放到图层范围');
+                    }
+                }
+                
+                if (fromRestore) {
+                    // 恢复场景下避免重复提示
+                    return;
+                }
+            },
+            
+            // 创建要素弹窗内容
+            createFeaturePopup(feature) {
+                if (!feature.properties) return '无属性信息';
+                
+                let content = '<div style="max-height: 200px; overflow-y: auto;">';
+                const props = feature.properties;
+                
+                // 限制显示的属性数量
+                const keys = Object.keys(props).slice(0, 10);
+                
+                keys.forEach(key => {
+                    const value = props[key];
+                    if (value !== null && value !== undefined && value !== '') {
+                        content += `<div style="margin: 3px 0;"><strong>${key}:</strong> ${value}</div>`;
+                    }
+                });
+                
+                if (Object.keys(props).length > 10) {
+                    content += `<div style="color: #666; font-style: italic; margin-top: 5px;">... 还有 ${Object.keys(props).length - 10} 个属性</div>`;
+                }
+                
+                content += '</div>';
+                return content;
+            },
+            
+            // 处理矢量图层
+            async processVectorLayer(layer) {
+                if (!layer.originalData) return;
+                
+                try {
+                    this.updateLoadingProgress('重新处理图层', layer.name);
+                    
+                    const processed = await this.processDataAsync(layer.originalData.features, {
+                        simplify: true,
+                        tolerance: this.settings.simplifyTolerance,
+                        maxFeatures: this.settings.clusterThreshold
+                    });
+                    
+                    // 更新图层数据
+                    layer.originalData.features = processed;
+                    
+                    // 重新创建图层
+                    this.map.removeLayer(layer.layer);
+                    const newGeoJson = { ...layer.originalData, features: processed };
+                    this.addGeoJSONLayer(newGeoJson, layer.name + '_重处理');
+                    
+                } catch (error) {
+                    console.error('图层处理失败:', error);
+                    this.showToast('处理失败', `图层 ${layer.name} 处理失败`, 'error');
+                }
+            },
+            
+            // 更新图层列表
+            updateLayerList() {
+                const list = document.getElementById('layerList');
+                
+                if (this.layers.length === 0) {
+                    list.innerHTML = '<p style="color: #95a5a6; text-align: center; font-size: 13px;">暂无图层</p>';
+                    return;
+                }
+                
+                list.innerHTML = this.layers.map(layer => `
+                    <div class="layer-item">
+                        <div class="layer-header">
+                            <span class="layer-name">${layer.name}</span>
+                            ${layer.optimized ? '<span style="font-size: 10px; color: #f39c12; margin-left: 5px;">优化</span>' : ''}
+                            ${layer.qgisStyled ? '<span style="font-size: 10px; color: #67a9cf; margin-left: 5px;">QGIS</span>' : ''}
+                        </div>
+                        <div class="layer-controls">
+                            <button class="layer-btn" onclick="app.toggleLayer('${layer.id}')" title="显示/隐藏">
+                                <i class="fas fa-eye${layer.visible ? '' : '-slash'}"></i>
+                            </button>
+                            <button class="layer-btn" onclick="app.zoomToLayer('${layer.id}')" title="缩放">
+                                <i class="fas fa-search-plus"></i>
+                            </button>
+                            <button class="layer-btn" onclick="app.removeLayer('${layer.id}')" title="删除">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                        <div class="layer-info">
+                            类型: ${this.getLayerTypeLabel(layer.type)}
+                            ${layer.features ? ` | 要素: ${layer.features.toLocaleString()}` : ''}
+                            ${layer.statistics ? ` | ${layer.statistics.resolution || ''}` : ''}
+                            ${layer.style && layer.style.type ? ` | ${layer.style.type === 'graduated' ? '分级渲染' : layer.style.type === 'categorized' ? '分类渲染' : '简单渲染'}` : ''}
+                            ${layer.cluster ? ' | 聚合模式' : ''}
+                        </div>
+                    </div>
+                `).join('');
+                
+                this.refreshAttributePanel();
+                this.scheduleSaveState();
+            },
+            
+            // 获取图层类型标签
+            getLayerTypeLabel(type) {
+                const labels = {
+                    'point': '点',
+                    'line': '线',
+                    'polygon': '面',
+                    'raster': '栅格',
+                    'heatmap': '热力图',
+                    'vector': '矢量'
+                };
+                return labels[type] || type;
+            },
+            
+            // 更新统计
+            updateStatistics() {
+                document.getElementById('layerCount').textContent = this.layers.length;
+                
+                let totalFeatures = 0;
+                this.layers.forEach(layer => {
+                    if (layer.features) totalFeatures += layer.features;
+                });
+                document.getElementById('featureCount').textContent = totalFeatures.toLocaleString();
+                
+                // 计算覆盖面积
+                let totalArea = 0;
+                this.layers.forEach(layer => {
+                    if (layer.type === 'polygon' && layer.layer.getLatLngs) {
+                        try {
+                            const latlngs = layer.layer.getLatLngs()[0];
+                            const polygon = turf.polygon([latlngs.map(ll => [ll.lng, ll.lat])]);
+                            const area = turf.area(polygon) / 1000000;
+                            totalArea += area;
+                        } catch(e) {}
+                    }
+                });
+                document.getElementById('areaCount').textContent = totalArea.toFixed(2) + ' km²';
+                
+                this.updateChart();
+            },
+            
+            // 更新图表
+            updateChart() {
+                const ctx = document.getElementById('statsChart').getContext('2d');
+                
+                const types = {};
+                this.layers.forEach(layer => {
+                    const type = this.getLayerTypeLabel(layer.type);
+                    types[type] = (types[type] || 0) + 1;
+                });
+                
+                if (Object.keys(types).length === 0) {
+                    types['无数据'] = 1;
+                }
+                
+                if (this.chart) {
+                    this.chart.destroy();
+                }
+                
+                this.chart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(types),
+                        datasets: [{
+                            data: Object.values(types),
+                            backgroundColor: ['#3498db', '#2ecc71', '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: { 
+                                    color: '#ecf0f1',
+                                    font: { size: 11 }
+                                }
+                            }
+                        }
+                    }
+                });
+            },
+            
+            // 切换图层显示
+            toggleLayer(id) {
+                const layer = this.layers.find(l => l.id === id);
+                if (!layer) return;
+                
+                layer.visible = !layer.visible;
+                if (layer.visible) {
+                    this.map.addLayer(layer.layer);
+                } else {
+                    this.map.removeLayer(layer.layer);
+                }
+                
+                this.updateLayerList();
+            },
+            
+            // 缩放到图层
+            zoomToLayer(id) {
+                const layer = this.layers.find(l => l.id === id);
+                if (!layer) return;
+                
+                try {
+                    this.map.fitBounds(layer.layer.getBounds());
+                } catch (e) {
+                    this.map.setView([34.917, 113.644], 11);
+                }
+            },
+            
+            // 删除图层
+            removeLayer(id) {
+                const index = this.layers.findIndex(l => l.id === id);
+                if (index === -1) return;
+                
+                const layer = this.layers[index];
+                this.map.removeLayer(layer.layer);
+                this.layers.splice(index, 1);
+                
+                this.updateLayerList();
+                this.updateStatistics();
+            },
+            
+            // 属性表：切换与渲染
+            toggleAttributePanel(layerId = null) {
+                this.attributePanelOpen = !this.attributePanelOpen;
+                const panel = document.getElementById('attributePanel');
+                if (this.attributePanelOpen) {
+                    panel.classList.add('active');
+                    this.attributeLayerId = layerId || this.attributeLayerId || (this.layers[0]?.id || null);
+                    this.attributePage = 1;
+                    this.refreshAttributePanel();
+                    this.initAttributePanelDrag();
+                } else {
+                    panel.classList.remove('active');
+                }
+            },
+            
+            closeAttributePanel() {
+                this.attributePanelOpen = false;
+                const panel = document.getElementById('attributePanel');
+                panel.classList.remove('active');
+            },
+
+            initAttributePanelDrag() {
+                const panel = document.getElementById('attributePanel');
+                const header = document.getElementById('attributePanelHeader');
+                if (!panel || !header) return;
+                let offsetX = 0, offsetY = 0, dragging = false;
+                header.onmousedown = (e) => {
+                    dragging = true;
+                    const rect = panel.getBoundingClientRect();
+                    offsetX = e.clientX - rect.left;
+                    offsetY = e.clientY - rect.top;
+                    document.onmousemove = (ev) => {
+                        if (!dragging) return;
+                        panel.style.left = `${ev.clientX - offsetX}px`;
+                        panel.style.top = `${ev.clientY - offsetY}px`;
+                        panel.style.right = 'auto';
+                        panel.style.bottom = 'auto';
+                    };
+                    document.onmouseup = () => {
+                        dragging = false;
+                        document.onmousemove = null;
+                        document.onmouseup = null;
+                    };
+                };
+            },
+            
+            refreshAttributePanel() {
+                if (!this.attributePanelOpen) return;
+                this.renderAttributeLayerOptions();
+                this.renderAttributeTable(this.attributeLayerId);
+            },
+
+            // 样式调节面板
+            toggleStylePanel(layerId = null) {
+                this.stylePanelOpen = !this.stylePanelOpen;
+                const panel = document.getElementById('stylePanel');
+                if (this.stylePanelOpen) {
+                    panel.classList.add('active');
+                    this.styleLayerId = layerId || this.styleLayerId || (this.layers[0]?.id || null);
+                    this.renderStyleLayerOptions();
+                    this.initStylePanelDrag();
+                } else {
+                    panel.classList.remove('active');
+                }
+            },
+            
+            closeStylePanel() {
+                this.stylePanelOpen = false;
+                const panel = document.getElementById('stylePanel');
+                panel.classList.remove('active');
+            },
+            
+            initStylePanelDrag() {
+                const panel = document.getElementById('stylePanel');
+                const header = document.getElementById('stylePanelHeader');
+                if (!panel || !header) return;
+                
+                let offsetX = 0, offsetY = 0, dragging = false;
+                header.onmousedown = (e) => {
+                    dragging = true;
+                    const rect = panel.getBoundingClientRect();
+                    offsetX = e.clientX - rect.left;
+                    offsetY = e.clientY - rect.top;
+                    document.onmousemove = (ev) => {
+                        if (!dragging) return;
+                        panel.style.left = `${ev.clientX - offsetX}px`;
+                        panel.style.top = `${ev.clientY - offsetY}px`;
+                        panel.style.right = 'auto';
+                        panel.style.bottom = 'auto';
+                    };
+                    document.onmouseup = () => {
+                        dragging = false;
+                        document.onmousemove = null;
+                        document.onmouseup = null;
+                    };
+                };
+            },
+            
+            renderStyleLayerOptions() {
+                const select = document.getElementById('styleLayerSelect');
+                if (!select) return;
+                
+                const vectorLayers = this.layers.filter(l => l.type === 'vector');
+                select.innerHTML = vectorLayers.map(l => 
+                    `<option value="${l.id}" ${l.id === this.styleLayerId ? 'selected' : ''}>${l.name}</option>`
+                ).join('');
+                
+                if (!vectorLayers.length) {
+                    this.styleLayerId = null;
+                    return;
+                }
+                if (!this.styleLayerId || !vectorLayers.find(l => l.id === this.styleLayerId)) {
+                    this.styleLayerId = vectorLayers[0].id;
+                }
+                
+                select.onchange = (e) => {
+                    this.styleLayerId = e.target.value;
+                };
+            },
+            
+            applyStyleChanges() {
+                if (!this.styleLayerId) return;
+                const layerInfo = this.layers.find(l => l.id === this.styleLayerId);
+                if (!layerInfo || !layerInfo.layer) return;
+                
+                const pointSize = parseFloat(document.getElementById('stylePointSize').value) || 6;
+                const pointFill = document.getElementById('stylePointFill').value || '#67a9cf';
+                const pointStroke = document.getElementById('stylePointStroke').value || '#2166ac';
+                const lineColor = document.getElementById('styleLineColor').value || '#2166ac';
+                const lineWidth = parseFloat(document.getElementById('styleLineWidth').value) || 2;
+                const polyFill = document.getElementById('stylePolyFill').value || '#f7f7f7';
+                const polyStroke = document.getElementById('stylePolyStroke').value || '#67a9cf';
+                const polyOpacity = Math.min(1, Math.max(0, parseFloat(document.getElementById('stylePolyOpacity').value))) || 0.7;
+                
+                const styleOverride = {
+                    point: { radius: pointSize, fillColor: pointFill, color: pointStroke, weight: 1, opacity: 1, fillOpacity: 0.8 },
+                    line: { color: lineColor, weight: lineWidth, opacity: 1 },
+                    polygon: { fillColor: polyFill, color: polyStroke, weight: 2, opacity: 1, fillOpacity: polyOpacity }
+                };
+                
+                this.applyStyleToLeafletLayer(layerInfo, styleOverride);
+                this.showToast('样式更新', `已应用到图层：${layerInfo.name}`, 'success');
+            },
+
+            applyStyleToLeafletLayer(layerInfo, styleOverride) {
+                if (!layerInfo.layer) return;
+                
+                // 针对 L.geoJSON
+                const applyStyle = (layer) => {
+                    if (layer.setStyle) {
+                        layer.setStyle((feature) => {
+                            const geomType = feature?.geometry?.type;
+                            if (geomType === 'Point' || geomType === 'MultiPoint') {
+                                return styleOverride.point;
+                            } else if (geomType && geomType.includes('Line')) {
+                                return styleOverride.line;
+                            } else {
+                                return styleOverride.polygon;
+                            }
+                        });
+                    }
+                    // 针对 circleMarker 逐个设置
+                    if (layer.eachLayer) {
+                        layer.eachLayer(l => {
+                            const g = l.feature?.geometry?.type;
+                            if (g === 'Point' || g === 'MultiPoint') {
+                                l.setStyle?.(styleOverride.point);
+                                if (l.setRadius && styleOverride.point.radius) {
+                                    l.setRadius(styleOverride.point.radius);
+                                }
+                            } else if (g && g.includes('Line')) {
+                                l.setStyle?.(styleOverride.line);
+                            } else {
+                                l.setStyle?.(styleOverride.polygon);
+                            }
+                        });
+                    }
+                };
+                
+                applyStyle(layerInfo.layer);
+                layerInfo.styleOverrides = styleOverride;
+            },
+            
+            renderAttributeLayerOptions() {
+                const select = document.getElementById('attributeLayerSelect');
+                if (!select) return;
+                
+                const layersWithData = this.layers.filter(l => {
+                    const data = l.originalData;
+                    return data && (
+                        (data.features && data.features.length) ||
+                        (Array.isArray(data) && data.length)
+                    );
+                });
+                select.innerHTML = layersWithData.map(l => 
+                    `<option value="${l.id}" ${l.id === this.attributeLayerId ? 'selected' : ''}>${l.name}</option>`
+                ).join('');
+                
+                if (!layersWithData.length) {
+                    this.attributeLayerId = null;
+                    return;
+                }
+                
+                if (!this.attributeLayerId || !layersWithData.find(l => l.id === this.attributeLayerId)) {
+                    this.attributeLayerId = layersWithData[0].id;
+                }
+                
+                select.onchange = (e) => {
+                    this.attributeLayerId = e.target.value;
+                    this.attributePage = 1;
+                    this.renderAttributeTable(this.attributeLayerId);
+                };
+
+                // 样式面板同步列表
+                this.renderStyleLayerOptions();
+            },
+            
+            renderAttributeTable(layerId) {
+                const table = document.getElementById('attributeTable');
+                const summary = document.getElementById('attributeSummary');
+                const pageInfo = document.getElementById('attributePageInfo');
+                if (!table || !summary || !pageInfo) return;
+                
+                const layer = this.layers.find(l => l.id === layerId);
+                if (!layer || !layer.originalData) {
+                    table.innerHTML = '<thead><tr><th>暂无数据</th></tr></thead>';
+                    summary.textContent = '未找到可显示的属性数据';
+                    pageInfo.textContent = '';
+                    return;
+                }
+                
+                let rows = [];
+                let isGeoJSON = false;
+                
+                if (layer.originalData.features && layer.originalData.features.length) {
+                    rows = layer.originalData.features.map(f => f.properties || {});
+                    isGeoJSON = true;
+                } else if (Array.isArray(layer.originalData) && layer.originalData.length) {
+                    rows = layer.originalData;
+                }
+                
+                if (!rows.length) {
+                    table.innerHTML = '<thead><tr><th>暂无数据</th></tr></thead>';
+                    summary.textContent = '未找到可显示的属性数据';
+                    pageInfo.textContent = '';
+                    return;
+                }
+                
+                const total = rows.length;
+                if (this.attributePage < 1) this.attributePage = 1;
+                const totalPages = Math.max(1, Math.ceil(total / this.attributePageSize));
+                if (this.attributePage > totalPages) this.attributePage = totalPages;
+                const start = (this.attributePage - 1) * this.attributePageSize;
+                const end = Math.min(start + this.attributePageSize, total);
+                const pageRows = rows.slice(start, end);
+                
+                // 收集列
+                const firstRow = pageRows[0] || {};
+                const columns = Object.keys(firstRow).slice(0, 15); // 限制列数避免过宽
+                
+                const header = `<thead><tr><th>#</th>${columns.map(c => `<th>${c}</th>`).join('')}</tr></thead>`;
+                const body = pageRows.map((row, idx) => {
+                    const cells = columns.map(c => `<td>${row?.[c] ?? ''}</td>`).join('');
+                    return `<tr><td>${start + idx + 1}</td>${cells}</tr>`;
+                }).join('');
+                
+                table.innerHTML = header + `<tbody>${body}</tbody>`;
+                summary.textContent = `图层: ${layer.name} | 行数 ${total.toLocaleString()} | 展示 ${start + 1}-${end}${isGeoJSON ? ' (GeoJSON)' : ''}`;
+                pageInfo.textContent = `第 ${this.attributePage} 页 / 共 ${Math.ceil(total / this.attributePageSize)} 页`;
+            },
+            
+            changeAttributePage(delta) {
+                if (!this.attributePanelOpen) return;
+                const layer = this.layers.find(l => l.id === this.attributeLayerId);
+                if (!layer || !layer.originalData?.features?.length) return;
+                
+                const totalPages = Math.max(1, Math.ceil(layer.originalData.features.length / this.attributePageSize));
+                this.attributePage = Math.min(totalPages, Math.max(1, this.attributePage + delta));
+                this.renderAttributeTable(this.attributeLayerId);
+            },
+            
+            // 定位湿地
+            focusWetland() {
+                if (this.currentMapType === 'gis') {
+                    this.map.setView([34.917, 113.644], 12);
+                } else {
+                    this.showToast('提示', '请切换到GIS地图查看湿地详情', 'info');
+                }
+                this.showToast('定位成功', '已定位到郑州黄河湿地', 'success');
+            },
+            
+            // 激活工具
+            activateTool(tool) {
+                if (this.currentMapType !== 'gis') {
+                    this.showToast('提示', '工具仅在GIS地图模式下可用', 'warning');
+                    return;
+                }
+                
+                document.querySelectorAll('.tool-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                
+                if (tool === this.currentTool) {
+                    this.currentTool = null;
+                    this.map.off('click');
+                    return;
+                }
+                
+                event.target.closest('.tool-btn').classList.add('active');
+                this.currentTool = tool;
+                
+                switch(tool) {
+                    case 'pan':
+                        this.map.dragging.enable();
+                        this.map.off('click');
+                        this.showToast('平移工具', '拖动地图进行平移', 'info');
+                        break;
+                        
+                    case 'select':
+                        this.setupSelectTool();
+                        break;
+                        
+                    case 'measure':
+                        this.setupMeasureTool();
+                        break;
+                        
+                    case 'draw':
+                        this.setupDrawTool();
+                        break;
+                        
+                    case 'info':
+                        this.setupInfoTool();
+                        break;
+                }
+            },
+            
+            // 设置选择工具
+            setupSelectTool() {
+                this.map.off('click');
+                this.map.on('click', (e) => {
+                    const point = e.latlng;
+                    let found = false;
+                    
+                    this.layers.forEach(layer => {
+                        if (layer.visible && layer.layer.getBounds) {
+                            try {
+                                const bounds = layer.layer.getBounds();
+                                if (bounds.contains(point)) {
+                                    this.showToast('选中', `已选中: ${layer.name}`, 'success');
+                                    found = true;
+                                }
+                            } catch(e) {}
+                        }
+                    });
+                    
+                    if (!found) {
+                        this.showToast('选择', '未找到可选择的要素', 'info');
+                    }
+                });
+                this.showToast('选择工具', '点击要素进行选择', 'info');
+            },
+            
+            // 设置测量工具
+            setupMeasureTool() {
+                if (!this.measureLayer) {
+                    this.measureLayer = L.layerGroup().addTo(this.map);
+                }
+                
+                let points = [];
+                this.map.off('click');
+                this.map.on('click', (e) => {
+                    points.push(e.latlng);
+                    
+                    if (points.length > 1) {
+                        L.polyline(points, {color: 'red', weight: 2}).addTo(this.measureLayer);
+                        
+                        let distance = 0;
+                        for (let i = 1; i < points.length; i++) {
+                            distance += points[i-1].distanceTo(points[i]);
+                        }
+                        
+                        this.showToast('测量结果', `距离: ${(distance / 1000).toFixed(2)} 公里`, 'info');
+                    }
+                    
+                    L.circleMarker(e.latlng, {radius: 3, color: 'red'}).addTo(this.measureLayer);
+                });
+                
+                this.showToast('测量工具', '点击地图测量距离，双击结束', 'info');
+                
+                this.map.on('dblclick', () => {
+                    this.map.off('click');
+                    points = [];
+                });
+            },
+            
+            // 设置绘制工具
+            setupDrawTool() {
+                this.map.off('click');
+                let drawPoints = [];
+                
+                this.map.on('click', (e) => {
+                    drawPoints.push(e.latlng);
+                    L.circleMarker(e.latlng, {radius: 3, color: 'blue'}).addTo(this.drawnItems);
+                    
+                    if (drawPoints.length > 1) {
+                        L.polyline(drawPoints, {color: 'blue', weight: 2}).addTo(this.drawnItems);
+                    }
+                });
+                
+                this.map.on('dblclick', () => {
+                    if (drawPoints.length > 2) {
+                        L.polygon(drawPoints, {color: 'blue', fillOpacity: 0.3}).addTo(this.drawnItems);
+                        
+                        this.layers.push({
+                            id: 'drawn_' + Date.now(),
+                            name: '绘制图形',
+                            layer: this.drawnItems,
+                            type: 'polygon',
+                            visible: true,
+                            features: 1
+                        });
+                        
+                        this.updateLayerList();
+                    }
+                    drawPoints = [];
+                    this.map.off('click');
+                });
+                
+                this.showToast('绘制工具', '点击绘制，双击完成', 'info');
+            },
+            
+            // 设置信息工具
+            setupInfoTool() {
+                this.map.off('click');
+                this.map.on('click', (e) => {
+                    const popup = L.popup()
+                        .setLatLng(e.latlng)
+                        .setContent(`<b>位置信息</b><br>
+                                   经度: ${e.latlng.lng.toFixed(6)}<br>
+                                   纬度: ${e.latlng.lat.toFixed(6)}<br>
+                                   缩放级别: ${this.map.getZoom()}`)
+                        .openOn(this.map);
+                });
+                this.showToast('信息工具', '点击地图查看位置信息', 'info');
+            },
+            
+            // 空间分析工具
+            bufferAnalysis() {
+                if (this.layers.length === 0) {
+                    this.showToast('提示', '请先加载数据', 'warning');
+                    return;
+                }
+                this.showToast('缓冲区分析', '选择要素后将生成10公里缓冲区', 'info');
+                
+                const vectorLayer = this.layers.find(l => l.type === 'point' || l.type === 'line' || l.type === 'polygon');
+                if (vectorLayer && vectorLayer.layer.toGeoJSON) {
+                    const geoJson = vectorLayer.layer.toGeoJSON();
+                    const buffered = turf.buffer(geoJson, 10, {units: 'kilometers'});
+                    
+                    this.addGeoJSONLayer(buffered, vectorLayer.name + '_缓冲区');
+                    this.showToast('分析完成', '已生成10公里缓冲区', 'success');
+                }
+            },
+            
+            intersectAnalysis() {
+                this.showToast('相交分析', '请选择两个图层进行相交分析', 'info');
+            },
+            
+            unionAnalysis() {
+                this.showToast('合并分析', '请选择要合并的图层', 'info');
+            },
+            
+            clipAnalysis() {
+                this.showToast('裁剪分析', '请选择裁剪范围和目标图层', 'info');
+            },
+            
+            heatmapAnalysis() {
+                const pointLayers = this.layers.filter(l => l.type === 'point' || l.type === 'vector');
+                if (pointLayers.length === 0) {
+                    this.showToast('提示', '需要点数据才能生成热力图', 'warning');
+                    return;
+                }
+                
+                // 使用现有点数据生成热力图
+                const layer = pointLayers[0];
+                if (layer.originalData && layer.originalData.features) {
+                    const heatPoints = [];
+                    
+                    layer.originalData.features.forEach(feature => {
+                        if (feature.geometry.type === 'Point') {
+                            const coords = feature.geometry.coordinates;
+                            heatPoints.push([coords[1], coords[0], Math.random()]);
+                        }
+                    });
+                    
+                    if (heatPoints.length > 0) {
+                        const heatLayer = L.heatLayer(heatPoints, {
+                            radius: 25,
+                            blur: 15,
+                            maxZoom: 17
+                        }).addTo(this.map);
+                        
+                        this.layers.push({
+                            id: 'heat_' + Date.now(),
+                            name: `${layer.name}_热力图`,
+                            layer: heatLayer,
+                            type: 'heatmap',
+                            visible: true,
+                            features: heatPoints.length
+                        });
+                        
+                        this.updateLayerList();
+                        this.showToast('热力图', `已生成热力图 (${heatPoints.length} 点)`, 'success');
+                        return;
+                    }
+                }
+                
+                // 降级到示例热力图
+                const heatPoints = [];
+                for (let i = 0; i < 100; i++) {
+                    const lat = 34.4 + Math.random() * 1;
+                    const lng = 113.3 + Math.random() * 1;
+                    const intensity = Math.random();
+                    heatPoints.push([lat, lng, intensity]);
+                }
+                
+                const heatLayer = L.heatLayer(heatPoints, {
+                    radius: 25,
+                    blur: 15,
+                    maxZoom: 17
+                }).addTo(this.map);
+                
+                this.layers.push({
+                    id: 'heat_' + Date.now(),
+                    name: '示例热力图',
+                    layer: heatLayer,
+                    type: 'heatmap',
+                    visible: true,
+                    features: heatPoints.length
+                });
+                
+                this.updateLayerList();
+                this.showToast('热力图', '已生成示例热力图', 'success');
+            },
+            
+            contourAnalysis() {
+                const demLayers = this.layers.filter(l => l.type === 'raster');
+                if (demLayers.length === 0) {
+                    this.showToast('提示', '需要DEM数据才能生成等值线', 'warning');
+                    return;
+                }
+                this.showToast('等值线分析', '基于DEM生成等值线功能开发中...', 'info');
+            },
+            
+            // 导出地图
+            exportMap() {
+                this.showToast('导出', '正在准备地图导出...', 'info');
+                
+                const mapContainer = this.currentMapType === 'gis' ? 
+                    document.getElementById('map') : 
+                    document.getElementById('statsMap');
+                
+                html2canvas(mapContainer).then(canvas => {
+                    const link = document.createElement('a');
+                    link.download = `河南省${this.currentMapType === 'gis' ? 'GIS' : '统计'}地图_${new Date().getTime()}.png`;
+                    link.href = canvas.toDataURL();
+                    link.click();
+                    
+                    this.showToast('导出成功', '地图已保存为图片', 'success');
+                }).catch(error => {
+                    const mapState = {
+                        type: this.currentMapType,
+                        center: this.currentMapType === 'gis' ? this.map.getCenter() : {lat: 34.746, lng: 113.625},
+                        zoom: this.currentMapType === 'gis' ? this.map.getZoom() : 7,
+                        layers: this.layers.map(l => ({
+                            name: l.name,
+                            type: l.type,
+                            visible: l.visible,
+                            features: l.features,
+                            style: l.style
+                        })),
+                        performance: {
+                            layerCount: this.layers.length,
+                            totalFeatures: this.layers.reduce((sum, l) => sum + (l.features || 0), 0),
+                            optimizedLayers: this.layers.filter(l => l.optimized).length,
+                            qgisStyledLayers: this.layers.filter(l => l.qgisStyled).length
+                        }
+                    };
+                    
+                    const blob = new Blob([JSON.stringify(mapState, null, 2)], {type: 'application/json'});
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.download = `河南省地图配置_${new Date().getTime()}.json`;
+                    link.href = url;
+                    link.click();
+                    
+                    this.showToast('导出成功', '已导出地图配置文件', 'success');
+                });
+            },
+            
+            initOptionsAccordion() {
+                const headers = document.querySelectorAll('.options-accordion-header');
+                headers.forEach(header => {
+                    const key = header.dataset.accordion;
+                    const body = document.querySelector(`[data-accordion-body="${key}"]`);
+                    if (!body) return;
+                    
+                    const collapsed = this.accordionState[key] === false;
+                    header.classList.toggle('collapsed', collapsed);
+                    body.classList.toggle('collapsed', collapsed);
+                    
+                    header.addEventListener('click', () => {
+                        const nowCollapsed = header.classList.toggle('collapsed');
+                        body.classList.toggle('collapsed', nowCollapsed);
+                        this.accordionState[key] = !nowCollapsed;
+                        this.scheduleSaveState();
+                    });
+                });
+            },
+            
+            scheduleSaveState() {
+                if (this.saveStateTimer) {
+                    clearTimeout(this.saveStateTimer);
+                }
+                this.saveStateTimer = setTimeout(() => this.saveState(), 400);
+            },
+            
+            saveState() {
+                try {
+                    const mapView = this.map ? {
+                        center: this.map.getCenter(),
+                        zoom: this.map.getZoom()
+                    } : null;
+                    
+                    // 只保存体量可控的矢量数据，避免localStorage超限
+                    const savableLayers = this.layers
+                        .filter(l => l.type === 'vector' && l.originalData && Array.isArray(l.originalData.features))
+                        .filter(l => l.originalData.features.length <= 5000) // 超过5k要素不保存以免过大
+                        .map(l => ({
+                            id: l.id,
+                            name: l.name,
+                            type: l.type,
+                            visible: l.visible,
+                            features: l.features,
+                            style: l.style,
+                            styleOverrides: l.styleOverrides,
+                            originalData: l.originalData
+                        }));
+                    
+                    const state = {
+                        version: 1,
+                        mapView,
+                        currentMapType: this.currentMapType,
+                        settings: this.settings,
+                        accordionState: this.accordionState,
+                        optionsPanelOpen: this.optionsPanelOpen,
+                        layers: savableLayers
+                    };
+                    
+                    const serialized = JSON.stringify(state);
+                    // 控制 localStorage 体积（约 4MB 上限）
+                    if (serialized.length > 4 * 1024 * 1024) {
+                        console.warn('状态过大，已跳过保存图层数据');
+                        localStorage.setItem('wetlandAppStateV1', JSON.stringify({
+                            ...state,
+                            layers: []
+                        }));
+                        return;
+                    }
+                    
+                    localStorage.setItem('wetlandAppStateV1', serialized);
+                } catch (err) {
+                    console.warn('保存状态失败', err);
+                }
+            },
+            
+            async restoreStateFromStorage() {
+                try {
+                    const raw = localStorage.getItem('wetlandAppStateV1');
+                    if (!raw) return;
+                    const state = JSON.parse(raw);
+                    if (!state || state.version !== 1) return;
+                    
+                    // 恢复设置
+                    if (state.settings) {
+                        this.settings = { ...this.settings, ...state.settings };
+                        // 同步输入框
+                        const clusterInput = document.getElementById('clusterThreshold');
+                        const simplifyInput = document.getElementById('simplifyTolerance');
+                        if (clusterInput && state.settings.clusterThreshold) {
+                            clusterInput.value = state.settings.clusterThreshold;
+                        }
+                        if (simplifyInput && state.settings.simplifyTolerance) {
+                            simplifyInput.value = state.settings.simplifyTolerance;
+                        }
+                    }
+                    
+                    // 恢复折叠状态
+                    if (state.accordionState) {
+                        this.accordionState = { ...this.accordionState, ...state.accordionState };
+                        this.initOptionsAccordion();
+                    }
+                    
+                    // 恢复工具面板开关
+                    if (typeof state.optionsPanelOpen === 'boolean') {
+                        this.optionsPanelOpen = state.optionsPanelOpen;
+                        this.toggleOptionsPanel(state.optionsPanelOpen);
+                    }
+                    
+                    // 恢复地图视图
+                    if (state.mapView && this.map) {
+                        const { center, zoom } = state.mapView;
+                        if (center && typeof center.lat === 'number' && typeof center.lng === 'number' && typeof zoom === 'number') {
+                            this.map.setView([center.lat, center.lng], zoom);
+                        }
+                    }
+                    
+                    // 恢复图层（仅保存的小体量矢量层）
+                    if (Array.isArray(state.layers) && state.layers.length) {
+                        state.layers.forEach(layerState => {
+                            if (!layerState.originalData) return;
+                            this.addGeoJSONLayer(layerState.originalData, layerState.name, {
+                                skipFitBounds: true,
+                                fromRestore: true,
+                                visible: layerState.visible,
+                                style: layerState.style,
+                                styleOverrides: layerState.styleOverrides
+                            });
+                        });
+                        this.showToast('会话恢复', `已恢复 ${state.layers.length} 个矢量图层`, 'info');
+                    }
+                } catch (err) {
+                    console.warn('恢复状态失败', err);
+                }
+            },
+            
+            // 切换侧边栏
+            toggleSidebar() {
+                const sidebar = document.getElementById('sidebar');
+                const icon = document.getElementById('toggleIcon');
+                
+                sidebar.classList.toggle('collapsed');
+                
+                if (sidebar.classList.contains('collapsed')) {
+                    icon.classList.remove('fa-chevron-left');
+                    icon.classList.add('fa-chevron-right');
+                } else {
+                    icon.classList.remove('fa-chevron-right');
+                    icon.classList.add('fa-chevron-left');
+                }
+            },
+            
+            // 切换顶部伸缩工具栏
+            toggleOptionsPanel(forceState = null) {
+                const panel = document.getElementById('optionsPanel');
+                if (!panel) return;
+                
+                if (typeof forceState === 'boolean') {
+                    this.optionsPanelOpen = forceState;
+                } else {
+                    this.optionsPanelOpen = !this.optionsPanelOpen;
+                }
+                
+                panel.classList.toggle('collapsed', !this.optionsPanelOpen);
+                this.scheduleSaveState();
+            },
+            
+            // 更新加载进度
+            updateLoadingProgress(text, progress) {
+                document.getElementById('loadingText').textContent = text;
+                document.getElementById('loadingProgress').textContent = progress;
+            },
+            
+            // 显示加载动画
+            showLoading(show, text = '正在处理数据...', progress = '请稍候') {
+                const loading = document.getElementById('loading');
+                if (show) {
+                    document.getElementById('loadingText').textContent = text;
+                    document.getElementById('loadingProgress').textContent = progress;
+                    loading.classList.add('active');
+                } else {
+                    loading.classList.remove('active');
+                }
+            },
+            
+            // 显示提示
+            showToast(title, message, type = 'info') {
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                toast.innerHTML = `
+                    <div style="font-weight: 600; margin-bottom: 5px;">${title}</div>
+                    <div style="font-size: 13px; white-space: pre-line;">${message}</div>
+                `;
+                
+                document.body.appendChild(toast);
+                
+                setTimeout(() => {
+                    toast.style.animation = 'slideIn 0.3s reverse';
+                    setTimeout(() => toast.remove(), 300);
+                }, 4000);
+            },
+            
+            // 获取随机颜色
+            getRandomColor() {
+                const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c'];
+                return colors[Math.floor(Math.random() * colors.length)];
+            },
+            
+            // 设置事件监听
+            setupEventListeners() {
+                // SHP文件
+                document.getElementById('shpFile').addEventListener('change', (e) => {
+                    if (e.target.files.length > 0) {
+                        this.handleSHP(Array.from(e.target.files));
+                    }
+                });
+                
+                // SHP目录
+                document.getElementById('shpDir').addEventListener('change', (e) => {
+                    if (e.target.files.length > 0) {
+                        this.handleSHP(Array.from(e.target.files));
+                    }
+                });
+                
+                // DEM文件
+                document.getElementById('demFile').addEventListener('change', (e) => {
+                    if (e.target.files[0]) {
+                        this.handleDEM(e.target.files[0]);
+                    }
+                });
+                
+                // GeoJSON文件
+                document.getElementById('jsonFile').addEventListener('change', (e) => {
+                    if (e.target.files[0]) {
+                        this.handleGeoJSON(e.target.files[0]);
+                    }
+                });
+                
+                // 设置监听
+                document.getElementById('clusterThreshold').addEventListener('change', () => {
+                    this.applySettings();
+                });
+                
+                document.getElementById('simplifyTolerance').addEventListener('change', () => {
+                    this.applySettings();
+                });
+                
+                // 点击外部收起工具面板
+                document.addEventListener('click', (e) => {
+                    const panel = document.getElementById('optionsPanel');
+                    if (!panel) return;
+                    const isInside = panel.contains(e.target) || e.target.closest('.options-toggle');
+                    if (!isInside && this.optionsPanelOpen) {
+                        this.toggleOptionsPanel(false);
+                    }
+                });
+                
+                // 窗口调整
+                window.addEventListener('resize', () => {
+                    if (this.currentMapType === 'gis') {
+                        this.map.invalidateSize();
+                    } else {
+                        this.statsChart.resize();
+                    }
+                });
+                
+                // 内存清理
+                window.addEventListener('beforeunload', () => {
+                    if (this.performanceMonitor) {
+                        clearInterval(this.performanceMonitor);
+                    }
+                    // 清理图层和地图资源
+                    this.layers.forEach(layer => {
+                        if (layer.layer && this.map.hasLayer(layer.layer)) {
+                            this.map.removeLayer(layer.layer);
+                        }
+                    });
+                });
+            }
+        };
+        
+        const loadRemoteData = async () => {
+            if (!window.API) return;
+            try {
+                const [obsRes, zonesRes, transectsRes] = await Promise.all([
+                    API.getObservations().catch(() => ({ data: [] })),
+                    API.getZones().catch(() => ({ data: [] })),
+                    API.getTransects().catch(() => ({ data: [] }))
+                ]);
+                const observations = obsRes.data || [];
+                const zones = zonesRes.data || [];
+                const transects = transectsRes.data || [];
+
+                if (app.map && Array.isArray(observations)) {
+                    observations.forEach(item => {
+                        if (item.lat && item.lng) {
+                            const marker = L.marker([item.lat, item.lng]);
+                            marker.bindPopup(`<b>${item.species || '观测'}</b><br/>数量: ${item.count || '-'}<br/>状态: ${item.status || '-'}`);
+                            marker.addTo(app.map);
+                        }
+                    });
+                }
+
+                if (app.map && Array.isArray(zones)) {
+                    zones.forEach(zone => {
+                        if (zone.lat && zone.lng) {
+                            const marker = L.circleMarker([zone.lat, zone.lng], { radius: 6, color: '#2ecc71' });
+                            marker.bindPopup(`<b>${zone.name || '监测点'}</b>`);
+                            marker.addTo(app.map);
+                        }
+                    });
+                }
+
+                if (app.map && Array.isArray(transects)) {
+                    transects.forEach(line => {
+                        if (Array.isArray(line.coordinates)) {
+                            const latlngs = line.coordinates.map(c => [c.lat, c.lng]).filter(p => p[0] && p[1]);
+                            if (latlngs.length > 1) {
+                                L.polyline(latlngs, { color: '#3498db', weight: 3, opacity: 0.7 }).addTo(app.map);
+                            }
+                        }
+                    });
+                }
+            } catch (error) {
+                console.warn('加载远程数据失败', error);
+            }
+        };
+
+        // 启动应用
+        document.addEventListener('DOMContentLoaded', () => {
+            app.init();
+            loadRemoteData();
+        });
+    </script>
+</body>
+</html>

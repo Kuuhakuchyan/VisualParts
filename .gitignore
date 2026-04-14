@@ -1,0 +1,21 @@
+# 依赖
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+
+# 数据库
+*.db
+
+# 临时文件
+*.zip
+*.log
+*.tmp
+
+# 缓存
+.DS_Store
+Thumbs.db
+
+# 其他
+cursor_.md

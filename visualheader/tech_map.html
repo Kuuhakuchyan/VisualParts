@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>空天地一体化智能监测平台</title>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <!-- 使用阿里云GeoJSON数据源 -->
+    <style>
+        body {
+            margin: 0;
+            background-color: #0f1621;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+        #china-map {
+            width: 100%;
+            height: 100vh;
+        }
+        #back-to-china {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 8px 16px;
+            background: #1a2b5a;
+            color: #fff;
+            border: 1px solid #0a2dae;
+            border-radius: 4px;
+            cursor: pointer;
+            display: none;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div id="china-map"></div>
+    <button id="back-to-china">返回全国视图</button>
+    <button id="back-to-main" style="position: fixed; top: 20px; left: 20px; padding: 8px 16px; background: #1a2b5a; color: #fff; border: 1px solid #0a2dae; border-radius: 4px; cursor: pointer; z-index: 100;">返回主平台</button>
+
+    <script>
+        $(function() {
+            const mapChart = echarts.init(document.getElementById('china-map'));
+            
+            // 科技感地图配置
+            const techMapOption = {
+                backgroundColor: '#0f1621',
+                geo: {
+                    map: 'china',
+                    roam: true,
+                    itemStyle: {
+                        areaColor: '#1a2b5a',
+                        borderColor: '#0a2dae',
+                        borderWidth: 2,
+                        shadowColor: 'rgba(0, 0, 0, 0.5)',
+                        shadowBlur: 10
+                    },
+                    emphasis: {
+                        itemStyle: {
+                            areaColor: '#2a91d8',
+                            borderWidth: 3
+                        },
+                        label: {
+                            show: true,
+                            color: '#fff',
+                            fontSize: 14
+                        }
+                    }
+                }
+            };
+
+            // 省份详细视图配置
+            const provinceOption = (provinceName) => ({
+                backgroundColor: '#0f1621',
+                title: {
+                    text: provinceName,
+                    left: 'center',
+                    textStyle: {
+                        color: '#fff'
+                    }
+                },
+                geo: {
+                    map: provinceName,
+                    roam: true,
+                    itemStyle: {
+                        areaColor: '#1a2b5a',
+                        borderColor: '#0a2dae',
+                        borderWidth: 1
+                    }
+                }
+            });
+
+            // 加载地图数据
+            $.get('https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json', function(geoJson) {
+                echarts.registerMap('china', geoJson);
+                mapChart.setOption(techMapOption);
+
+                // 省份点击事件 - 跳转到对应省份页面
+                mapChart.on('click', function(params) {
+                    // 安全地记录点击事件参数
+                    const safeParams = {
+                        name: params.name,
+                        componentType: params.componentType,
+                        geoIndex: params.geoIndex
+                    };
+                    console.log('安全事件参数:', safeParams);
+                    
+                    if (params.componentType === 'geo') {
+                    
+                        const provinceMap = {
+                        '北京市': 'beijing.html',
+                        '北京': 'beijing.html',
+                            '天津': 'tianjin.html',
+                            '河北': 'hebei.html',
+                            '山西': 'shanxi.html',
+                            '内蒙古': 'neimenggu.html',
+                            '辽宁': 'liaoning.html',
+                            '吉林': 'jilin.html',
+                            '黑龙江': 'heilongjiang.html',
+                            '上海': 'shanghai.html',
+                            '江苏': 'jiangsu.html',
+                            '浙江': 'zhejiang.html',
+                            '安徽': 'anhui.html',
+                            '福建': 'fujian.html',
+                            '江西': 'jiangxi.html',
+                            '山东': 'shandong.html',
+                            '河南': 'henan.html',
+                            '湖北': 'hubei.html',
+                            '湖南': 'hunan.html',
+                            '广东': 'guangdong.html',
+                            '广西': 'guangxi.html',
+                            '海南': 'hainan.html',
+                            '重庆': 'chongqing.html',
+                            '四川': 'sichuan.html',
+                            '贵州': 'guizhou.html',
+                            '云南': 'yunnan.html',
+                            '西藏': 'xizang.html',
+                            '陕西': 'shanxi1.html',
+                            '甘肃': 'gansu.html',
+                            '青海': 'qinghai.html',
+                            '宁夏': 'ningxia.html',
+                            '新疆': 'xinjiang.html',
+                            '台湾': 'taiwan.html',
+                            '香港': 'hongkong.html',
+                            '澳门': 'macao.html'
+                        };
+                        // 改进匹配逻辑
+                        const matchedKey = Object.keys(provinceMap).find(key => 
+                            key.includes(params.name) || params.name.includes(key)
+                        );
+                        
+                        if(matchedKey) {
+                            const basePath = window.location.href.replace('tech_map.html', '');
+                            const targetUrl = basePath + provinceMap[matchedKey];
+                            console.log('改进匹配结果:', {
+                                '输入名称': params.name,
+                                '匹配键名': matchedKey,
+                                '目标文件': provinceMap[matchedKey]
+                            });
+                            console.log('跳转验证:', {
+                                'params.name': params.name,
+                                '匹配结果': provinceMap[params.name],
+                                'basePath': basePath,
+                                'targetUrl': targetUrl
+                            });
+                            // 添加延迟确保跳转执行
+                            setTimeout(() => {
+                                console.log('执行跳转:', targetUrl);
+                                try {
+                                    // 验证目标页面是否存在
+                                    fetch(targetUrl, {method: 'HEAD'})
+                                        .then(response => {
+                                            if(response.ok) {
+                                                window.location.href = targetUrl;
+                                            } else {
+                                                console.error('目标页面不存在:', targetUrl);
+                                                alert('抱歉，该省份页面暂不可用');
+                                            }
+                                        })
+                                        .catch(error => {
+                                            console.error('跳转验证失败:', error);
+                                            alert('跳转过程中发生错误');
+                                        });
+                                } catch(e) {
+                                    console.error('跳转异常:', e);
+                                }
+                            }, 100);
+                        } else {
+                            console.error('未找到省份页面:', params.name);
+                        }
+                    }
+                });
+            });
+
+            // 返回全国视图
+            // 返回主平台
+            $('#back-to-main').click(function() {
+                window.location.href = '../visualheader/testB.html'; // 更新为正确路径
+            });
+
+            // 返回全国视图
+            $('#back-to-china').click(function() {
+                mapChart.setOption(techMapOption);
+                $(this).hide();
+            });
+        });
+    </script>
+</body>
+</html>
