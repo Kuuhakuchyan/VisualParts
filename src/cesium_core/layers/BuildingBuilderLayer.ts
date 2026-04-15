@@ -51,8 +51,10 @@ export interface BuildingOptions {
 
 /** 单栋建筑记录 */
 export interface BuildingRecord {
-  /** 唯一 ID */
+  /** 唯一 ID（前端临时 ID，如 building_5） */
   id: string;
+  /** 数据库 UUID（如果已写入数据库） */
+  dbId?: string;
   /** Cesium Entity 实例 */
   entity: Cesium.Entity;
   /** 建筑类型 */
@@ -113,6 +115,19 @@ const DEFAULTS = {
 
 export class BuildingBuilderLayer {
   // =============================================================================
+  // 事件回调
+  // =============================================================================
+
+  /** 建筑建造完成回调 (buildingId, lon, lat, height, type) => void */
+  public onBuildingPlaced: ((
+    id: string,
+    lon: number,
+    lat: number,
+    height: number,
+    type: BuildingType
+  ) => void) | null = null;
+
+  // =============================================================================
   // 私有属性
   // =============================================================================
 
@@ -124,7 +139,6 @@ export class BuildingBuilderLayer {
   private _previewPosition: Cesium.Cartesian3 | null = null;
   private _previewGroundHeight: number = 0;
   private _handler: Cesium.ScreenSpaceEventHandler | null = null;
-  private _moveHandler: Cesium.ScreenSpaceEventHandler | null = null;
   private _mouseMoveHandler: Cesium.ScreenSpaceEventHandler | null = null;
   private _escHandler: ((e: KeyboardEvent) => void) | null = null;
   private _buildingCounter: number = 0;
@@ -305,6 +319,12 @@ export class BuildingBuilderLayer {
       console.info(
         `[BuildingBuilderLayer] 建造完成：${id}（${opts.type}，${opts.shape}，高度${opts.buildingHeight}m）`
       );
+
+      // 触发建造完成回调
+      if (this.onBuildingPlaced) {
+        this.onBuildingPlaced(id, longitude, latitude, opts.buildingHeight!, opts.type!);
+      }
+
       return id;
     } catch (e) {
       console.error("[BuildingBuilderLayer] 建造失败：", e);
@@ -326,6 +346,64 @@ export class BuildingBuilderLayer {
     this._buildings.delete(id);
     console.info(`[BuildingBuilderLayer] 已删除建筑：${id}`);
     return true;
+  }
+
+  /**
+   * 将建筑写入后端数据库（持久化）
+   *
+   * 调用此方法将前端临时建筑写入 AGIDB，
+   * 以便后续通过 ST_DWithin 查询影响范围。
+   *
+   * @param id - 前端建筑 ID（building_5 等）
+   * @param buildingInfo - 建筑详细信息
+   * @returns 数据库 UUID，失败返回 null
+   */
+  public async createBuildingInDb(
+    id: string,
+    buildingInfo: {
+      name?: string;
+      height: number;
+      albedo?: number;
+      baseTemp?: number;
+      lon: number;
+      lat: number;
+    }
+  ): Promise<string | null> {
+    const record = this._buildings.get(id);
+    if (!record) {
+      console.warn(`[BuildingBuilderLayer] 建筑不存在，无法写入数据库：${id}`);
+      return null;
+    }
+
+    try {
+      const res = await fetch("/api/simulation/buildings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: buildingInfo.name ?? `${record.type}_${id}`,
+          height: buildingInfo.height,
+          albedo: buildingInfo.albedo ?? 0.3,
+          baseTemp: buildingInfo.baseTemp ?? 30,
+          lon: buildingInfo.lon,
+          lat: buildingInfo.lat,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.data?.id) {
+        // 记录数据库 UUID
+        record.dbId = data.data.id;
+        this._buildings.set(id, record);
+        console.info(`[BuildingBuilderLayer] 建筑已写入数据库: ${id} → ${data.data.id}`);
+        return data.data.id;
+      } else {
+        console.error(`[BuildingBuilderLayer] 建筑写入数据库失败: ${data.message}`);
+        return null;
+      }
+    } catch (err) {
+      console.error(`[BuildingBuilderLayer] 调用后端 API 失败:`, err);
+      return null;
+    }
   }
 
   /**

@@ -160,19 +160,28 @@ function extractBuildingId(feature: Cesium.Cesium3DTileFeature): string {
  * @param lat 建筑中心纬度
  * @param action 操作类型
  * @param radiusMeters 影响半径（米）
+ * @param buildingInfo 新建建筑的信息（仅 ADD 操作且建筑不在数据库时需要）
  */
 async function callWhatIfApi(
   buildingId: string,
   lon: number,
   lat: number,
   action: string = "REMOVE",
-  radiusMeters: number = 100
+  radiusMeters: number = 100,
+  buildingInfo?: {
+    name?: string;
+    height?: number;
+    albedo?: number;
+    baseTemp?: number;
+    lon?: number;
+    lat?: number;
+  }
 ): Promise<{ success: boolean; data?: any; message?: string }> {
   try {
     const res = await fetch("/api/simulation/what-if", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ targetBuildingId: buildingId, action, radiusMeters }),
+      body: JSON.stringify({ targetBuildingId: buildingId, action, radiusMeters, buildingInfo }),
     });
     return await res.json();
   } catch (err) {
@@ -315,7 +324,18 @@ async function testInteractions(
 
             console.log(`[Test] 调起 AGIDB What-If 推演: buildingId=${buildingId}, 坐标=(${lon.toFixed(4)}, ${lat.toFixed(4)})`);
 
-            const apiResult = await callWhatIfApi(buildingId, lon, lat, "REMOVE", 100);
+            // OSM 建筑不在数据库中，提供默认的建筑信息进行模拟推演
+            // 实际项目中应从 OSM 数据获取真实建筑高度等信息
+            const osmBuildingInfo = {
+              name: `OSM建筑_${buildingId}`,
+              height: 30, // 默认 30 米
+              albedo: 0.3,
+              baseTemp: 30,
+              lon,
+              lat,
+            };
+
+            const apiResult = await callWhatIfApi(buildingId, lon, lat, "REMOVE", 100, osmBuildingInfo);
 
             if (apiResult.success && apiResult.data) {
               const { scenarioId, averageTempDelta, updatedGrids, totalTimeMs } = apiResult.data;
@@ -454,6 +474,62 @@ async function runAllTests() {
     console.log("  - window.__builderLayer.placeBuilding(113.53, 34.82, { type: 'office', height: 80 })");
     console.log("  - window.__builderLayer.removeBuilding('building_1')");
     console.log("  - window.__builderLayer.clearAllBuildings()");
+
+    // 监听建筑建造完成事件，自动触发 what-if 推演
+    builderLayer.onBuildingPlaced = async (id, lon, lat, height, type) => {
+      console.log(`[Test] 建筑建造完成: ${id}，触发 What-If 推演...`);
+
+      try {
+        // 先将建筑写入数据库，获取真实 UUID
+        const dbId = await builderLayer.createBuildingInDb(id, {
+          name: `${type}_${id}`,
+          height,
+          lon,
+          lat,
+        });
+
+        // 调用 what-if API 进行推演（使用建筑类型对应的默认参数）
+        const apiResult = await callWhatIfApi(
+          id, // 使用前端 ID，Service 会用 buildingInfo 构造虚拟建筑
+          lon,
+          lat,
+          "ADD",
+          100,
+          {
+            name: `${type}_${id}`,
+            height,
+            albedo: 0.3,
+            baseTemp: 30,
+            lon,
+            lat,
+          }
+        );
+
+        if (apiResult.success && apiResult.data) {
+          const { scenarioId, averageTempDelta, updatedGrids, totalTimeMs } = apiResult.data;
+          console.log(`[Test] ✅ What-If 推演成功! scenarioId: ${scenarioId}`);
+          console.log(`[Test]    平均温度变化: ${averageTempDelta > 0 ? '+' : ''}${averageTempDelta.toFixed(2)}°C`);
+          console.log(`[Test]    受影响格点数: ${updatedGrids.length}`);
+
+          // 绘制影响半径圈
+          drawInfluenceCircle(viewer, lon, lat, 100);
+
+          // 更新热力场（基于真实推演结果）
+          // ADD 操作使温度升高，热力值增加
+          const tempFactor = Math.abs(averageTempDelta) / 20;
+          const newData = initialData.map((pt) => ({
+            ...pt,
+            value: Math.min(1, Math.max(0, pt.value + tempFactor)),
+          }));
+          heatmapLayer.updateHeatmap(newData);
+          console.log(`[Test] 热力场已更新（新建建筑导致升温 ${Math.abs(averageTempDelta).toFixed(2)}°C）`);
+        } else {
+          console.warn(`[Test] ⚠️ What-If 推演失败: ${apiResult.message}`);
+        }
+      } catch (err) {
+        console.error(`[Test] ❌ 建筑建造后推演出错:`, err);
+      }
+    };
 
     // 保存引用至全局，便于手动调试
     (window as any).__viewer = viewer;
