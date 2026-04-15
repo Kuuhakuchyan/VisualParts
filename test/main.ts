@@ -125,21 +125,94 @@ async function loadHeatmapLayer(viewer: Cesium.Viewer) {
 }
 
 // ============================================================================
-// 阶段五：交互测试 — 模拟拔楼 + 热力场更新
+// 阶段五：交互测试 — 拔楼 + AGIDB What-If 推演
 // ============================================================================
+
+/**
+ * 从 Cesium3DTileFeature 中提取唯一标识
+ * 优先尝试 batchId（OSM 建筑批次 ID），其次用 tile 坐标哈希
+ */
+function extractBuildingId(feature: Cesium.Cesium3DTileFeature): string {
+  // OSM Buildings 建筑有 batchId 属性
+  const batchId = (feature as any).batchId;
+  if (batchId !== undefined && batchId !== null) {
+    return `osm_building_${batchId}`;
+  }
+  // 兜底：基于 feature 所在 tile 坐标生成伪 UUID
+  const content = (feature as any).content;
+  const tile = content?._tile;
+  if (tile) {
+    const x = tile._x ?? 0;
+    const y = tile._y ?? 0;
+    const level = tile._level ?? 0;
+    // 构造符合 UUID v4 格式的伪 ID（供 AGIDB 识别来源）
+    const hash = Math.abs((x * 73856093 ^ y * 19349663 ^ level * 83492791));
+    const pseudo = hash.toString(16).padStart(12, '0');
+    return `osm_${pseudo}-${pseudo.substring(0, 4)}-4${pseudo.substring(0, 3)}-a${pseudo.substring(0, 3)}-${pseudo}${pseudo.substring(0, 12)}`;
+  }
+  return `osm_unknown_${Date.now()}`;
+}
+
+/**
+ * 调用 AGIDB What-If 推演 API
+ * @param buildingId 建筑标识
+ * @param lon 建筑中心经度
+ * @param lat 建筑中心纬度
+ * @param action 操作类型
+ * @param radiusMeters 影响半径（米）
+ */
+async function callWhatIfApi(
+  buildingId: string,
+  lon: number,
+  lat: number,
+  action: string = "REMOVE",
+  radiusMeters: number = 100
+): Promise<{ success: boolean; data?: any; message?: string }> {
+  try {
+    const res = await fetch("/api/simulation/what-if", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ targetBuildingId: buildingId, action, radiusMeters }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error("[Test] What-If API 调用失败:", err);
+    return { success: false, message: String(err) };
+  }
+}
+
+/**
+ * 绘制影响半径圈
+ */
+function drawInfluenceCircle(viewer: Cesium.Viewer, lon: number, lat: number, radiusMeters: number) {
+  // 先清除旧的
+  const old = viewer.entities.getById("influence-radius-circle");
+  if (old) viewer.entities.remove(old);
+
+  viewer.entities.add({
+    id: "influence-radius-circle",
+    position: Cesium.Cartesian3.fromDegrees(lon, lat),
+    ellipse: {
+      semiMajorAxis: radiusMeters,
+      semiMinorAxis: radiusMeters,
+      material: Cesium.Color.CYAN.withAlpha(0.12),
+      outline: true,
+      outlineColor: Cesium.Color.CYAN.withAlpha(0.5),
+      outlineWidth: 1.5,
+      height: 0.5,
+    },
+  });
+  console.log(`[Test] 已绘制影响半径圈: 中心(${lon.toFixed(4)}°, ${lat.toFixed(4)}°), 半径 ${radiusMeters}m`);
+}
 
 async function testInteractions(
   viewer: Cesium.Viewer,
   campusLayer: CampusTilesetLayer,
   heatmapLayer: RegionalHeatmapLayer
 ) {
-  console.log("[Test] 阶段五：交互测试（点击屏幕拾取建筑 / 模拟拔楼 + 热力更新）");
+  console.log("[Test] 阶段五：交互测试（点击屏幕拾取建筑 / 拔楼 + AGIDB What-If 推演）");
 
-  // 安装鼠标左键拾取监听
-  const handler = new Cesium.ScreenSpaceEventHandler(
-    viewer.scene.canvas
-  );
-
+  const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
   let clickCount = 0;
 
   handler.setInputAction(async (movement: Cesium.ScreenSpaceEventHandler.PositionedEvent) => {
@@ -148,14 +221,8 @@ async function testInteractions(
     console.log(`[Test] 第 ${clickCount} 次点击，坐标：`, screenPos);
 
     try {
-      // —— 双保险拾取策略 ——
-      // 策略 1：viewer.scene.pick（直接命中 feature）
-      // 策略 2：tileset.pick 射线检测兜底
       let feature: Cesium.Cesium3DTileFeature | null = null;
 
-      // 工具函数：用 duck typing 判断是否为 Cesium3DTileFeature
-      // 原因：OSMBuildings 等 tileset 的 feature instanceof Cesium.Cesium3DTileFeature
-      // 可能返回 false（原型链不一致），必须用属性特征检测
       function is3DTileFeature(obj: any): obj is Cesium.Cesium3DTileFeature {
         return obj && typeof obj.show === 'boolean' && typeof obj.getProperty === 'function';
       }
@@ -166,9 +233,6 @@ async function testInteractions(
       if (Cesium.defined(picked)) {
         const pickedKeys = Object.keys(picked as object).join(', ');
         console.log(`[Test] 拾取 keys：${pickedKeys}`);
-        const hasShow = 'show' in (picked as object);
-        const hasGetProperty = 'getProperty' in (picked as object);
-        console.log(`[Test] hasShow=${hasShow}, hasGetProperty=${hasGetProperty}`);
         if (is3DTileFeature(picked)) {
           feature = picked;
           console.log(`[Test] 策略1命中 feature`);
@@ -186,7 +250,6 @@ async function testInteractions(
         console.log(`[Test] 进入策略2射线检测`);
         try {
           const pickRay = viewer.scene.camera.getPickRay(screenPos);
-          console.log(`[Test] pickRay=${pickRay}`);
           if (pickRay) {
             const pickResult = (campusLayer.tileset as any).pick(pickRay, viewer.scene);
             console.log(`[Test] 策略2 pickResult=${pickResult}`);
@@ -204,36 +267,86 @@ async function testInteractions(
 
       // 最终判定
       if (feature) {
-        // toggle 逻辑：已隐藏则恢复，未隐藏则隐藏
         const wasHidden = campusLayer.isBuildingHidden(feature);
         let toggled = false;
+
         if (wasHidden) {
           toggled = campusLayer.showBuilding(feature);
           console.log(
-            `[Test] ${toggled ? "✅" : "❌"} 建筑已${toggled ? "恢复可见" : "恢复失败（已恢复或参数有误）"}，当前隐藏数：${campusLayer.hiddenCount}`
+            `[Test] ${toggled ? "✅" : "❌"} 建筑已${toggled ? "恢复可见" : "恢复失败"}，当前隐藏数：${campusLayer.hiddenCount}`
           );
+          // 恢复时清除影响圈
+          if (toggled) {
+            const old = viewer.entities.getById("influence-radius-circle");
+            if (old) viewer.entities.remove(old);
+            // 恢复热力场（用原始数据）
+            heatmapLayer.updateHeatmap(initialData);
+            console.log("[Test] 热力场已恢复至初始状态");
+          }
         } else {
           toggled = campusLayer.hideBuilding(feature);
           console.log(
             `[Test] ${toggled ? "✅" : "⏭"} 建筑已${toggled ? "隐藏（拔楼）" : "被跳过"}，当前隐藏数：${campusLayer.hiddenCount}`
           );
-        }
 
-        // 仅在真正发生状态变化（隐藏操作）时更新热力场
-        if (toggled && !wasHidden) {
-          const newData = initialData.map((pt) => ({
-            ...pt,
-            value: Math.min(1, pt.value * 1.05 + 0.02),
-          }));
-          heatmapLayer.updateHeatmap(newData);
-          console.log("[Test] 热力场已更新（高温扩散模拟）");
+          // 隐藏成功后：调用 AGIDB What-If API
+          if (toggled) {
+            const buildingId = extractBuildingId(feature);
+            // 从 feature 的 cartographic 坐标获取经纬度
+            let lon = ZZU_CAMERA_CONFIG.lng;
+            let lat = ZZU_CAMERA_CONFIG.lat;
+            try {
+              const cartographic = await new Promise<Cesium.Cartographic>((resolve) => {
+                feature!.readyPromise.then(() => {
+                  const pos = (feature as any).content?._boundingSphere?.center;
+                  if (pos) {
+                    const c = Cesium.Cartographic.fromCartesian(pos);
+                    resolve(c);
+                  } else {
+                    resolve(new Cesium.Cartographic(ZZU_CAMERA_CONFIG.lng * Cesium.Math.RadiansPerDegree, ZZU_CAMERA_CONFIG.lat * Cesium.Math.RadiansPerDegree, 0));
+                  }
+                });
+              });
+              lon = Cesium.Math.toDegrees(cartographic.longitude);
+              lat = Cesium.Math.toDegrees(cartographic.latitude);
+            } catch (e) {
+              console.warn("[Test] 无法获取 feature 坐标，使用默认值:", e);
+            }
+
+            console.log(`[Test] 调起 AGIDB What-If 推演: buildingId=${buildingId}, 坐标=(${lon.toFixed(4)}, ${lat.toFixed(4)})`);
+
+            const apiResult = await callWhatIfApi(buildingId, lon, lat, "REMOVE", 100);
+
+            if (apiResult.success && apiResult.data) {
+              const { scenarioId, averageTempDelta, updatedGrids, totalTimeMs } = apiResult.data;
+              console.log(`[Test] ✅ What-If 推演成功! scenarioId: ${scenarioId}`);
+              console.log(`[Test]    平均温度变化: ${averageTempDelta > 0 ? '+' : ''}${averageTempDelta.toFixed(2)}°C`);
+              console.log(`[Test]    受影响格点数: ${updatedGrids.length}`);
+              console.log(`[Test]    推理耗时: ${totalTimeMs}ms`);
+
+              // 绘制影响半径圈
+              drawInfluenceCircle(viewer, lon, lat, 100);
+
+              // 将温度变化映射到热力值变化
+              // averageTempDelta 为正表示降温，负表示升温；映射到 value 变化
+              const tempFactor = averageTempDelta / 20; // ±1.5~3°C 映射到 ±0.075~0.15 热力值
+              const newData = initialData.map((pt) => ({
+                ...pt,
+                value: Math.min(1, Math.max(0, pt.value - tempFactor)),
+              }));
+              heatmapLayer.updateHeatmap(newData);
+              console.log(`[Test] 热力场已更新（基于真实物理推演，温度变化 ${averageTempDelta > 0 ? '+' : ''}${averageTempDelta.toFixed(2)}°C）`);
+            } else {
+              console.warn(`[Test] ⚠️ What-If 推演失败: ${apiResult.message}，热力场不更新`);
+            }
+          }
         }
       } else if (Cesium.defined(picked)) {
         const pickedObj = picked.id ?? picked.primitive;
-        const pickedName = pickedObj?.constructor?.name ?? typeof pickedObj;
         if (pickedObj?.id === "heatmapRect") {
           console.log("[Test] 点击了热力图层自身，忽略");
         } else {
+          const pickedName = pickedObj?.constructor?.name ?? typeof pickedObj;
           console.log(`[Test] 点击了非建筑对象：${pickedName}`);
         }
       } else {
@@ -248,12 +361,14 @@ async function testInteractions(
   handler.setInputAction(() => {
     const count = campusLayer.showAllBuildings();
     console.log(`[Test] 右键点击，已恢复 ${count} 栋建筑的可见性`);
+    const old = viewer.entities.getById("influence-radius-circle");
+    if (old) viewer.entities.remove(old);
+    heatmapLayer.updateHeatmap(initialData);
+    console.log("[Test] 热力场已恢复至初始状态");
   }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
 
-  // 将 handler 保存至全局，便于后续销毁
   (window as any).__testHandler = handler;
-
-  console.log("[Test] ✅ 交互测试就绪：左键拾取建筑拔楼，右键恢复全部");
+  console.log("[Test] ✅ 交互测试就绪：左键拾取建筑拔楼（调用 AGIDB What-If），右键恢复全部");
 }
 
 // ============================================================================

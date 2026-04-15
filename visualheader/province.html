@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title id="pageTitle">省份地图</title>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            background-color: #0f1621;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+        #province-map {
+            width: 100%;
+            height: 70vh;
+        }
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 8px 16px;
+            background: #1a2b5a;
+            color: #fff;
+            border: 1px solid #0a2dae;
+            border-radius: 4px;
+            cursor: pointer;
+            z-index: 100;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .back-button:hover {
+            background: #2a4a8a;
+        }
+        .province-info {
+            padding: 20px;
+            background: rgba(10,30,60,0.8);
+            margin: 20px;
+            border-radius: 8px;
+            max-width: 400px;
+        }
+        .province-info h2 {
+            margin-top: 0;
+            color: #58a6ff;
+        }
+        .province-info p {
+            margin: 8px 0;
+            color: #e6edf3;
+        }
+        .province-info span.label {
+            color: #8b949e;
+            display: inline-block;
+            min-width: 80px;
+        }
+        .province-info span.value {
+            color: #e6edf3;
+        }
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #8b949e;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <a class="back-button" href="tech_map.html">← 返回全国</a>
+    <div id="province-map"></div>
+    <div class="province-info" id="provinceInfo">
+        <h2 id="infoTitle">加载中...</h2>
+        <p><span class="label">省份</span><span class="value" id="infoName">-</span></p>
+        <p><span class="label">行政区划代码</span><span class="value" id="infoAdcode">-</span></p>
+        <p><span class="label">面积</span><span class="value" id="infoArea">-</span> 平方公里</p>
+        <p><span class="label">常住人口</span><span class="value" id="infoPop">-</span> 万人</p>
+        <p><span class="label">GDP</span><span class="value" id="infoGdp">-</span> 亿元</p>
+    </div>
+
+    <div class="loading" id="loading">正在加载地图数据...</div>
+
+    <script>
+        /**
+         * 34 个省份/直辖市/自治区的元数据
+         * 来源：G:/VIsual parts/config.py FrontendConfig.province_pages
+         */
+        const PROVINCE_DATA = {
+            "110000": { name: "北京市",      area: "16410",  pop: "2189",  gdp: "40269" },
+            "120000": { name: "天津市",      area: "11966",  pop: "1387",  gdp: "14084" },
+            "130000": { name: "河北省",      area: "188800", pop: "7592",  gdp: "36207" },
+            "140000": { name: "山西省",      area: "156000", pop: "3718",  gdp: "17652" },
+            "150000": { name: "内蒙古自治区",area: "1183000",pop: "2534",  gdp: "17213" },
+            "210000": { name: "辽宁省",      area: "148000", pop: "4359",  gdp: "25115" },
+            "220000": { name: "吉林省",      area: "187400", pop: "2691",  gdp: "12311" },
+            "230000": { name: "黑龙江省",    area: "473000", pop: "3813",  gdp: "13699" },
+            "310000": { name: "上海市",      area: "6340",   pop: "2428",  gdp: "38701" },
+            "320000": { name: "江苏省",      area: "102600", pop: "8051",  gdp: "102719" },
+            "330000": { name: "浙江省",      area: "101800", pop: "5850",  gdp: "64613" },
+            "340000": { name: "安徽省",      area: "140100", pop: "6324",  gdp: "38681" },
+            "350000": { name: "福建省",      area: "121400", pop: "3973",  gdp: "43904" },
+            "360000": { name: "江西省",      area: "166900", pop: "4648",  gdp: "25692" },
+            "370000": { name: "山东省",      area: "157100", pop: "10153", gdp: "73129" },
+            "410000": { name: "河南省",      area: "167000", pop: "9883",  gdp: "54259" },
+            "420000": { name: "湖北省",      area: "185900", pop: "5927",  gdp: "45828" },
+            "430000": { name: "湖南省",      area: "211800", pop: "6919",  gdp: "39752" },
+            "440000": { name: "广东省",      area: "179800", pop: "11521", gdp: "110761" },
+            "450000": { name: "广西壮族自治区",area:"237600",pop: "4926",  gdp: "22157" },
+            "460000": { name: "海南省",      area: "35400",  pop: "1008",  gdp: "5532"  },
+            "500000": { name: "重庆市",      area: "82400",  pop: "3124",  gdp: "25003" },
+            "510000": { name: "四川省",      area: "486000", pop: "8375",  gdp: "46616" },
+            "520000": { name: "贵州省",      area: "176000", pop: "3856",  gdp: "17827" },
+            "530000": { name: "云南省",      area: "394000", pop: "4830",  gdp: "24522" },
+            "540000": { name: "西藏自治区",  area: "1228000",pop: "366",   gdp: "1903"  },
+            "610000": { name: "陕西省",      area: "205600", pop: "3953",  gdp: "25793" },
+            "620000": { name: "甘肃省",      area: "454000", pop: "2637",  gdp: "9017"  },
+            "630000": { name: "青海省",      area: "722000", pop: "603",   gdp: "3010"  },
+            "640000": { name: "宁夏回族自治区",area:"66400", pop: "688",   gdp: "3921"  },
+            "650000": { name: "新疆维吾尔自治区",area:"1660000",pop:"2523", gdp: "13798" },
+            "710000": { name: "台湾省",      area: "36100",  pop: "2359",  gdp: "41400" },
+            "810000": { name: "香港特别行政区",area:"1106",   pop: "741",   gdp: "24103" },
+            "820000": { name: "澳门特别行政区",area:"33",     pop: "68",    gdp: "1944"  }
+        };
+
+        $(function() {
+            // 从 URL 参数获取省份 adcode，默认广东
+            const urlParams = new URLSearchParams(window.location.search);
+            const adcode = urlParams.get('adcode') || '440000';
+
+            const info = PROVINCE_DATA[adcode];
+
+            if (!info) {
+                $('#loading').text('未找到省份数据（adcode: ' + adcode + '），正在跳转回全国地图...');
+                setTimeout(function() {
+                    window.location.href = 'tech_map.html';
+                }, 2000);
+                return;
+            }
+
+            const mapChart = echarts.init(document.getElementById('province-map'));
+            const geoJsonUrl = 'https://geo.datav.aliyun.com/areas_v3/bound/' + adcode + '_full.json';
+
+            // 更新页面标题
+            document.title = info.name + '科技地图';
+            $('#pageTitle').text(info.name + '科技地图');
+            $('#infoTitle').text(info.name + ' — 区域概览');
+            $('#infoName').text(info.name);
+            $('#infoAdcode').text(adcode);
+            $('#infoArea').text(parseInt(info.area).toLocaleString());
+            $('#infoPop').text(parseInt(info.pop).toLocaleString());
+            $('#infoGdp').text(parseInt(info.gdp).toLocaleString());
+
+            $.get(geoJsonUrl)
+                .done(function(geoJson) {
+                    $('#loading').fadeOut();
+                    echarts.registerMap(adcode, geoJson);
+                    mapChart.setOption({
+                        backgroundColor: '#0f1621',
+                        title: {
+                            text: info.name,
+                            left: 'center',
+                            top: 20,
+                            textStyle: {
+                                color: '#fff',
+                                fontSize: 22,
+                                fontWeight: 'normal'
+                            }
+                        },
+                        geo: {
+                            map: adcode,
+                            roam: true,
+                            zoom: 1.2,
+                            itemStyle: {
+                                areaColor: '#1a2b5a',
+                                borderColor: '#0a2dae',
+                                borderWidth: 1.5
+                            },
+                            emphasis: {
+                                itemStyle: {
+                                    areaColor: '#2a91d8',
+                                    borderWidth: 2
+                                },
+                                label: {
+                                    show: true,
+                                    color: '#fff',
+                                    fontSize: 12
+                                }
+                            },
+                            label: {
+                                show: false
+                            }
+                        }
+                    });
+                })
+                .fail(function() {
+                    $('#loading').text('地图数据加载失败，请检查网络或稍后重试。');
+                });
+        });
+    </script>
+</body>
+</html>

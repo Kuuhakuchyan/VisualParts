@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>空天地一体化智能监测平台</title>
+    <title>科技感中国地图</title>
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <!-- 使用阿里云GeoJSON数据源 -->
@@ -105,87 +105,29 @@
                     console.log('安全事件参数:', safeParams);
                     
                     if (params.componentType === 'geo') {
-                    
-                        const provinceMap = {
-                        '北京市': 'beijing.html',
-                        '北京': 'beijing.html',
-                            '天津': 'tianjin.html',
-                            '河北': 'hebei.html',
-                            '山西': 'shanxi.html',
-                            '内蒙古': 'neimenggu.html',
-                            '辽宁': 'liaoning.html',
-                            '吉林': 'jilin.html',
-                            '黑龙江': 'heilongjiang.html',
-                            '上海': 'shanghai.html',
-                            '江苏': 'jiangsu.html',
-                            '浙江': 'zhejiang.html',
-                            '安徽': 'anhui.html',
-                            '福建': 'fujian.html',
-                            '江西': 'jiangxi.html',
-                            '山东': 'shandong.html',
-                            '河南': 'henan.html',
-                            '湖北': 'hubei.html',
-                            '湖南': 'hunan.html',
-                            '广东': 'guangdong.html',
-                            '广西': 'guangxi.html',
-                            '海南': 'hainan.html',
-                            '重庆': 'chongqing.html',
-                            '四川': 'sichuan.html',
-                            '贵州': 'guizhou.html',
-                            '云南': 'yunnan.html',
-                            '西藏': 'xizang.html',
-                            '陕西': 'shanxi1.html',
-                            '甘肃': 'gansu.html',
-                            '青海': 'qinghai.html',
-                            '宁夏': 'ningxia.html',
-                            '新疆': 'xinjiang.html',
-                            '台湾': 'taiwan.html',
-                            '香港': 'hongkong.html',
-                            '澳门': 'macao.html'
+                        const basePath = window.location.href.replace('tech_map.html', '');
+                        // 省份名称到 adcode 的映射
+                        const adcodeMap = {
+                            '北京': '110000', '天津': '120000', '河北': '130000', '山西': '140000',
+                            '内蒙古': '150000', '辽宁': '210000', '吉林': '220000', '黑龙江': '230000',
+                            '上海': '310000', '江苏': '320000', '浙江': '330000', '安徽': '340000',
+                            '福建': '350000', '江西': '360000', '山东': '370000', '河南': '410000',
+                            '湖北': '420000', '湖南': '430000', '广东': '440000', '广西': '450000',
+                            '海南': '460000', '重庆': '500000', '四川': '510000', '贵州': '520000',
+                            '云南': '530000', '西藏': '540000', '陕西': '610000', '甘肃': '620000',
+                            '青海': '630000', '宁夏': '640000', '新疆': '650000', '台湾': '710000',
+                            '香港': '810000', '澳门': '820000'
                         };
-                        // 改进匹配逻辑
-                        const matchedKey = Object.keys(provinceMap).find(key => 
-                            key.includes(params.name) || params.name.includes(key)
-                        );
-                        
-                        if(matchedKey) {
-                            const basePath = window.location.href.replace('tech_map.html', '');
-                            const targetUrl = basePath + provinceMap[matchedKey];
-                            console.log('改进匹配结果:', {
-                                '输入名称': params.name,
-                                '匹配键名': matchedKey,
-                                '目标文件': provinceMap[matchedKey]
-                            });
-                            console.log('跳转验证:', {
-                                'params.name': params.name,
-                                '匹配结果': provinceMap[params.name],
-                                'basePath': basePath,
-                                'targetUrl': targetUrl
-                            });
-                            // 添加延迟确保跳转执行
-                            setTimeout(() => {
-                                console.log('执行跳转:', targetUrl);
-                                try {
-                                    // 验证目标页面是否存在
-                                    fetch(targetUrl, {method: 'HEAD'})
-                                        .then(response => {
-                                            if(response.ok) {
-                                                window.location.href = targetUrl;
-                                            } else {
-                                                console.error('目标页面不存在:', targetUrl);
-                                                alert('抱歉，该省份页面暂不可用');
-                                            }
-                                        })
-                                        .catch(error => {
-                                            console.error('跳转验证失败:', error);
-                                            alert('跳转过程中发生错误');
-                                        });
-                                } catch(e) {
-                                    console.error('跳转异常:', e);
-                                }
-                            }, 100);
+                        // 模糊匹配：支持全称和简称
+                        const adcode = adcodeMap[params.name] ||
+                            Object.entries(adcodeMap).find(([k]) => k.includes(params.name) || params.name.includes(k))?.[1];
+
+                        if (adcode) {
+                            const targetUrl = basePath + 'province.html?adcode=' + adcode;
+                            console.log('跳转: ' + params.name + ' → ' + targetUrl);
+                            setTimeout(() => { window.location.href = targetUrl; }, 100);
                         } else {
-                            console.error('未找到省份页面:', params.name);
+                            console.warn('未匹配到 adcode: ' + params.name);
                         }
                     }
                 });

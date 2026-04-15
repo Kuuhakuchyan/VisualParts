@@ -1,18 +1,13 @@
 {
-  "name": "visual-parts",
+  "name": "@city-microclimate/visual-parts",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "城市微环境决策支持系统 — Cesium 3D 可视化前端",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "preview": "vite preview"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
     "cesium": "^1.140.0",
     "cors": "^2.8.5",
