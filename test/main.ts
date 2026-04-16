@@ -175,13 +175,14 @@ async function callWhatIfApi(
     baseTemp?: number;
     lon?: number;
     lat?: number;
-  }
+  },
+  sourceScenarioId?: string
 ): Promise<{ success: boolean; data?: any; message?: string }> {
   try {
     const res = await fetch("/api/simulation/what-if", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ targetBuildingId: buildingId, action, radiusMeters, buildingInfo }),
+      body: JSON.stringify({ targetBuildingId: buildingId, action, radiusMeters, buildingInfo, sourceScenarioId }),
     });
     return await res.json();
   } catch (err) {
@@ -507,6 +508,8 @@ async function runAllTests() {
 
         if (apiResult.success && apiResult.data) {
           const { scenarioId, averageTempDelta, updatedGrids, totalTimeMs } = apiResult.data;
+          // 保存 scenarioId 到 BuildingRecord，REMOVE 时需要传入
+          builderLayer.setScenarioId(id, scenarioId);
           console.log(`[Test] ✅ What-If 推演成功! scenarioId: ${scenarioId}`);
           console.log(`[Test]    平均温度变化: ${averageTempDelta > 0 ? '+' : ''}${averageTempDelta.toFixed(2)}°C`);
           console.log(`[Test]    受影响格点数: ${updatedGrids.length}`);
@@ -529,6 +532,51 @@ async function runAllTests() {
       } catch (err) {
         console.error(`[Test] ❌ 建筑建造后推演出错:`, err);
       }
+    };
+
+    // 点击沙盘建筑 → 触发 REMOVE 推演（还原热力场）
+    builderLayer.onBuildingClicked = async (record) => {
+      const scenarioId = record.scenarioId;
+      if (!scenarioId) {
+        console.warn(`[Test] 建筑 ${record.id} 没有关联的 scenarioId，跳过 REMOVE 推演`);
+        return; // 执行默认删除
+      }
+
+      console.log(`[Test] 点击沙盘建筑 ${record.id}，触发 REMOVE 推演（sourceScenarioId=${scenarioId}）...`);
+
+      try {
+        // 调用 REMOVE API，传入 sourceScenarioId 以还原热力场
+        const removeResult = await callWhatIfApi(
+          record.dbId ?? record.id,
+          record.longitude,
+          record.latitude,
+          "REMOVE",
+          100,
+          {
+            name: record.entity.name ?? `${record.type}_${record.id}`,
+            height: record.buildingHeight,
+            albedo: 0.3,
+            baseTemp: 30,
+            lon: record.longitude,
+            lat: record.latitude,
+          },
+          scenarioId // 传入 sourceScenarioId
+        );
+
+        if (removeResult.success) {
+          console.log(`[Test] ✅ REMOVE 推演成功，热力场已还原`);
+          // 清除影响圈
+          const oldCircle = viewer.entities.getById("influence-radius-circle");
+          if (oldCircle) viewer.entities.remove(oldCircle);
+          // 将热力场还原到初始状态（ADD 的效果被撤销）
+          heatmapLayer.updateHeatmap(initialData);
+        } else {
+          console.warn(`[Test] ⚠️ REMOVE 推演失败: ${removeResult.message}`);
+        }
+      } catch (err) {
+        console.error(`[Test] ❌ REMOVE 推演出错:`, err);
+      }
+      // 不返回 false，让默认删除逻辑移除建筑实体
     };
 
     // 保存引用至全局，便于手动调试

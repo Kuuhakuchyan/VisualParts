@@ -55,6 +55,8 @@ export interface BuildingRecord {
   id: string;
   /** 数据库 UUID（如果已写入数据库） */
   dbId?: string;
+  /** What-If 推演 scenario ID（ADD 时保存，REMOVE 时用于还原热力场） */
+  scenarioId?: string;
   /** Cesium Entity 实例 */
   entity: Cesium.Entity;
   /** 建筑类型 */
@@ -127,6 +129,12 @@ export class BuildingBuilderLayer {
     type: BuildingType
   ) => void) | null = null;
 
+  /**
+   * 建筑被点击回调（用于 REMOVE 推演）
+   * 返回值：若回调返回 false，则不执行默认的 removeBuilding 删除逻辑
+   */
+  public onBuildingClicked: ((record: BuildingRecord) => boolean | void | undefined) | null = null;
+
   // =============================================================================
   // 私有属性
   // =============================================================================
@@ -141,6 +149,7 @@ export class BuildingBuilderLayer {
   private _handler: Cesium.ScreenSpaceEventHandler | null = null;
   private _mouseMoveHandler: Cesium.ScreenSpaceEventHandler | null = null;
   private _escHandler: ((e: KeyboardEvent) => void) | null = null;
+  private _clickHandler: Cesium.ScreenSpaceEventHandler | null = null;
   private _buildingCounter: number = 0;
   private _activeBuilderLayer: Cesium.Entity | null = null;
 
@@ -158,6 +167,7 @@ export class BuildingBuilderLayer {
     this._viewer = viewer;
     this._activeBuilderLayer = new Cesium.Entity({ id: "__builderLayer__" });
     this._viewer.entities.add(this._activeBuilderLayer);
+    this._initClickHandler();
   }
 
   // =============================================================================
@@ -344,8 +354,32 @@ export class BuildingBuilderLayer {
 
     this._viewer.entities.remove(record.entity);
     this._buildings.delete(id);
+    this._originalColors.delete(id); // 清理颜色缓存
     console.info(`[BuildingBuilderLayer] 已删除建筑：${id}`);
     return true;
+  }
+
+  /**
+   * 为指定建筑设置 What-If 推演的 scenario ID
+   *
+   * @param id - 建筑 ID
+   * @param scenarioId - ADD 推演的 scenario ID
+   */
+  public setScenarioId(id: string, scenarioId: string): void {
+    const record = this._buildings.get(id);
+    if (!record) {
+      console.warn(`[BuildingBuilderLayer] 建筑不存在，无法设置 scenarioId：${id}`);
+      return;
+    }
+    record.scenarioId = scenarioId;
+    this._buildings.set(id, record);
+  }
+
+  /**
+   * 获取指定建筑的 scenario ID
+   */
+  public getScenarioId(id: string): string | undefined {
+    return this._buildings.get(id)?.scenarioId;
   }
 
   /**
@@ -461,6 +495,7 @@ export class BuildingBuilderLayer {
    */
   public async destroy(): Promise<void> {
     this._cancelPlacement();
+    this._destroyClickHandler();
     this.clearAllBuildings();
 
     if (this._activeBuilderLayer) {
@@ -469,6 +504,7 @@ export class BuildingBuilderLayer {
     }
 
     this._materialCache.clear();
+    this._originalColors.clear();
     console.info("[BuildingBuilderLayer] 图层已销毁");
   }
 
@@ -502,6 +538,171 @@ export class BuildingBuilderLayer {
     if (this._escHandler) {
       document.removeEventListener("keydown", this._escHandler);
       this._escHandler = null;
+    }
+  }
+
+  // =============================================================================
+  // 点击交互（悬停高亮 + 点击删除）
+  // =============================================================================
+
+  /** 已悬停的建筑 ID（用于恢复原始外观） */
+  private _hoveredBuildingId: string | null = null;
+  /** 悬停前的原始颜色（id → 原始颜色） */
+  private _originalColors: Map<string, { color: Cesium.Color; alpha: number }> = new Map();
+
+  /** 初始化点击处理器（非放置模式时生效） */
+  private _initClickHandler(): void {
+    // 使用独立的 ScreenSpaceEventHandler，不干扰放置模式的点击逻辑
+    this._clickHandler = new Cesium.ScreenSpaceEventHandler(
+      this._viewer.scene.canvas
+    );
+
+    // 鼠标移动 → 悬停高亮
+    this._clickHandler.setInputAction(
+      this._onHover.bind(this),
+      Cesium.ScreenSpaceEventType.MOUSE_MOVE
+    );
+
+    // 左键点击 → 选中/删除建筑
+    this._clickHandler.setInputAction(
+      this._onLeftClickForBuildings.bind(this),
+      Cesium.ScreenSpaceEventType.LEFT_CLICK
+    );
+  }
+
+  /** 销毁点击处理器 */
+  private _destroyClickHandler(): void {
+    if (this._clickHandler) {
+      this._clickHandler.destroy();
+      this._clickHandler = null;
+    }
+    // 恢复悬停高亮
+    if (this._hoveredBuildingId) {
+      this._restoreMaterial(this._hoveredBuildingId);
+      this._hoveredBuildingId = null;
+    }
+  }
+
+  /** 鼠标移动 → 悬停高亮建筑 */
+  private _onHover(movement: any): void {
+    // 放置模式不处理悬停
+    if (this._placementMode) {
+      if (this._hoveredBuildingId) {
+        this._restoreMaterial(this._hoveredBuildingId);
+        this._hoveredBuildingId = null;
+      }
+      return;
+    }
+
+    const picked = this._viewer.scene.pick(movement.endPosition);
+
+    // 判断是否命中沙盘建筑
+    let hoveredId: string | null = null;
+    if (Cesium.defined(picked)) {
+      const entity = (picked as any).id;
+      if (entity && this._buildings.has(entity.id)) {
+        hoveredId = entity.id;
+      }
+    }
+
+    if (hoveredId === this._hoveredBuildingId) return;
+
+    // 恢复旧悬停建筑
+    if (this._hoveredBuildingId) {
+      this._restoreMaterial(this._hoveredBuildingId);
+    }
+
+    if (hoveredId) {
+      this._applyHighlight(hoveredId);
+      this._viewer.scene.canvas.style.cursor = "pointer";
+    } else {
+      this._viewer.scene.canvas.style.cursor = "default";
+    }
+
+    this._hoveredBuildingId = hoveredId;
+  }
+
+  /** 左键点击 → 触发 onBuildingClicked 回调 */
+  private _onLeftClickForBuildings(
+    movement: Cesium.ScreenSpaceEventHandler.PositionedEvent
+  ): void {
+    // 放置模式不响应（放置模式的点击在 _handler 中处理）
+    if (this._placementMode) return;
+
+    const picked = this._viewer.scene.pick(movement.position);
+    if (!Cesium.defined(picked)) return;
+
+    const entity = (picked as any).id;
+    if (!entity || !this._buildings.has(entity.id)) return;
+
+    const record = this._buildings.get(entity.id)!;
+
+    // 恢复悬停状态
+    if (this._hoveredBuildingId === record.id) {
+      this._restoreMaterial(record.id);
+      this._hoveredBuildingId = null;
+    }
+
+    // 触发回调
+    if (this.onBuildingClicked) {
+      const preventDefault = this.onBuildingClicked(record);
+      if (preventDefault === false) {
+        // 回调返回 false，不执行默认删除
+        return;
+      }
+    }
+
+    // 默认行为：删除建筑
+    this.removeBuilding(record.id);
+  }
+
+  /** 对建筑应用悬停高亮（白色轮廓 + 轻微提亮） */
+  private _applyHighlight(buildingId: string): void {
+    const record = this._buildings.get(buildingId);
+    if (!record) return;
+
+    // 保存原始颜色（仅保存一次）
+    if (!this._originalColors.has(buildingId)) {
+      const type = record.type;
+      const baseColor = BUILDING_COLORS[type] ?? FALLBACK_COLOR;
+      const alpha = BUILDING_ALPHA[type] ?? 0.85;
+      this._originalColors.set(buildingId, { color: baseColor, alpha });
+    }
+
+    const orig = this._originalColors.get(buildingId)!;
+    const highlightColor = orig.color.scale(1.3, 1.3, 1.3)!;
+
+    if (record.entity.box) {
+      (record.entity.box.material as any) = new Cesium.ColorMaterialProperty(
+        highlightColor.withAlpha(orig.alpha)
+      );
+      (record.entity.box.outlineColor as any) = Cesium.Color.WHITE;
+    } else if (record.entity.cylinder) {
+      (record.entity.cylinder.material as any) = new Cesium.ColorMaterialProperty(
+        highlightColor.withAlpha(orig.alpha)
+      );
+      (record.entity.cylinder.outlineColor as any) = Cesium.Color.WHITE;
+    }
+  }
+
+  /** 恢复建筑原始颜色 */
+  private _restoreMaterial(buildingId: string): void {
+    const record = this._buildings.get(buildingId);
+    if (!record) return;
+
+    const orig = this._originalColors.get(buildingId);
+    if (!orig) return;
+
+    if (record.entity.box) {
+      (record.entity.box.material as any) = new Cesium.ColorMaterialProperty(
+        orig.color.withAlpha(orig.alpha)
+      );
+      (record.entity.box.outlineColor as any) = Cesium.Color.fromCssColorString("#888888").withAlpha(0.5);
+    } else if (record.entity.cylinder) {
+      (record.entity.cylinder.material as any) = new Cesium.ColorMaterialProperty(
+        orig.color.withAlpha(orig.alpha)
+      );
+      (record.entity.cylinder.outlineColor as any) = Cesium.Color.fromCssColorString("#888888").withAlpha(0.5);
     }
   }
 
