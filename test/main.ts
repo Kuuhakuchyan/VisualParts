@@ -384,6 +384,7 @@ async function testInteractions(
     console.log(`[Test] 右键点击，已恢复 ${count} 栋建筑的可见性`);
     const old = viewer.entities.getById("influence-radius-circle");
     if (old) viewer.entities.remove(old);
+    // 重置热力场至初始状态
     heatmapLayer.updateHeatmap(initialData);
     console.log("[Test] 热力场已恢复至初始状态");
   }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);

@@ -471,6 +471,15 @@
         var count = campus.showAllBuildings();
         updateStatus("dotCampus", "statusCampus", "建筑底座",
           "已恢复 " + count + " 栋建筑", true);
+        // 重置热力场至初始状态
+        var data = window.__initialData;
+        if (data && heatmap) heatmap.updateHeatmap(data);
+        // 清除影响圈
+        var viewer = window.__viewer;
+        if (viewer) {
+          var old = viewer.entities.getById("influence-radius-circle");
+          if (old) viewer.entities.remove(old);
+        }
       };
 
       document.getElementById("btnHeatReset").onclick = function () {
@@ -532,7 +541,29 @@
       document.getElementById("btnClearBuildings").onclick = function () {
         var builder = window.__builderLayer;
         if (!builder) return;
+
+        // 遍历所有已建建筑，依次触发 REMOVE 推演（模拟逐个拔楼的推理效果）
+        var records = builder.buildings;
+        records.forEach(function (record) {
+          if (builder.onBuildingClicked) {
+            builder.onBuildingClicked(record); // 触发回调（不阻止默认删除）
+          }
+        });
+
+        // 执行实体删除
         var count = builder.clearAllBuildings();
+
+        // 重置热力场至初始状态（清空相当于全部移除推理）
+        var data = window.__initialData;
+        if (data && window.__heatmapLayer) window.__heatmapLayer.updateHeatmap(data);
+
+        // 清除影响圈
+        var viewer = window.__viewer;
+        if (viewer) {
+          var old = viewer.entities.getById("influence-radius-circle");
+          if (old) viewer.entities.remove(old);
+        }
+
         var statusText = document.getElementById("statusBuilder");
         if (statusText) statusText.textContent = "已清空（" + count + "栋）";
       };

@@ -281,10 +281,8 @@ class ViewerManager {
         // 如需真实地形起伏，可后续通过 viewer.terrainProvider 动态设置
         terrainProvider: new Cesium.EllipsoidTerrainProvider(),
 
-        // 影像配置：直接以 OSM 街道图为底图，初始化即同步生效
-        imageryProvider: new Cesium.OpenStreetMapImageryProvider({
-          url: "https://tile.openstreetmap.org/",
-        }),
+        // 影像配置：先设为 false，Viewer 创建后再异步添加 OSM 底图
+        // 避免阻塞主线程，让场景尽快呈现
 
         // 渲染优化
         requestRenderMode: false, // 动态场景保持实时渲染
@@ -297,6 +295,11 @@ class ViewerManager {
       // —— 隐藏指定控件（精细化控制） ——
       // 遍历 hiddenWidgets 数组，将对应控件从 DOM 中移除
       this._applyHiddenWidgets(hiddenWidgets);
+
+      // —— 异步加载 OSM 底图（不阻塞后续初始化流程）——
+      if (autoAddImagery) {
+        this._loadImageryAsync();
+      }
 
       // —— 配置抗锯齿（FXAA） ——
       if (enableFXAA) {
