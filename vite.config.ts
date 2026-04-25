@@ -17,8 +17,20 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      "/api": {
+      "/api/simulation": {
         target: "http://localhost:3000",
+        changeOrigin: true,
+      },
+      "/api/weather": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
+      },
+      "/api/detect": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+      },
+      "/result": {
+        target: "http://localhost:5000",
         changeOrigin: true,
       },
     },
