@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>微境智护 — 城市微气候决策支持系统</title>
   <link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.120/Build/Cesium/Widgets/widgets.css" />
-  <link rel="stylesheet" href="./frontend/dashboard/dashboard.css" />
+  <link rel="stylesheet" href="./dashboard/dashboard.css" />
 </head>
 <body>
 
@@ -39,7 +39,7 @@
     </div>
 
     <div class="header-right">
-      <div class="status-badge ok" id="backend-status">
+      <div class="status-badge ok">
         <span class="dot"></span>
         后端连接正常
       </div>
@@ -248,11 +248,11 @@
 </div>
 
 <!-- 主模块入口 -->
-<script type="module" src="./frontend/dashboard/dashboard.js"></script>
+<script type="module" src="./dashboard/dashboard.js"></script>
 
 <!-- 启动脚本 -->
 <script type="module">
-  import { MicroClimateDashboard } from "./frontend/dashboard/dashboard.js";
+  import { MicroClimateDashboard } from "./dashboard/dashboard.js";
 
   const dashboard = new MicroClimateDashboard();
   dashboard.init();
