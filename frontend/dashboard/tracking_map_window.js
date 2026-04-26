@@ -13,7 +13,7 @@ const AMAP_SUBDOMAINS = ["1", "2", "3", "4"];
 
 function _getTileUrl(z, x, y) {
   const s = AMAP_SUBDOMAINS[(x + y) % AMAP_SUBDOMAINS.length];
-  return `https://webst0${s}.is.autonavi.com/appmaptile?style=8&x=${x}&y=${y}&z=${z}`;
+  return `https://webst0${s}.is.autonavi.com/appmaptile?style=6&x=${x}&y=${y}&z=${z}`;
 }
 
 // style=8: 矢量电子地图
@@ -214,6 +214,7 @@ class MapCanvas {
     // 拖拽状态
     this._dragging = false;
     this._dragStart = null;
+    this._centerMoved = false; // 是否实际移动了中心（用于 mouseup/mouseleave 判断是否需要重新请求瓦片）
 
     // 画布双缓冲：背景层（持久化瓦片） + 前景层（标注/实体）
     this._offscreen = document.createElement("canvas");
@@ -239,16 +240,24 @@ class MapCanvas {
       const { lon, lat } = pixelToLonLat(cx - dx, cy - dy, this.zoom);
       this.centerLon = lon;
       this.centerLat = lat;
+      this._centerMoved = true;
       this._blit();
     });
     this.canvas.addEventListener("mouseup", () => {
+      if (!this._dragging) return;
       this._dragging = false;
-      this.render();
+      // Only re-render tiles if center actually moved (threshold: 2px)
+      if (this._centerMoved) {
+        this.render();
+        this._centerMoved = false;
+      }
     });
     this.canvas.addEventListener("mouseleave", () => {
-      if (this._dragging) {
-        this._dragging = false;
+      if (!this._dragging) return;
+      this._dragging = false;
+      if (this._centerMoved) {
         this.render();
+        this._centerMoved = false;
       }
     });
 
@@ -668,6 +677,8 @@ export class TrackingMapWindow {
   _render() {
     if (!this._map) return;
     this._map.render();
+    // Entities must be drawn AFTER _blit() (which clears+draws the main canvas),
+    // so they remain visible on top of the tile layer
     this._map.drawEntities(this._entities, this._selectedId);
   }
 

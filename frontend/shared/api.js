@@ -54,8 +54,33 @@ export async function apiListScenarios() {
 }
 
 export async function apiExportReport() {
-  const res = await fetch(`${API_BASE}/api/simulation/export`);
-  return res.json();
+  try {
+    const res = await fetch(`${API_BASE}/api/simulation/export`);
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      let msg = `HTTP ${res.status}`;
+      if (res.status === 0 || text.includes("<!DOCTYPE") || text.includes("<html")) {
+        msg = "后端服务未启动（端口 3000）";
+      }
+      console.error("[API] /api/simulation/export failed:", msg, text.slice(0, 200));
+      return { success: false, message: msg };
+    }
+    const contentType = res.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      const text = await res.text().catch(() => "");
+      if (text.startsWith("{") || text.startsWith("[")) {
+        return JSON.parse(text);
+      }
+      console.error("[API] /api/simulation/export unexpected content-type:", contentType, text.slice(0, 200));
+      return { success: false, message: `非 JSON 响应 (${contentType})` };
+    }
+    return await res.json();
+  } catch (e) {
+    const isNetworkError = e.name === "TypeError" && e.message.includes("fetch");
+    const msg = isNetworkError ? "后端服务未启动（端口 3000）" : e.message;
+    console.error("[API] /api/simulation/export exception:", e);
+    return { success: false, message: msg };
+  }
 }
 
 export async function apiGetTracking() {

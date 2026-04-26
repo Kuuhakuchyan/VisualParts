@@ -13,6 +13,7 @@ from typing import Optional
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 try:
@@ -541,7 +542,7 @@ async def list_scenarios():
     return {"success": True, "data": records, "total": len(records)}
 
 
-@app.get("/api/simulation/export", tags=["simulation"])
+@app.get("/api/simulation/export", response_class=JSONResponse, tags=["simulation"])
 async def export_report():
     """导出推演报告（Markdown 格式）"""
     import json as _json

@@ -95,6 +95,7 @@ export class MicroClimateDashboard {
         opacity: 0.55,
         coverBuildings: false,
         heightOffset: 0,
+        showLabels: true,
       });
 
       this._builderLayer = new BuildingBuilderLayer(viewer);
@@ -435,10 +436,10 @@ export class MicroClimateDashboard {
             URL.revokeObjectURL(url);
             this._showToast("报告已导出");
           } else {
-            this._showToast("导出失败");
+            this._showToast(`导出失败：${res.message || "未知错误"}`);
           }
-        } catch {
-          this._showToast("导出请求失败");
+        } catch (e) {
+          this._showToast(`导出请求失败：${e.message}`);
         } finally {
           btnExport.disabled = false;
         }

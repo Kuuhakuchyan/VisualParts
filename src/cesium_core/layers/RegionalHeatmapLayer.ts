@@ -121,6 +121,16 @@ export interface HeatmapLayerOptions {
    * @default true
    */
   coverBuildings?: boolean;
+
+  /**
+   * 是否显示热力数值标注
+   *
+   * - `true`：在每个热力点位置叠加 Cesium.Label，展示归一化热力值（0.0~1.0）
+   * - `false`：不显示数值标注
+   *
+   * @default false
+   */
+  showLabels?: boolean;
 }
 
 // =============================================================================
@@ -423,6 +433,7 @@ export class RegionalHeatmapLayer {
     this._opacity = options.opacity ?? 0.7;
     this._heightOffset = options.heightOffset ?? 0;
     this._coverBuildings = options.coverBuildings ?? true;
+    this._showLabels = options.showLabels ?? false;
 
     // —— 边界校验 ——
     if (!this._validateBounds(bounds)) {
@@ -813,8 +824,10 @@ export class RegionalHeatmapLayer {
         `classificationType: ${classType === Cesium.ClassificationType.BOTH ? 'BOTH（地表+建筑立面）' : 'TERRAIN（仅地表）'}`
     );
 
-    // 创建数值标注
-    this._createLabels();
+    // 创建数值标注（仅当 _showLabels 为 true 时才创建并显示）
+    if (this._showLabels) {
+      this._createLabels();
+    }
   }
 
   // =============================================================================
