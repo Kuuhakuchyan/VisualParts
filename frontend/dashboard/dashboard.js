@@ -12,7 +12,7 @@ import { ImageryLayerManager } from "../../src/cesium_core/layers/ImageryLayerMa
 import { TrackingLayer } from "./tracking_layer.js";
 import { TrackingPanel } from "./tracking_panel.js";
 import { TrackingMapWindow } from "./tracking_map_window.js";
-import { apiGetWeather, apiWhatIf, apiCreateBuilding, apiGetStats, apiExportReport, apiGetTracking } from "../shared/api.js";
+import { apiGetWeather, apiWhatIf, apiCreateBuilding, apiGetStats, apiExportReport, apiGetTracking, apiListScenarios } from "../shared/api.js";
 import { WeatherPanels } from "./weather_panels.js";
 import { HealthPanel } from "./health_panel.js";
 import { ReasoningPanel } from "./reasoning_panel.js";
@@ -129,6 +129,7 @@ export class MicroClimateDashboard {
 
     const legend = document.getElementById("heatmap-legend");
     if (legend) legend.style.display = "block";
+    this._refreshScenarioList();
 
     const modal = document.getElementById("building-detail-modal");
     const overlay = document.getElementById("modal-overlay");
@@ -147,13 +148,22 @@ export class MicroClimateDashboard {
   async _fetchWeatherData() {
     try {
       const res = await apiGetWeather();
-      if (res.success) {
+      console.debug("[Dashboard] _fetchWeatherData res:", res);
+      if (res && res.success && res.data) {
         this._weatherPanels?.update(res.data);
         this._healthPanel?.update(res.data);
         this._updateHeaderStats(res.data);
+      } else {
+        console.warn("[Dashboard] 气象数据获取失败，尝试兜底数据", res);
+        this._healthPanel?.update({
+          aqi: 62, heatHealthRisk: 70, visibility: 12, uvIndex: 6, aod: 0.35, precipitation: 0,
+        });
       }
     } catch (e) {
       console.warn("[Dashboard] 气象数据获取失败:", e);
+      this._healthPanel?.update({
+        aqi: 62, heatHealthRisk: 70, visibility: 12, uvIndex: 6, aod: 0.35, precipitation: 0,
+      });
     }
     await this._updateStats();
   }
@@ -231,6 +241,7 @@ export class MicroClimateDashboard {
         this._updateHeatmapForDelta(averageTempDelta);
         this._showInfluenceCircle(lon, lat);
         this._reasoningPanel.setResult(averageTempDelta, confidence, reasoningSteps ?? []);
+        this._refreshScenarioList();
 
         this._showToast(`ADD 推演完成：${averageTempDelta >= 0 ? "+" : ""}${averageTempDelta.toFixed(2)}°C`);
       } else {
@@ -279,6 +290,7 @@ export class MicroClimateDashboard {
         this._heatmapLayer.updateHeatmap(this._initialHeatData);
         this._hideInfluenceCircle();
         this._reasoningPanel.setResult(averageTempDelta, confidence, reasoningSteps ?? []);
+        this._refreshScenarioList();
 
         this._showToast(`REMOVE 推演完成：${averageTempDelta >= 0 ? "+" : ""}${averageTempDelta.toFixed(2)}°C`);
       } else {
@@ -289,6 +301,42 @@ export class MicroClimateDashboard {
       console.error("[Dashboard] What-If REMOVE 失败:", e);
       this._reasoningPanel.clear();
     }
+  }
+
+  _refreshScenarioList() {
+    const container = document.getElementById("scenario-list");
+    if (!container) return;
+
+    apiListScenarios().then(res => {
+      if (!res || !res.success) {
+        container.innerHTML = '<div style="font-size:12px;color:#5a8aaa;text-align:center;padding:12px 0;">暂无已保存的场景</div>';
+        return;
+      }
+      const scenarios = res.data || [];
+      if (scenarios.length === 0) {
+        container.innerHTML = '<div style="font-size:12px;color:#5a8aaa;text-align:center;padding:12px 0;">暂无已保存的场景</div>';
+        return;
+      }
+      container.innerHTML = scenarios.map(s => {
+        const actionColor = s.action === "ADD" ? "#ff6b6b" : "#4ecdc4";
+        const actionText = s.action === "ADD" ? "+建筑" : "-建筑";
+        const delta = s.tempDelta ?? 0;
+        const sign = delta >= 0 ? "+" : "";
+        const time = s.createdAt ? new Date(s.createdAt).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }) : "--";
+        return `<div style="padding:6px 4px;border-bottom:1px solid rgba(0,180,255,0.06);font-size:11px;line-height:1.5;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+            <span style="background:${actionColor};color:#fff;border-radius:3px;padding:1px 5px;font-size:10px;">${actionText}</span>
+            <span style="color:#a8c8e0;font-size:11px;">${s.buildingInfo?.name ?? "建筑-" + (s.targetBuildingId || "").slice(0, 6)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;color:#5a8aaa;">
+            <span>${sign}${delta.toFixed(4)}°C</span>
+            <span>${time}</span>
+          </div>
+        </div>`;
+      }).join("");
+    }).catch(() => {
+      container.innerHTML = '<div style="font-size:12px;color:#5a8aaa;text-align:center;padding:12px 0;">暂无已保存的场景</div>';
+    });
   }
 
   // =======================================================================
@@ -393,6 +441,7 @@ export class MicroClimateDashboard {
         this._heatmapLayer?.updateHeatmap(this._initialHeatData);
         this._hideInfluenceCircle();
         this._reasoningPanel?.clear();
+        this._refreshScenarioList();
         this._showToast("场景已重置");
         btnAdd.classList.remove("active");
         btnRemove.classList.remove("active");

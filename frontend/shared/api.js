@@ -11,8 +11,20 @@ export async function apiHealth() {
 }
 
 export async function apiGetWeather() {
-  const res = await fetch(`${API_BASE}/api/weather/current`);
-  return res.json();
+  try {
+    const res = await fetch(`${API_BASE}/api/weather/current`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const ct = res.headers.get("content-type") || "";
+    if (!ct.includes("application/json")) {
+      const text = await res.text().catch(() => "");
+      if (text.startsWith("{")) return JSON.parse(text);
+      throw new Error(`unexpected content-type: ${ct}`);
+    }
+    return await res.json();
+  } catch (e) {
+    console.warn("[API] apiGetWeather failed:", e);
+    return { success: false, data: null };
+  }
 }
 
 export async function apiCreateBuilding(info) {
@@ -49,8 +61,23 @@ export async function apiGetStats() {
 }
 
 export async function apiListScenarios() {
-  const res = await fetch(`${API_BASE}/api/simulation/scenarios`);
-  return res.json();
+  try {
+    const res = await fetch(`${API_BASE}/api/simulation/scenarios`);
+    if (!res.ok) {
+      console.error("[API] /api/simulation/scenarios failed:", res.status);
+      return { success: false, data: [], total: 0 };
+    }
+    const ct = res.headers.get("content-type") || "";
+    if (!ct.includes("application/json")) {
+      const text = await res.text().catch(() => "");
+      if (text.startsWith("{")) return JSON.parse(text);
+      return { success: false, data: [], total: 0 };
+    }
+    return await res.json();
+  } catch (e) {
+    console.error("[API] /api/simulation/scenarios exception:", e);
+    return { success: false, data: [], total: 0 };
+  }
 }
 
 export async function apiExportReport() {

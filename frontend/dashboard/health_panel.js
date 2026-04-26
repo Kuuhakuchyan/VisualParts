@@ -38,14 +38,25 @@ export class HealthPanel {
         invert: item.invert ?? false,
       });
     }
+    console.debug(`[HealthPanel] _init done, registered ${this._items.size}/${items.length} items`);
   }
 
   update(data) {
-    if (!data) return;
+    if (!data) {
+      console.warn("[HealthPanel] update called with null/undefined data");
+      return;
+    }
 
     const healthSet = (id, rawValue) => {
       const item = this._items.get(id);
-      if (!item) return;
+      if (!item) {
+        console.warn(`[HealthPanel] item not found: ${id}`);
+        return;
+      }
+      if (!item.valueEl || !item.barFill) {
+        console.warn(`[HealthPanel] DOM elements not found for ${id}: valueEl=`, item.valueEl, "barFill=", item.barFill);
+        return;
+      }
 
       const max = item.max;
       const val = Math.max(0, Math.min(max, rawValue));
