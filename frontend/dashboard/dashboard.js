@@ -9,7 +9,10 @@ import { CampusTilesetLayer } from "../../src/cesium_core/layers/CampusTilesetLa
 import { RegionalHeatmapLayer } from "../../src/cesium_core/layers/RegionalHeatmapLayer.js";
 import { BuildingBuilderLayer } from "../../src/cesium_core/layers/BuildingBuilderLayer.js";
 import { ImageryLayerManager } from "../../src/cesium_core/layers/ImageryLayerManager.js";
-import { apiGetWeather, apiWhatIf, apiCreateBuilding } from "../shared/api.js";
+import { TrackingLayer } from "./tracking_layer.js";
+import { TrackingPanel } from "./tracking_panel.js";
+import { TrackingMapWindow } from "./tracking_map_window.js";
+import { apiGetWeather, apiWhatIf, apiCreateBuilding, apiGetStats, apiExportReport, apiGetTracking } from "../shared/api.js";
 import { WeatherPanels } from "./weather_panels.js";
 import { HealthPanel } from "./health_panel.js";
 import { ReasoningPanel } from "./reasoning_panel.js";
@@ -21,15 +24,20 @@ export class MicroClimateDashboard {
     this._heatmapLayer   = null;
     this._builderLayer   = null;
     this._imageryManager = null;
+    this._trackingLayer  = null;
     this._weatherPanels  = null;
     this._healthPanel    = null;
     this._reasoningPanel = null;
+    this._trackingPanel  = null;
+    this._trackingMapWindow = null;
     this._timeseries     = null;
     this._pollTimer      = null;
+    this._trackingTimer  = null;
     this._lastScenarioId = null;
 
     this._initialHeatData = this._getInitialHeatData();
     this._influenceCircleId = "influence-circle";
+    this._selectedBuildingRecord = null;
 
     this._bound = {
       west: 113.524, east: 113.542,
@@ -92,6 +100,9 @@ export class MicroClimateDashboard {
       this._builderLayer = new BuildingBuilderLayer(viewer);
       this._bindBuilderEvents();
 
+      this._trackingLayer = new TrackingLayer(viewer);
+      this._trackingLayer.init();
+
       console.info("[Dashboard] Cesium 场景初始化完成");
     } catch (e) {
       console.error("[Dashboard] Cesium 初始化失败:", e);
@@ -104,10 +115,28 @@ export class MicroClimateDashboard {
   // =======================================================================
 
   _initUIComponents() {
+    console.info("[Dashboard] _initUIComponents called");
     this._weatherPanels   = new WeatherPanels();
     this._healthPanel     = new HealthPanel();
     this._reasoningPanel  = new ReasoningPanel();
     this._timeseries     = new EChartsTimeseries();
+    this._trackingPanel  = new TrackingPanel();
+    this._trackingMapWindow = new TrackingMapWindow();
+    this._trackingMapWindow.init();
+    this._bindTrackingButton();
+    this._startTrackingPolling();
+
+    const legend = document.getElementById("heatmap-legend");
+    if (legend) legend.style.display = "block";
+
+    const modal = document.getElementById("building-detail-modal");
+    const overlay = document.getElementById("modal-overlay");
+    if (modal && overlay) {
+      modal.querySelector("#modal-close")?.addEventListener("click", () => this._closeDetailModal());
+      overlay.addEventListener("click", () => this._closeDetailModal());
+      modal.querySelector("#modal-undo")?.addEventListener("click", () => this._undoFromModal());
+      modal.querySelector("#modal-delete")?.addEventListener("click", () => this._deleteFromModal());
+    }
   }
 
   // =======================================================================
@@ -125,12 +154,41 @@ export class MicroClimateDashboard {
     } catch (e) {
       console.warn("[Dashboard] 气象数据获取失败:", e);
     }
+    await this._updateStats();
+  }
+
+  async _updateStats() {
+    try {
+      const res = await apiGetStats();
+      if (res.success) {
+        const buildingsEl = document.getElementById("stat-buildings");
+        const scenariosEl = document.getElementById("stat-scenarios");
+        if (buildingsEl) buildingsEl.textContent = res.data.buildingsCount ?? 0;
+        if (scenariosEl) scenariosEl.textContent = res.data.scenariosCount ?? 0;
+      }
+    } catch (e) {
+      console.warn("[Dashboard] 统计更新失败:", e);
+    }
   }
 
   _startWeatherPolling() {
     this._pollTimer = setInterval(() => {
       this._fetchWeatherData();
     }, 60000);
+  }
+
+  _startTrackingPolling() {
+    this._trackingTimer = setInterval(async () => {
+      try {
+        const res = await apiGetTracking();
+        if (res.success) {
+          this._trackingLayer?.updatePositions(res.entities);
+          this._trackingPanel?.update(res.entities);
+        }
+      } catch (e) {
+        console.warn("[Dashboard] 追踪数据获取失败:", e);
+      }
+    }, 3000);
   }
 
   // =======================================================================
@@ -152,6 +210,7 @@ export class MicroClimateDashboard {
         albedo: 0.3,
         baseTemp: 30,
         lon, lat,
+        building_type: type,
       });
 
       const apiResult = await apiWhatIf({
@@ -284,10 +343,9 @@ export class MicroClimateDashboard {
     };
 
     this._builderLayer.onBuildingClicked = async (record) => {
-      if (record.scenarioId) {
-        await this._whatIfRemove(record);
-      }
-      // 返回 undefined，让默认删除逻辑执行
+      this._selectedBuildingRecord = record;
+      this._openDetailModal(record);
+      return false;
     };
   }
 
@@ -307,7 +365,11 @@ export class MicroClimateDashboard {
     if (btnAdd) {
       btnAdd.addEventListener("click", () => {
         if (this._builderLayer) {
-          this._builderLayer.startPlacement({ type: "commercial", shape: "box", height: 60 });
+          const typeSelect = document.getElementById("ctrl-type");
+          const selectedType = typeSelect ? typeSelect.value : "commercial";
+          const typeHeightMap = { residential: 30, commercial: 60, office: 80, industrial: 40, public: 50 };
+          const height = typeHeightMap[selectedType] ?? 60;
+          this._builderLayer.startPlacement({ type: selectedType, shape: "box", height });
           btnAdd.classList.add("active");
           btnRemove.classList.remove("active");
         }
@@ -355,6 +417,56 @@ export class MicroClimateDashboard {
         const v = e.target.value;
         radiusVal.textContent = `${v}m`;
       });
+    }
+
+    const btnExport = document.getElementById("ctrl-export");
+    if (btnExport) {
+      btnExport.addEventListener("click", async () => {
+        try {
+          btnExport.disabled = true;
+          const res = await apiExportReport();
+          if (res.success) {
+            const blob = new Blob([res.data.content], { type: "text/markdown" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = res.data.filename;
+            a.click();
+            URL.revokeObjectURL(url);
+            this._showToast("报告已导出");
+          } else {
+            this._showToast("导出失败");
+          }
+        } catch {
+          this._showToast("导出请求失败");
+        } finally {
+          btnExport.disabled = false;
+        }
+      });
+    }
+  }
+
+  _bindTrackingButton() {
+    const btn = document.getElementById("ctrl-tracking");
+    if (btn) {
+      console.info("[Dashboard] tracking button found, binding click");
+      btn.addEventListener("click", () => {
+        console.info("[Dashboard] tracking button clicked");
+        const win = document.getElementById("tracking-map-window");
+        console.info("[Dashboard] window element:", win, "classes:", win?.className);
+        if (win) {
+          win.classList.toggle("hidden");
+          console.info("[Dashboard] after toggle:", win.className);
+        } else {
+          console.warn("[Dashboard] #tracking-map-window not found in DOM!");
+          // 备用：手动触发一次 init
+          if (this._trackingMapWindow) {
+            this._trackingMapWindow.init();
+          }
+        }
+      });
+    } else {
+      console.warn("[Dashboard] #ctrl-tracking button not found!");
     }
   }
 
@@ -417,6 +529,47 @@ export class MicroClimateDashboard {
     window.dispatchEvent(new CustomEvent("__cesiumReady__"));
   }
 
+  _openDetailModal(record) {
+    const modal = document.getElementById("building-detail-modal");
+    const overlay = document.getElementById("modal-overlay");
+    if (!modal || !overlay) return;
+
+    const nameEl = document.getElementById("modal-name");
+    const heightEl = document.getElementById("modal-height");
+    const typeEl = document.getElementById("modal-type");
+    const timeEl = document.getElementById("modal-time");
+    const scenarioEl = document.getElementById("modal-scenario");
+
+    if (nameEl) nameEl.textContent = record.entity?.name ?? record.type ?? "--";
+    if (heightEl) heightEl.textContent = record.buildingHeight ? `${record.buildingHeight}m` : "--";
+    if (typeEl) typeEl.textContent = record.type ?? "--";
+    if (timeEl) timeEl.textContent = record.createdAt ? new Date(record.createdAt).toLocaleString("zh-CN") : "--";
+    if (scenarioEl) scenarioEl.textContent = record.scenarioId ?? "--";
+
+    modal.style.display = "block";
+    overlay.style.display = "block";
+  }
+
+  _closeDetailModal() {
+    const modal = document.getElementById("building-detail-modal");
+    const overlay = document.getElementById("modal-overlay");
+    if (modal) modal.style.display = "none";
+    if (overlay) overlay.style.display = "none";
+    this._selectedBuildingRecord = null;
+  }
+
+  async _undoFromModal() {
+    if (!this._selectedBuildingRecord) return;
+    await this._whatIfRemove(this._selectedBuildingRecord);
+    this._closeDetailModal();
+  }
+
+  async _deleteFromModal() {
+    if (!this._selectedBuildingRecord) return;
+    await this._whatIfRemove(this._selectedBuildingRecord);
+    this._closeDetailModal();
+  }
+
   _showToast(msg) {
     let container = document.querySelector(".toast-container");
     if (!container) {
@@ -437,9 +590,15 @@ export class MicroClimateDashboard {
 
   async destroy() {
     if (this._pollTimer) clearInterval(this._pollTimer);
+    if (this._trackingTimer) clearInterval(this._trackingTimer);
+    this._trackingLayer?.destroy();
+    this._trackingPanel?.destroy();
     this._timeseries?.destroy();
     this._weatherPanels?.destroy();
     this._healthPanel?.destroy();
+    this._trackingLayer?.destroy();
+    this._trackingPanel?.destroy();
+    this._trackingMapWindow?.destroy();
     await this._builderLayer?.destroy();
     await this._heatmapLayer?.destroy();
     await this._campusLayer?.destroy();

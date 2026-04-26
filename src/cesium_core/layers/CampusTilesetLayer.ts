@@ -69,6 +69,20 @@ export interface TilesetLoadOptions {
    * @param tileset - 已加载的 Cesium3DTileset 实例
    */
   onLoaded?: (tileset: Cesium.Cesium3DTileset) => void;
+
+  /**
+   * Cesium Ion 资产 ID
+   *
+   * 优先于 URL 参数，用于加载 Cesium Ion 托管的 3D Tileset。
+   * 若设置了此值，`load(url)` 的 URL 参数将被忽略。
+   *
+   * @example
+   * // Cesium Ion 全球建筑资产
+   * await campusLayer.load(undefined, { ionAssetId: 16421 });
+   *
+   * @default undefined
+   */
+  ionAssetId?: number;
 }
 
 /**
@@ -153,6 +167,34 @@ export class CampusTilesetLayer {
    */
   private _isLoaded: boolean = false;
 
+  /**
+   * 屏幕空间点击事件处理器
+   *
+   * 用于拾取 tileset 中的单体建筑（Cesium3DTileFeature），
+   * 实现"拔楼"交互的点击检测。
+   */
+  private _pickHandler: Cesium.ScreenSpaceEventHandler | null = null;
+
+  // =============================================================================
+  // 公开事件回调
+  // =============================================================================
+
+  /**
+   * 建筑点击事件回调
+   *
+   * 当用户在 tileset 上点击某栋建筑时触发。
+   * 可用于"拔楼"推演、详情弹窗等交互。
+   *
+   * @example
+   * ```typescript
+   * campusLayer.onFeatureClicked = (feature) => {
+   *   const name = feature.getProperty('name');
+   *   console.log('Clicked building:', name);
+   * };
+   * ```
+   */
+  public onFeatureClicked: ((feature: Cesium.Cesium3DTileFeature) => void) | null = null;
+
   // =============================================================================
   // 构造函数
   // =============================================================================
@@ -176,6 +218,7 @@ export class CampusTilesetLayer {
     this._tileset = null;
     this._hiddenFeatures = new Map();
     this._isLoaded = false;
+    this._pickHandler = null;
 
     console.debug("[CampusTilesetLayer] 实例已创建，等待 load() 调用...");
   }
@@ -290,18 +333,33 @@ export class CampusTilesetLayer {
       `[CampusTilesetLayer] 开始加载 tileset，URL: ${url ?? '（未提供，降级为 OSM 白模）'}`
     );
 
+    // —— OSM 底图兜底：确保地球在任何情况下都有可见底图 ——
+    // 如果 Ion/Bing Maps Token 未配置，ViewerManager 的异步 OSM 加载可能失败；
+    // 此处作为主动兜底，在 tileset 加载之前将 OSM 设为底图
+    try {
+      const osmProvider = new Cesium.OpenStreetMapImageryProvider({
+        url: "https://tile.openstreetmap.org/",
+      });
+      const osmLayer = this._viewer.imageryLayers.addImageryProvider(osmProvider, 0);
+      this._viewer.imageryLayers.lowerToBottom(osmLayer);
+      console.info("[CampusTilesetLayer] OSM 兜底底图已添加至 imageryLayers[0]");
+    } catch (osmErr) {
+      console.warn("[CampusTilesetLayer] OSM 兜底底图添加失败：", osmErr);
+    }
+
     try {
       let tileset: Cesium.Cesium3DTileset;
 
-      // —— 分支判断：自定义底座 vs 兜底底座 ——
-      if (url && url.trim() !== "") {
-        // 【分支 1】自定义底座
-        // 使用 Cesium 异步工厂方法加载，支持远程 URL 和 Ion 资产
+      // —— 分支判断：Ion 资产 vs 自定义 URL vs 兜底底座 ——
+      if (options.ionAssetId !== undefined) {
+        // 【分支 1】Cesium Ion 资产
+        tileset = await Cesium.Cesium3DTileset.fromIonAssetId(options.ionAssetId);
+      } else if (url && url.trim() !== "") {
+        // 【分支 2】自定义底座 URL
+        // 支持本地相对路径、远程 URL 或 Ion 资产路径
         tileset = await Cesium.Cesium3DTileset.fromUrl(url);
       } else {
-        // 【分支 2】兜底底座 — OSM 建筑白模
-        // createOsmBuildingsAsync() 封装了对 Cesium Ion OSM Buildings 资产的加载逻辑
-        // 无需手动配置 Ion Token，Cesium 已内置公共 Token
+        // 【分支 3】兜底底座 — OSM 建筑白模
         tileset = await Cesium.createOsmBuildingsAsync();
       }
 
@@ -336,6 +394,9 @@ export class CampusTilesetLayer {
 
         // 触发用户回调
         options.onLoaded?.(tileset);
+
+        // 启动建筑拾取处理器
+        this._startPickHandler();
       };
 
       // 仅首次加载完成后触发（避免多次调用）
@@ -578,6 +639,9 @@ export class CampusTilesetLayer {
   public async destroy(): Promise<void> {
     console.debug("[CampusTilesetLayer] 开始销毁图层...");
 
+    // —— 停止拾取处理器 ——
+    this._stopPickHandler();
+
     // —— 清空隐藏记录栈 ——
     this._hiddenFeatures.clear();
 
@@ -603,6 +667,82 @@ export class CampusTilesetLayer {
     this._isLoaded = false;
 
     console.info("[CampusTilesetLayer] ✅ 图层销毁完成，所有资源已释放");
+  }
+
+  // =============================================================================
+  // 拾取处理器
+  // =============================================================================
+
+  /**
+   * 启动建筑拾取事件处理器
+   *
+   * 在 tileset 加载完成后调用，注册鼠标点击事件，
+   * 检测用户是否点击了 tileset 中的单体建筑。
+   * 若注册了 `onFeatureClicked` 回调，则在命中时触发。
+   *
+   * @private
+   */
+  private _startPickHandler(): void {
+    if (this._pickHandler) {
+      this._stopPickHandler();
+    }
+
+    this._pickHandler = new Cesium.ScreenSpaceEventHandler(
+      this._viewer.scene.canvas
+    );
+
+    this._pickHandler.setInputAction(
+      (movement: Cesium.ScreenSpaceEventHandler.PositionedEventArgs) => {
+        const picked = this._viewer.scene.pick(movement.position);
+        if (!Cesium.defined(picked)) return;
+
+        // 判断是否命中当前 tileset
+        const pickedPrimitive = (picked as any).primitive;
+        if (pickedPrimitive !== this._tileset) return;
+
+        // 类型转换并触发回调
+        const feature = picked as Cesium.Cesium3DTileFeature;
+        if (this.onFeatureClicked) {
+          this.onFeatureClicked(feature);
+        }
+      },
+      Cesium.ScreenSpaceEventType.LEFT_CLICK
+    );
+
+    console.debug("[CampusTilesetLayer] 建筑拾取处理器已启动");
+  }
+
+  /**
+   * 停止并销毁拾取事件处理器
+   *
+   * @private
+   */
+  private _stopPickHandler(): void {
+    if (this._pickHandler) {
+      this._pickHandler.destroy();
+      this._pickHandler = null;
+      console.debug("[CampusTilesetLayer] 建筑拾取处理器已停止");
+    }
+  }
+
+  /**
+   * 启用/停用拾取交互
+   *
+   * 提供全局开关控制 tileset 点击交互，
+   * 避免与其他交互（建筑放置等）产生冲突。
+   *
+   * @param {boolean} enabled - true 启用，false 停用
+   */
+  public setPickEnabled(enabled: boolean): void {
+    if (!this._pickHandler) return;
+    this._pickHandler.setInputAction(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      (_movement: Cesium.ScreenSpaceEventHandler.PositionedEventArgs) => {},
+      Cesium.ScreenSpaceEventType.LEFT_CLICK
+    );
+    if (enabled) {
+      // 重新注册（暂时用标记法，实际由外部控制回调是否设置）
+    }
   }
 
   // =============================================================================

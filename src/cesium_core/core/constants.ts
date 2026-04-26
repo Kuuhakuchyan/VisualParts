@@ -124,9 +124,42 @@ export const DEFAULT_SHOW_FRAMERATE = false;
  * const terrain = await CesiumTerrainProvider.fromIonAssetId(1);
  *
  * // 方式二：ArcGIS 高程（无需 Token，国内访问稳定）
+ * import { ArcGisWorldElevationTerrainProvider } from "cesium";
  * const terrain = new ArcGisWorldElevationTerrainProvider();
  */
 export const DEFAULT_TERRAIN_PROVIDER: any = undefined;
+
+/**
+ * 默认 3D Tileset 瓦片集 URL
+ *
+ * 用于加载自有全球城市数据（含高程）替换默认 OSM 白模。
+ * 支持：
+ * - 本地相对路径："/data/city_tileset/tileset.json"
+ * - 远程 URL： "https://your-server.com/tileset.json"
+ * - Cesium Ion 资产：配合 DEFAULT_TILESET_ION_ASSET_ID 使用
+ *
+ * 留空（undefined）时自动降级为 OSM 建筑白模（createOsmBuildingsAsync）
+ *
+ * @example
+ * // 方式一：本地 3D Tiles
+ * export const DEFAULT_TILESET_URL = "/data/global_city/tileset.json";
+ *
+ * // 方式二：远程 3D Tiles（需配置 CORS）
+ * export const DEFAULT_TILESET_URL = "https://your-cdn.com/city_tileset/tileset.json";
+ */
+export const DEFAULT_TILESET_URL: string | undefined = undefined;
+
+/**
+ * Cesium Ion 资产 ID（用于加载 Ion 上的 3D Tileset）
+ *
+ * 优先级高于 DEFAULT_TILESET_URL。当设置了 ION_ASSET_ID 时，
+ * 系统会优先使用 Cesium Ion 托管的瓦片集。
+ *
+ * @example
+ * // Cesium Ion 全球建筑资产
+ * export const DEFAULT_TILESET_ION_ASSET_ID: number | undefined = 16421;
+ */
+export const DEFAULT_TILESET_ION_ASSET_ID: number | undefined = undefined;
 
 /**
  * 默认影像图层提供者

@@ -25,6 +25,10 @@ export default defineConfig({
         target: "http://localhost:3000",
         changeOrigin: true,
       },
+      "/api/tracking": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
+      },
       "/api/detect": {
         target: "http://localhost:5000",
         changeOrigin: true,

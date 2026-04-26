@@ -186,26 +186,64 @@ html, body {
   50% { opacity: 0.5; }
 }
 
+/* ── 仪表盘 ───────────────────────────────────────────────────────────── */
+.gauge-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 4px 4px;
+  min-height: 135px;
+  border-radius: 6px;
+  background: rgba(0, 30, 60, 0.3);
+  border: 1px solid rgba(0, 180, 255, 0.06);
+  transition: border-color 0.2s, background 0.2s;
+}
+.gauge-wrap:hover {
+  background: rgba(0, 30, 60, 0.5);
+  border-color: rgba(0, 180, 255, 0.15);
+}
+.gauge-wrap.span-2 {
+  grid-column: span 2;
+  min-height: 160px;
+}
+
+/* 仪表网格 — 2列，适度间距 */
+.gauge-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 8px;
+}
+
+.gauge-grid .gauge-wrap.span-2 { grid-column: span 2; }
+
+/* 仪表分组标题 */
+.gauge-section-title {
+  grid-column: 1 / -1;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(0, 180, 255, 0.5);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 4px 8px 2px;
+  border-bottom: 1px solid rgba(0, 180, 255, 0.08);
+  margin-bottom: 2px;
+}
+
 /* ── LEFT PANEL ─────────────────────────────────────────────────────────── */
 #left-panel {
   grid-area: left;
   border-right: 1px solid var(--color-border);
   overflow-y: auto;
   overflow-x: hidden;
+  position: relative;
+  z-index: 10;
 }
 
 #left-panel::-webkit-scrollbar { width: 4px; }
 #left-panel::-webkit-scrollbar-track { background: transparent; }
 #left-panel::-webkit-scrollbar-thumb { background: rgba(0, 180, 255, 0.2); border-radius: 2px; }
-
-.gauge-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  padding: 8px;
-}
-
-.gauge-grid .gauge-wrap.span-2 { grid-column: span 2; }
 
 /* ── CENTER ─────────────────────────────────────────────────────────────── */
 #center {
@@ -336,6 +374,8 @@ html, body {
   border-left: 1px solid var(--color-border);
   overflow-y: auto;
   overflow-x: hidden;
+  position: relative;
+  z-index: 10;
 }
 
 #right-panel::-webkit-scrollbar { width: 4px; }
@@ -580,4 +620,291 @@ html, body {
   color: var(--color-text-dim);
   margin-top: 2px;
   letter-spacing: 0.5px;
+}
+
+/* ── 目标追踪面板 ───────────────────────────────────────────────────────── */
+.tracking-card {
+  background: rgba(0, 180, 255, 0.06);
+  border: 1px solid rgba(0, 180, 255, 0.15);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  transition: border-color 0.2s;
+}
+
+.tracking-card:hover {
+  border-color: rgba(0, 180, 255, 0.35);
+}
+
+.tracking-card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.tracking-type-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.tracking-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-bright);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tracking-status {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.tracking-status .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.tracking-status.ok .dot { background: var(--color-success); box-shadow: 0 0 4px var(--color-success); }
+.tracking-status.ok { color: var(--color-success); }
+.tracking-status.warn .dot { background: var(--color-warning); }
+.tracking-status.warn { color: var(--color-warning); }
+.tracking-status.offline .dot { background: var(--color-text-dim); }
+.tracking-status.offline { color: var(--color-text-dim); }
+
+.tracking-card-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.track-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.track-stat-label {
+  font-size: 10px;
+  color: var(--color-text-dim);
+  letter-spacing: 0.3px;
+}
+
+.track-stat-val {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text);
+}
+
+.tracking-empty {
+  text-align: center;
+  padding: 16px 0;
+  color: var(--color-text-dim);
+  font-size: 12px;
+}
+
+/* ── 目标监控窗口（可开关悬浮窗） ──────────────────────────────────── */
+.tracking-map-window {
+  position: fixed;
+  /* 初始位置由 JS 控制（支持拖拽），此处提供兜底 */
+  left: unset;
+  right: 16px;
+  top: unset;
+  bottom: 48px;
+  width: 480px;
+  min-width: 360px;
+  min-height: 240px;
+  background: var(--color-bg-panel);
+  border: 1px solid var(--color-border-glow);
+  border-radius: 10px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 40px rgba(0, 100, 200, 0.25), 0 0 0 1px rgba(0, 180, 255, 0.1);
+  z-index: 500;
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+}
+
+/* 窗口初始隐藏，可通过 JS class 切换显示 */
+.tracking-map-window.hidden {
+  display: none;
+}
+
+/* 收起状态 */
+.tracking-map-window.collapsed .tmw-body {
+  display: none;
+}
+.tracking-map-window.collapsed .tmw-footer {
+  display: none;
+}
+.tracking-map-window.collapsed {
+  height: auto;
+  overflow: hidden;
+}
+
+/* 拖拽：标题栏鼠标变为移动手型 */
+.tmw-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border);
+  cursor: move;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+/* 拖拽高亮 */
+.tracking-map-window:active .tmw-header {
+  background: rgba(0, 180, 255, 0.08);
+}
+
+.tmw-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-bright);
+  letter-spacing: 1px;
+}
+
+.tmw-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tmw-count {
+  background: rgba(0, 255, 136, 0.15);
+  color: var(--color-success);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  border-radius: 10px;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+}
+
+.tmw-btn {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text-dim);
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.tmw-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+
+.tmw-body {
+  display: flex;
+  height: 260px;
+}
+
+.tmw-entity-list {
+  width: 160px;
+  overflow-y: auto;
+  border-right: 1px solid var(--color-border);
+  padding: 4px;
+  flex-shrink: 0;
+}
+
+.tmw-entity-card {
+  padding: 6px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-bottom: 3px;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+}
+.tmw-entity-card:hover { background: rgba(0, 180, 255, 0.06); border-color: rgba(0, 180, 255, 0.2); }
+.tmw-entity-card.active { background: rgba(0, 180, 255, 0.1); border-color: rgba(0, 180, 255, 0.4); }
+
+.tmw-ec-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 3px;
+}
+.tmw-ec-icon { display: flex; align-items: center; flex-shrink: 0; }
+.tmw-ec-name { font-size: 11px; color: var(--color-text-bright); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tmw-ec-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: #e74c3c; }
+.tmw-ec-dot.ok { background: var(--color-success); box-shadow: 0 0 4px var(--color-success); }
+.tmw-ec-dot.warn { background: var(--color-warning); }
+.tmw-ec-dot-red { width: 7px; height: 7px; border-radius: 50%; background: #e74c3c; box-shadow: 0 0 5px rgba(231, 76, 60, 0.6); flex-shrink: 0; }
+.tmw-ec-status { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.tmw-ec-status.ok { background: var(--color-success); box-shadow: 0 0 4px var(--color-success); }
+.tmw-ec-status.warn { background: var(--color-warning); }
+
+.tmw-ec-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.tmw-ec-stat { font-size: 10px; font-family: var(--font-mono); color: var(--color-text-dim); }
+
+.tmw-map-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  border-radius: 0 0 4px 0;
+}
+
+#tmw-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+#tmw-canvas:active { cursor: grabbing; }
+
+.tmw-map-label {
+  position: absolute;
+  bottom: 4px;
+  left: 6px;
+  font-size: 10px;
+  color: rgba(179, 212, 255, 0.5);
+  pointer-events: none;
+}
+
+.tmw-footer {
+  padding: 6px 12px;
+  border-top: 1px solid var(--color-border);
+  font-size: 11px;
+  color: var(--color-text-dim);
+}
+.tmw-selected-info strong { color: var(--color-text-bright); }
+
+/* ── 窗口拖拽与拉伸 ───────────────────────────────────────────────── */
+.tmw-resize-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  cursor: se-resize;
+  z-index: 10;
+}
+/* 拉伸手柄三条斜线图标 */
+.tmw-resize-handle::before {
+  content: "";
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid rgba(0, 180, 255, 0.4);
+  border-bottom: 2px solid rgba(0, 180, 255, 0.4);
 }

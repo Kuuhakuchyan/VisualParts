@@ -47,3 +47,18 @@ export async function apiGetStats() {
   const res = await fetch(`${API_BASE}/api/simulation/stats`);
   return res.json();
 }
+
+export async function apiListScenarios() {
+  const res = await fetch(`${API_BASE}/api/simulation/scenarios`);
+  return res.json();
+}
+
+export async function apiExportReport() {
+  const res = await fetch(`${API_BASE}/api/simulation/export`);
+  return res.json();
+}
+
+export async function apiGetTracking() {
+  const res = await fetch(`${API_BASE}/api/tracking/positions`);
+  return res.json();
+}

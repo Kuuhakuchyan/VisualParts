@@ -1,21 +1,26 @@
 /**
  * 微境智护 — SVG 圆形仪表盘组件
  * 270 度弧形仪表盘，颜色插值，告警阈值
+ *
+ * 设计规范：
+ * - 半圆弧在上（开口朝下），从 -135° 到 +135°
+ * - 圆心偏下 (cy = size * 0.60)，给弧线和文字留空间
+ * - 数值文字紧贴弧线上方，无视觉割裂
+ * - 阈值使用归一化比例值 (0.0 ~ 1.0)，与 min/max 解耦
  */
 
 export class GaugeChart {
   /**
    * @param {string|HTMLElement} container - 容器 DOM 引用或 ID
    * @param {object} options
-   *   - size:        仪表盘直径（px）
+   *   - size:        仪表盘直径（px），默认 120
    *   - label:       标签文字
    *   - unit:        单位
    *   - min:         最小值
    *   - max:         最大值
    *   - value:       当前值
-   *   - thresholds:   [{ value, color }] 告警阈值
-   *   - warnValue:   警告阈值
-   *   - criticalValue: 危险阈值
+   *   - thresholds:   [{ ratio, color }] 告警阈值（归一化比例 0~1）
+   *                   示例: [{ ratio: 0.7, color: "#ffcc00" }]
    */
   constructor(container, options = {}) {
     this.container = typeof container === "string" ? document.getElementById(container) : container;
@@ -26,12 +31,7 @@ export class GaugeChart {
       min: 0,
       max: 100,
       value: 0,
-      thresholds: [
-        { value: 60, color: "#ffcc00" },
-        { value: 80, color: "#ff6644" },
-      ],
-      warnValue: null,
-      criticalValue: null,
+      thresholds: [],
       ...options,
     };
 
@@ -46,14 +46,15 @@ export class GaugeChart {
 
   _build() {
     const size = this._opts.size;
-    const r = size / 2 - 10;
     const cx = size / 2;
-    const cy = size / 2;
+    // 圆心偏下，为弧线和文字留出上方空间
+    const cy = size * 0.60;
+    // 弧半径
+    const r = size * 0.42;
 
-    // 270 度弧：起点 -135°（左下），终点 +135°（右下）
-    const startAngle = -225; // degrees
-    const endAngle   =  45;  // degrees
-    const totalAngle = endAngle - startAngle; // 270
+    // 270 度弧：起点 -135°（左上方），终点 +135°（右上方），弧在圆心上方的开口朝下半圆
+    const startAngle = -135;
+    const endAngle   =  135;
 
     const svgNS = "http://www.w3.org/2000/svg";
     const svg = document.createElementNS(svgNS, "svg");
@@ -61,8 +62,10 @@ export class GaugeChart {
     svg.setAttribute("height", size);
     svg.setAttribute("viewBox", `0 0 ${size} ${size}`);
     svg.style.overflow = "visible";
+    svg.style.display = "block";
+    svg.style.margin = "0 auto";
 
-    // 背景弧
+    // 背景弧（完整 270°）
     const bgArc = this._describeArc(cx, cy, r, startAngle, endAngle);
     const bgPath = document.createElementNS(svgNS, "path");
     bgPath.setAttribute("d", bgArc);
@@ -72,76 +75,91 @@ export class GaugeChart {
     bgPath.setAttribute("stroke-linecap", "round");
     svg.appendChild(bgPath);
 
-    // 刻度线
+    // 刻度线（5 主刻度 + 4 副刻度）
     const tickCount = 5;
     for (let i = 0; i <= tickCount; i++) {
-      const angleRad = (startAngle + (totalAngle * i / tickCount)) * Math.PI / 180;
-      const inner = r - 8;
-      const outer = r - 2;
+      const angleDeg = startAngle + ((endAngle - startAngle) * i / tickCount);
+      const angleRad = angleDeg * Math.PI / 180;
+      const inner = r - 9;
+      const outer = r - 1;
       const x1 = cx + inner * Math.cos(angleRad);
       const y1 = cy + inner * Math.sin(angleRad);
       const x2 = cx + outer * Math.cos(angleRad);
       const y2 = cy + outer * Math.sin(angleRad);
       const line = document.createElementNS(svgNS, "line");
-      line.setAttribute("x1", x1);
-      line.setAttribute("y1", y1);
-      line.setAttribute("x2", x2);
-      line.setAttribute("y2", y2);
-      line.setAttribute("stroke", "rgba(0, 180, 255, 0.3)");
-      line.setAttribute("stroke-width", "1.5");
+      line.setAttribute("x1", x1.toFixed(2));
+      line.setAttribute("y1", y1.toFixed(2));
+      line.setAttribute("x2", x2.toFixed(2));
+      line.setAttribute("y2", y2.toFixed(2));
+      line.setAttribute("stroke", "rgba(0, 180, 255, 0.25)");
+      line.setAttribute("stroke-width", i === 0 || i === tickCount ? "1.5" : "0.8");
       svg.appendChild(line);
     }
 
-    // 进度弧
+    // 进度弧（初始从起点到起点，动画时更新终点）
     const arcPath = document.createElementNS(svgNS, "path");
     arcPath.setAttribute("fill", "none");
     arcPath.setAttribute("stroke-width", "6");
     arcPath.setAttribute("stroke-linecap", "round");
+    arcPath.setAttribute("stroke", "#00b4ff");
     this._arcPath = arcPath;
     svg.appendChild(arcPath);
 
-    // 中心数值
-    const text = document.createElementNS(svgNS, "text");
-    text.setAttribute("x", cx);
-    text.setAttribute("y", cy + 4);
-    text.setAttribute("text-anchor", "middle");
-    text.setAttribute("dominant-baseline", "middle");
-    text.setAttribute("font-family", "Cascadia Code, Consolas, monospace");
-    text.setAttribute("font-size", Math.round(size * 0.16));
-    text.setAttribute("font-weight", "700");
-    text.setAttribute("fill", "#e0f4ff");
+    // 数值文字：紧贴在圆心正上方（弧线正中间的上方）
+    const textY = cy - size * 0.10;
+    const valueText = document.createElementNS(svgNS, "text");
+    valueText.setAttribute("x", cx);
+    valueText.setAttribute("y", textY.toFixed(2));
+    valueText.setAttribute("text-anchor", "middle");
+    valueText.setAttribute("dominant-baseline", "middle");
+    valueText.setAttribute("font-family", "Cascadia Code, Consolas, monospace");
+    valueText.setAttribute("font-size", Math.round(size * 0.14).toString());
+    valueText.setAttribute("font-weight", "700");
+    valueText.setAttribute("fill", "#e0f4ff");
     const tspan = document.createElementNS(svgNS, "tspan");
     tspan.setAttribute("class", "gauge-val");
     this._valueText = tspan;
-    text.appendChild(tspan);
-    svg.appendChild(text);
+    valueText.appendChild(tspan);
+    // 单位合并到 tspan 后面（dx 右偏移，紧贴数字）
+    if (this._opts.unit) {
+      const unitTspan = document.createElementNS(svgNS, "tspan");
+      unitTspan.setAttribute("dx", "1");
+      unitTspan.setAttribute("class", "gauge-unit");
+      unitTspan.setAttribute("font-size", Math.round(size * 0.10).toString());
+      unitTspan.setAttribute("fill", "rgba(179, 224, 255, 0.5)");
+      unitTspan.textContent = this._opts.unit;
+      valueText.appendChild(unitTspan);
+    }
+    svg.appendChild(valueText);
 
-    // 单位
-    const unitText = document.createElementNS(svgNS, "text");
-    unitText.setAttribute("x", cx);
-    unitText.setAttribute("y", cy + Math.round(size * 0.2));
-    unitText.setAttribute("text-anchor", "middle");
-    unitText.setAttribute("font-size", Math.round(size * 0.1));
-    unitText.setAttribute("fill", "rgba(179, 224, 255, 0.5)");
-    unitText.textContent = this._opts.unit;
-    svg.appendChild(unitText);
-
-    // 标签
+    // 标签文字：圆心正下方
+    const labelY = cy + size * 0.22;
     const labelText = document.createElementNS(svgNS, "text");
     labelText.setAttribute("x", cx);
-    labelText.setAttribute("y", size - 6);
+    labelText.setAttribute("y", labelY.toFixed(2));
     labelText.setAttribute("text-anchor", "middle");
-    labelText.setAttribute("font-size", Math.round(size * 0.1));
+    labelText.setAttribute("font-size", Math.round(size * 0.09).toString());
     labelText.setAttribute("fill", "rgba(90, 138, 170, 0.9)");
     labelText.textContent = this._opts.label;
     svg.appendChild(labelText);
+
+    // 中心装饰圆环
+    const centerRing = document.createElementNS(svgNS, "circle");
+    centerRing.setAttribute("cx", cx);
+    centerRing.setAttribute("cy", cy);
+    centerRing.setAttribute("r", (r * 0.15).toFixed(2));
+    centerRing.setAttribute("fill", "none");
+    centerRing.setAttribute("stroke", "rgba(0, 180, 255, 0.25)");
+    centerRing.setAttribute("stroke-width", "1");
+    svg.appendChild(centerRing);
 
     this._svg = svg;
     this.container.appendChild(svg);
   }
 
+  // 极坐标转笛卡尔（0° = 正右，顺时针）
   _polarToCartesian(cx, cy, r, angleDeg) {
-    const rad = (angleDeg - 90) * Math.PI / 180;
+    const rad = angleDeg * Math.PI / 180;
     return {
       x: cx + r * Math.cos(rad),
       y: cy + r * Math.sin(rad),
@@ -149,17 +167,18 @@ export class GaugeChart {
   }
 
   _describeArc(cx, cy, r, startAngle, endAngle) {
-    const start = this._polarToCartesian(cx, cy, r, endAngle);
-    const end   = this._polarToCartesian(cx, cy, r, startAngle);
-    const largeArcFlag = endAngle - startAngle <= 180 ? 0 : 1;
-    return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`;
+    const start = this._polarToCartesian(cx, cy, r, startAngle);
+    const end   = this._polarToCartesian(cx, cy, r, endAngle);
+    const diff = endAngle - startAngle;
+    const largeArcFlag = diff <= 180 ? 0 : 1;
+    return `M ${start.x.toFixed(2)} ${start.y.toFixed(2)} A ${r} ${r} 0 ${largeArcFlag} 1 ${end.x.toFixed(2)} ${end.y.toFixed(2)}`;
   }
 
   _computeColor(ratio) {
-    const t = this._opts.thresholds;
-    let color = "#00b4ff"; // default
-    for (const th of t) {
-      if (ratio >= th.value / (this._opts.max - this._opts.min)) {
+    const { thresholds } = this._opts;
+    let color = "#00b4ff";
+    for (const th of thresholds) {
+      if (ratio >= th.ratio) {
         color = th.color;
       }
     }
@@ -171,16 +190,21 @@ export class GaugeChart {
     const clamped = Math.max(min, Math.min(max, newValue));
     const ratio = (clamped - min) / (max - min);
 
-    // 颜色
     const color = this._computeColor(ratio);
     this._arcPath.setAttribute("stroke", color);
     this._valueText.setAttribute("fill", color);
 
-    // 弧长
-    const startAngle = -225;
+    // 进度弧从 -135° 画到 (-135° + 270° * ratio)
+    const startAngle = -135;
     const totalAngle = 270;
     const currentAngle = startAngle + totalAngle * ratio;
-    const path = this._describeArc(this._opts.size / 2, this._opts.size / 2, this._opts.size / 2 - 10, currentAngle, startAngle);
+    const path = this._describeArc(
+      this._opts.size / 2,
+      this._opts.size * 0.60,
+      this._opts.size * 0.42,
+      startAngle,
+      currentAngle
+    );
     this._arcPath.setAttribute("d", path);
 
     if (animate) {
@@ -206,7 +230,6 @@ export class GaugeChart {
     const step = (now) => {
       const elapsed = now - startTime;
       const t = Math.min(elapsed / duration, 1);
-      // ease-out cubic
       const ease = 1 - Math.pow(1 - t, 3);
       const current = start + (end - start) * ease;
       this._currentDisplay = current;

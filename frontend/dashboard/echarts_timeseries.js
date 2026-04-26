@@ -7,6 +7,7 @@ export class EChartsTimeseries {
   constructor() {
     this._chart = null;
     this._el = null;
+    this._resizeHandler = null;
     this._init();
   }
 
@@ -14,15 +15,41 @@ export class EChartsTimeseries {
     this._el = document.getElementById("timeseries-chart");
     if (!this._el) return;
 
-    // 动态加载 ECharts
-    if (typeof echarts === "undefined") {
-      const script = document.createElement("script");
-      script.src = "https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js";
-      script.onload = () => this._buildChart();
-      document.head.appendChild(script);
-    } else {
+    if (typeof echarts !== "undefined") {
       this._buildChart();
+      return;
     }
+
+    const script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js";
+
+    let loaded = false;
+    const tryLoad = (src) => {
+      script.src = src;
+      loaded = false;
+      script.parentNode?.replaceChild(script.cloneNode(true), script);
+    };
+
+    script.onload = () => {
+      loaded = true;
+      this._buildChart();
+    };
+
+    script.onerror = () => {
+      if (!loaded) {
+        tryLoad("https://cdn.bootcdn.net/ajax/libs/echarts/5.4.3/echarts.min.js");
+        setTimeout(() => {
+          if (!loaded) {
+            console.warn("[ECharts] CDN 加载失败，使用降级提示");
+            if (this._el) {
+              this._el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#5a8aaa;font-size:12px;">时序图加载中...</div>';
+            }
+          }
+        }, 5000);
+      }
+    };
+
+    document.head.appendChild(script);
   }
 
   _buildChart() {
@@ -134,7 +161,8 @@ export class EChartsTimeseries {
 
     this._chart.setOption(option);
 
-    window.addEventListener("resize", () => this._chart?.resize());
+    this._resizeHandler = () => this._chart?.resize();
+    window.addEventListener("resize", this._resizeHandler);
   }
 
   update(newData) {
@@ -151,6 +179,10 @@ export class EChartsTimeseries {
   }
 
   destroy() {
+    if (this._resizeHandler) {
+      window.removeEventListener("resize", this._resizeHandler);
+      this._resizeHandler = null;
+    }
     if (this._chart) {
       this._chart.dispose();
       this._chart = null;
