@@ -1,0 +1,537 @@
+#include <M5Unified.h>
+#include <LittleFS.h>
+#include <time.h>
+
+// ====================================================================
+// SHT30 直接 I2C 操作
+// ENV III: SHT30 @ 0x44 + QMP6988 @ 0x70, Grove 口连接
+//
+// SHT30 数据格式 (I2C):
+//   发送: [0x24, 0x00]   — 测量命令 (高重复性, 无时钟拉伸)
+//   返回: [T_H, T_L, CRC, H_H, H_L, CRC]  — 6 字节
+//   温度换算: T = -45 + 175 * (raw / 65535)
+//   湿度换算: RH = 100 * (raw / 65535)
+// ====================================================================
+#define SHT30_ADDR    0x44
+#define I2C_FREQ      50000    // 50kHz, 降低速度提高 Grove 长线可靠性
+
+bool sht30_found = false;
+int used_sda = 32, used_scl = 33;
+
+// SHT30 原始 I2C 读取 (跳过 CRC, 直接换算)
+static bool sht30_read_raw(float &temp, float &humid) {
+    // 发测量命令: 0x2400
+    Wire.beginTransmission(SHT30_ADDR);
+    Wire.write(0x24);
+    Wire.write(0x00);
+    if (Wire.endTransmission(true) != 0) {  // sendStop=true
+        Serial.println("SHT30: cmd failed");
+        return false;
+    }
+
+    delay(30);  // 等待转换 (datasheet 典型 12.5ms, 放宽到 30ms)
+
+    // 读 6 字节原始数据
+    int n = Wire.requestFrom(SHT30_ADDR, 6);
+    if (n < 6) {
+        Serial.printf("SHT30: read %d bytes (need 6)\n", n);
+        return false;
+    }
+
+    uint8_t d[6];
+    for (int i = 0; i < 6; i++) d[i] = Wire.read();
+
+    Serial.printf("SHT30 raw: %02X %02X %02X %02X %02X %02X\n",
+                  d[0], d[1], d[2], d[3], d[4], d[5]);
+
+    // 换算 (忽略 CRC)
+    uint16_t t_raw = ((uint16_t)d[0] << 8) | d[1];
+    uint16_t h_raw = ((uint16_t)d[3] << 8) | d[4];
+
+    temp  = -45.0f + 175.0f * (float)t_raw / 65535.0f;
+    humid = 100.0f * (float)h_raw / 65535.0f;
+
+    Serial.printf("SHT30: temp=%.2f humid=%.2f\n", temp, humid);
+    return true;
+}
+
+static void sht30_reset() {
+    Wire.beginTransmission(SHT30_ADDR);
+    Wire.write(0x30);
+    Wire.write(0xA2);
+    Wire.endTransmission(true);
+    delay(50);
+}
+
+// ====================================================================
+// 固定 GPS 坐标
+// ====================================================================
+#define FIXED_GPS_LAT  34.821085
+#define FIXED_GPS_LON  113.527073
+
+// ====================================================================
+// 日志配置
+// ====================================================================
+const unsigned long LOG_INTERVAL_MS = 30000UL;
+unsigned long lastLogTime = 0;
+const char* LOG_FILE = "/log.txt";
+unsigned long logCount = 0;
+bool fs_ok = false;
+
+// ====================================================================
+// 页面系统
+// ====================================================================
+enum Page { PAGE_DASHBOARD = 0, PAGE_CHART = 1 };
+Page currentPage = PAGE_DASHBOARD;
+Page lastPage = PAGE_DASHBOARD;
+
+// ====================================================================
+// 滚动图表缓冲区
+// ====================================================================
+#define MAX_CHART_POINTS 110
+float chartTemps[MAX_CHART_POINTS];
+int chartPointCount = 0;
+unsigned long lastChartTime = 0;
+const unsigned long CHART_INTERVAL_MS = 2000UL;
+
+// ====================================================================
+// 显示坐标
+// ====================================================================
+#define TITLE_Y      2
+#define TEMP_Y      24
+#define HUMI_Y      48
+#define GPS_Y       72
+#define BAT_Y       96
+#define LOG_Y       118
+
+// ====================================================================
+// 工具函数：用编译时间初始化 RTC
+// ====================================================================
+static void setRtcFromCompileTime() {
+    const char* months = "JanFebMarAprMayJunJulAugSepOctNovDec";
+    char mon[4] = {0};
+    int d, y, h, m, s;
+    sscanf(__DATE__, "%3s %d %d", mon, &d, &y);
+    sscanf(__TIME__, "%d:%d:%d", &h, &m, &s);
+
+    int month = 0;
+    const char* p = months;
+    for (int i = 1; i <= 12; i++) {
+        if (strncmp(mon, p, 3) == 0) { month = i; break; }
+        p += 3;
+    }
+
+    m5::rtc_datetime_t dt;
+    dt.date.year  = y;
+    dt.date.month = month;
+    dt.date.date  = d;
+    dt.time.hours   = h;
+    dt.time.minutes = m;
+    dt.time.seconds = s;
+    M5.Rtc.setDateTime(&dt);
+
+    Serial.printf("RTC set from build: %04d-%02d-%02d %02d:%02d:%02d\n",
+                  y, month, d, h, m, s);
+}
+
+// ====================================================================
+// 日志写入
+// ====================================================================
+static void writeLogLine(float temp, float humid) {
+    if (!fs_ok) return;
+
+    m5::rtc_datetime_t now = M5.Rtc.getDateTime();
+    if (now.date.year < 2025) return;
+
+    File f = LittleFS.open(LOG_FILE, FILE_APPEND);
+    if (!f) {
+        Serial.println("Log: open failed");
+        return;
+    }
+
+    if (f.size() == 0) {
+        f.println("datetime,temp_c,humidity_pct,gps_lat,gps_lon");
+    }
+
+    char line[128];
+    snprintf(line, sizeof(line),
+             "%04d-%02d-%02d %02d:%02d:%02d,%.1f,%.1f,%.6f,%.6f",
+             now.date.year, now.date.month, now.date.date,
+             now.time.hours, now.time.minutes, now.time.seconds,
+             temp, humid, FIXED_GPS_LAT, FIXED_GPS_LON);
+
+    f.println(line);
+    f.close();
+    Serial.println(line);
+}
+
+// ====================================================================
+// 图表
+// ====================================================================
+static void addChartPoint(float temp) {
+    if (chartPointCount < MAX_CHART_POINTS) {
+        chartTemps[chartPointCount++] = temp;
+    } else {
+        memmove(chartTemps, chartTemps + 1, (MAX_CHART_POINTS - 1) * sizeof(float));
+        chartTemps[MAX_CHART_POINTS - 1] = temp;
+    }
+}
+
+// ====================================================================
+// SHT30 带重试的读取
+// ====================================================================
+static bool readSHT30(float &temp, float &humid) {
+    if (!sht30_found) return false;
+    for (int i = 0; i < 5; i++) {
+        if (sht30_read_raw(temp, humid)) return true;
+        delay(50);
+    }
+    Serial.println("SHT30: all retries failed");
+    return false;
+}
+
+// ====================================================================
+// 仪表盘
+// ====================================================================
+static void drawDashboard(float temp, float humid, float batVol, bool fullInit) {
+    char buf[32];
+
+    if (fullInit) {
+        M5.Display.fillScreen(BLACK);
+        M5.Display.setTextColor(ORANGE);
+        M5.Display.setCursor(10, TITLE_Y);
+        M5.Display.print("M5StickC Plus2");
+
+        M5.Display.setTextColor(WHITE, BLACK);
+        M5.Display.setCursor(10, TEMP_Y);
+        M5.Display.print("Temp: --.- C  ");
+        M5.Display.setCursor(10, HUMI_Y);
+        M5.Display.print("Humi: --.- %  ");
+        M5.Display.setTextSize(1.8);
+        M5.Display.setTextColor(YELLOW, BLACK);
+        M5.Display.setCursor(10, GPS_Y);
+        M5.Display.printf("%.6fN %.6fE", FIXED_GPS_LAT, FIXED_GPS_LON);
+        M5.Display.setTextSize(2);
+        M5.Display.setTextColor(CYAN, BLACK);
+        M5.Display.setCursor(10, LOG_Y);
+        M5.Display.print("Log: Ready");
+    }
+
+    M5.Display.setTextColor(WHITE, BLACK);
+    M5.Display.setCursor(10, TEMP_Y);
+    if (!isnan(temp)) {
+        snprintf(buf, sizeof(buf), "Temp: %.1f C  ", temp);
+    } else {
+        snprintf(buf, sizeof(buf), "Temp: --.- C  ");
+    }
+    M5.Display.print(buf);
+
+    M5.Display.setCursor(10, HUMI_Y);
+    if (!isnan(humid)) {
+        snprintf(buf, sizeof(buf), "Humi: %.1f %%  ", humid);
+    } else {
+        snprintf(buf, sizeof(buf), "Humi: --.- %%  ");
+    }
+    M5.Display.print(buf);
+
+    M5.Display.setTextSize(1.8);
+    M5.Display.setTextColor(YELLOW, BLACK);
+    M5.Display.setCursor(10, GPS_Y);
+    snprintf(buf, sizeof(buf), "%.6fN %.6fE  ", FIXED_GPS_LAT, FIXED_GPS_LON);
+    M5.Display.print(buf);
+    M5.Display.setTextSize(2);
+
+    M5.Display.setTextColor(GREEN, BLACK);
+    M5.Display.setCursor(10, BAT_Y);
+    M5.Display.printf("BAT: %.2fV  ", batVol);
+}
+
+// ====================================================================
+// 温度趋势图
+// ====================================================================
+static void drawChartPage(float currentTemp) {
+    char buf[32];
+    M5.Display.fillScreen(BLACK);
+
+    M5.Display.setTextColor(ORANGE);
+    M5.Display.setTextSize(2);
+    M5.Display.setCursor(10, TITLE_Y);
+    M5.Display.print("Temp Trend");
+
+    M5.Display.setTextColor(WHITE, BLACK);
+    M5.Display.setCursor(148, TITLE_Y);
+    if (!isnan(currentTemp)) {
+        snprintf(buf, sizeof(buf), "Now:%.1f", currentTemp);
+    } else {
+        snprintf(buf, sizeof(buf), "Now:--.-");
+    }
+    M5.Display.print(buf);
+
+    if (chartPointCount < 2) {
+        M5.Display.setTextColor(DARKGREY);
+        M5.Display.setCursor(50, 65);
+        M5.Display.setTextSize(2);
+        M5.Display.print("Collecting...");
+        M5.Display.setTextSize(1);
+        M5.Display.setCursor(65, 90);
+        M5.Display.print("(need 2+ points)");
+        M5.Display.setTextSize(2);
+        return;
+    }
+
+    const int CX = 10, CY = 24, CW = 220, CH = 86;
+
+    int start = 0;
+    int count = chartPointCount;
+    if (chartPointCount > MAX_CHART_POINTS) {
+        start = chartPointCount - MAX_CHART_POINTS;
+        count = MAX_CHART_POINTS;
+    }
+
+    float tMin = 99, tMax = -99;
+    for (int i = start; i < start + count; i++) {
+        if (!isnan(chartTemps[i])) {
+            if (chartTemps[i] < tMin) tMin = chartTemps[i];
+            if (chartTemps[i] > tMax) tMax = chartTemps[i];
+        }
+    }
+    if (tMin > tMax) return;
+
+    float range = tMax - tMin;
+    if (range < 1.0f) range = 1.0f;
+    tMin -= range * 0.1f;
+    tMax += range * 0.1f;
+    range = tMax - tMin;
+
+    M5.Display.drawRect(CX - 1, CY - 1, CW + 2, CH + 2, DARKGREY);
+    M5.Display.setTextSize(1);
+    M5.Display.setTextColor(DARKGREY);
+    for (int row = 0; row <= 4; row++) {
+        int yy = CY + row * CH / 4;
+        float val = tMax - row * range / 4;
+        snprintf(buf, sizeof(buf), "%.0f", val);
+        M5.Display.setCursor(0, yy - 3);
+        M5.Display.print(buf);
+        M5.Display.drawLine(CX, yy, CX + CW - 1, yy, 0x2117);
+    }
+
+    for (int i = start + 1; i < start + count; i++) {
+        if (isnan(chartTemps[i]) || isnan(chartTemps[i - 1])) continue;
+        int x1 = CX + (i - 1 - start) * CW / (count - 1);
+        int y1 = CY + CH - (int)((chartTemps[i - 1] - tMin) * CH / range);
+        int x2 = CX + (i - start) * CW / (count - 1);
+        int y2 = CY + CH - (int)((chartTemps[i] - tMin) * CH / range);
+        M5.Display.drawLine(x1, y1, x2, y2, CYAN);
+    }
+
+    M5.Display.setTextSize(1);
+    M5.Display.setTextColor(GREEN);
+    snprintf(buf, sizeof(buf), "Min:%.1f", tMin + range * 0.1f);
+    M5.Display.setCursor(CX, CY + CH + 4);
+    M5.Display.print(buf);
+
+    M5.Display.setTextColor(YELLOW);
+    snprintf(buf, sizeof(buf), "Max:%.1f", tMax - range * 0.1f);
+    M5.Display.setCursor(CX + 100, CY + CH + 4);
+    M5.Display.print(buf);
+
+    M5.Display.setTextColor(DARKGREY);
+    snprintf(buf, sizeof(buf), "%dpts", count);
+    M5.Display.setCursor(CX + 180, CY + CH + 4);
+    M5.Display.print(buf);
+    M5.Display.setTextSize(2);
+}
+
+// ====================================================================
+// 诊断信息显示
+// ====================================================================
+static void showDiag(const char* msg, int row) {
+    M5.Display.setTextColor(WHITE, BLACK);
+    M5.Display.setCursor(10, TEMP_Y + row * 18);
+    M5.Display.setTextSize(1);
+    M5.Display.print("                   ");
+    M5.Display.setCursor(10, TEMP_Y + row * 18);
+    M5.Display.print(msg);
+    M5.Display.setTextSize(2);
+}
+
+// ====================================================================
+// Setup
+// ====================================================================
+void setup() {
+    auto cfg = M5.config();
+    M5.begin(cfg);
+
+    M5.Display.setRotation(1);
+    M5.Display.setBrightness(255);
+    M5.Display.setTextSize(2);
+    M5.Display.fillScreen(BLACK);
+
+    M5.Display.setTextColor(ORANGE);
+    M5.Display.setCursor(10, TITLE_Y);
+    M5.Display.print("M5StickC Plus2");
+
+    // ---- I2C 初始化 + SHT30 探测 (使用 Wire, 50kHz) ----
+    static const int pinTrials[][2] = {{32,33},{0,26},{21,22}};
+    sht30_found = false;
+    char dbg[64];
+
+    for (int t = 0; t < 3 && !sht30_found; t++) {
+        used_sda = pinTrials[t][0];
+        used_scl = pinTrials[t][1];
+
+        snprintf(dbg, sizeof(dbg), "Try Wire SDA=%d SCL=%d", used_sda, used_scl);
+        showDiag(dbg, 0);
+        Serial.println(dbg);
+
+        Wire.begin(used_sda, used_scl, I2C_FREQ);
+        delay(10);
+
+        // 探测 SHT30 地址
+        Wire.beginTransmission(SHT30_ADDR);
+        if (Wire.endTransmission(true) == 0) {
+            sht30_found = true;
+            snprintf(dbg, sizeof(dbg), "SHT30 found! Reset...");
+            showDiag(dbg, 1);
+            Serial.println(dbg);
+
+            // 软复位 + 预热
+            sht30_reset();
+
+            // 试读 (预热期可能失败, 正常)
+            float dummy_t, dummy_h;
+            for (int r = 0; r < 3; r++) {
+                if (sht30_read_raw(dummy_t, dummy_h)) {
+                    Serial.println("SHT30: first read OK");
+                    break;
+                }
+                delay(50);
+            }
+
+            snprintf(dbg, sizeof(dbg), "SHT30@0x%02x Pins:%d/%d %dHz",
+                     SHT30_ADDR, used_sda, used_scl, I2C_FREQ);
+            showDiag(dbg, 2);
+        }
+    }
+
+    if (!sht30_found) {
+        showDiag("SHT30: NOT FOUND!", 1);
+        // 全面扫描
+        for (int t = 0; t < 3; t++) {
+            int sda = pinTrials[t][0], scl = pinTrials[t][1];
+            Wire.begin(sda, scl, I2C_FREQ);
+            delay(10);
+            for (int addr = 3; addr < 0x78; addr++) {
+                Wire.beginTransmission(addr);
+                if (Wire.endTransmission(true) == 0) {
+                    snprintf(dbg, sizeof(dbg), "I2C 0x%02x@%d/%d", addr, sda, scl);
+                    showDiag(dbg, 2);
+                    Serial.printf("I2C: 0x%02x on SDA=%d SCL=%d\n", addr, sda, scl);
+                    delay(1000);
+                }
+            }
+        }
+        showDiag("Check wiring/ports", 3);
+        delay(2000);
+    } else {
+        // 成功找到, 继续其他初始化
+        showDiag("SHT30 OK! Warm up...", 3);
+        delay(500);
+    }
+
+    // ---- RTC ----
+    m5::rtc_datetime_t rtc_now = M5.Rtc.getDateTime();
+    if (rtc_now.date.year < 2025 || rtc_now.date.year > 2035) {
+        Serial.println("RTC invalid, setting from compile time...");
+        setRtcFromCompileTime();
+    }
+    Serial.println("RTC: OK");
+
+    // ---- LittleFS ----
+    fs_ok = LittleFS.begin();
+    if (!fs_ok) {
+        Serial.println("FS: mount failed, formatting...");
+        LittleFS.format();
+        fs_ok = LittleFS.begin();
+    }
+    Serial.printf("LittleFS: %s\n", fs_ok ? "OK" : "FAILED");
+
+    // ---- 初始仪表盘 ----
+    M5.Display.fillScreen(BLACK);
+    M5.Display.setTextColor(ORANGE);
+    M5.Display.setCursor(10, TITLE_Y);
+    M5.Display.print("M5StickC Plus2");
+
+    M5.Display.setTextColor(WHITE, BLACK);
+    M5.Display.setCursor(10, TEMP_Y);
+    M5.Display.print("Temp: --.- C  ");
+    M5.Display.setCursor(10, HUMI_Y);
+    M5.Display.print("Humi: --.- %  ");
+    M5.Display.setTextSize(1.8);
+    M5.Display.setTextColor(YELLOW, BLACK);
+    M5.Display.setCursor(10, GPS_Y);
+    M5.Display.printf("%.6fN %.6fE  ", FIXED_GPS_LAT, FIXED_GPS_LON);
+    M5.Display.setTextSize(2);
+    M5.Display.setTextColor(GREEN, BLACK);
+    M5.Display.setCursor(10, BAT_Y);
+    M5.Display.print("BAT: --.--V  ");
+    M5.Display.setTextColor(CYAN, BLACK);
+    M5.Display.setCursor(10, LOG_Y);
+    M5.Display.print("Log: Ready");
+
+    Serial.println("--- System Ready ---");
+}
+
+// ====================================================================
+// Loop
+// ====================================================================
+void loop() {
+    M5.update();
+
+    float temp = NAN, humid = NAN;
+    readSHT30(temp, humid);
+
+    float batVol = M5.Power.getBatteryVoltage() / 1000.0f;
+
+    if (M5.BtnA.wasPressed()) {
+        lastPage = currentPage;
+        currentPage = (Page)((currentPage + 1) % 2);
+    }
+
+    unsigned long now = millis();
+
+    if (currentPage == PAGE_DASHBOARD) {
+        if (lastPage != currentPage) {
+            drawDashboard(temp, humid, batVol, true);
+            lastPage = currentPage;
+        } else {
+            drawDashboard(temp, humid, batVol, false);
+        }
+    } else {
+        if (now - lastChartTime >= CHART_INTERVAL_MS) {
+            lastChartTime = now;
+            if (!isnan(temp)) addChartPoint(temp);
+        }
+        drawChartPage(temp);
+    }
+
+    if (now - lastLogTime >= LOG_INTERVAL_MS) {
+        lastLogTime = now;
+
+        if (!isnan(temp) && !isnan(humid)) {
+            writeLogLine(temp, humid);
+            logCount++;
+            if (currentPage == PAGE_DASHBOARD) {
+                M5.Display.setTextColor(CYAN, BLACK);
+                M5.Display.setCursor(10, LOG_Y);
+                M5.Display.printf("Log: #%lu  ", logCount);
+            }
+        } else if (currentPage == PAGE_DASHBOARD) {
+            M5.Display.setTextColor(RED, BLACK);
+            M5.Display.setCursor(10, LOG_Y);
+            M5.Display.print("Log: Err  ");
+        }
+    }
+
+    delay(200);
+}
