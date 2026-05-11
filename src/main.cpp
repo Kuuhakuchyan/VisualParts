@@ -5,10 +5,11 @@
 #include <WebServer.h>
 
 // ====================================================================
-// WiFi 配置 (改成你的路由器名称和密码)
+// WiFi 热点模式 — 设备自己开 WiFi, 手机/电脑直连
+// 不依赖校园网/路由器, 任何环境都能用
 // ====================================================================
-const char* WIFI_SSID = "YourWiFi";
-const char* WIFI_PASS = "YourPassword";
+const char* AP_SSID = "M5Stick_Weather";
+const char* AP_PASS = "12345678";  // 至少 8 位
 WebServer server(80);
 bool wifi_ok = false;
 char deviceIP[16] = "0.0.0.0";
@@ -197,7 +198,7 @@ static void handleSerialCommand() {
     } else if (cmd == 'c' || cmd == 'C') {
         if (fs_ok) { LittleFS.remove(LOG_FILE); logCount = 0; logFileSize = 0; Serial.println("Log cleared"); }
     } else if (cmd == 'i' || cmd == 'I') {
-        Serial.printf("IP: %s\n", wifi_ok ? deviceIP : "WiFi not connected");
+        Serial.printf("AP: %s | IP: %s | Pass: %s\n", AP_SSID, deviceIP, AP_PASS);
     }
 }
 
@@ -446,30 +447,19 @@ void setup() {
     }
     Serial.printf("LittleFS: %s, log %lu lines\n", fs_ok ? "OK" : "FAIL", logCount);
 
-    // ---- WiFi ----
-    showDiag("WiFi connecting...", 3);
-    Serial.printf("Connecting to %s", WIFI_SSID);
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(WIFI_SSID, WIFI_PASS);
-    int wTimeout = 30;
-    while (WiFi.status() != WL_CONNECTED && wTimeout-- > 0) {
-        delay(500); Serial.print(".");
-    }
-    if (WiFi.status() == WL_CONNECTED) {
-        wifi_ok = true;
-        strncpy(deviceIP, WiFi.localIP().toString().c_str(), sizeof(deviceIP) - 1);
-        Serial.printf("\nWiFi OK, IP: %s\n", deviceIP);
-        showDiag(deviceIP, 3);
-        // 启动 Web Server
-        server.on("/", sendLiveHTML);
-        server.on("/log", sendLogFile);
-        server.on("/api/data", sendJSON);
-        server.begin();
-    } else {
-        Serial.println("\nWiFi FAIL (continuing without network)");
-        showDiag("WiFi FAIL", 3);
-    }
-    delay(800);
+    // ---- WiFi 热点 ----
+    showDiag("Starting AP...", 3);
+    WiFi.mode(WIFI_AP);
+    WiFi.softAP(AP_SSID, AP_PASS);
+    delay(500);
+    wifi_ok = true;
+    strncpy(deviceIP, WiFi.softAPIP().toString().c_str(), sizeof(deviceIP) - 1);
+    Serial.printf("AP: %s | IP: %s | Pass: %s\n", AP_SSID, deviceIP, AP_PASS);
+    showDiag(deviceIP, 3);
+    server.on("/", sendLiveHTML);
+    server.on("/log", sendLogFile);
+    server.on("/api/data", sendJSON);
+    server.begin();
 
     // 初始仪表盘
     M5.Display.fillScreen(BLACK);
