@@ -41,9 +41,9 @@
 // ---------- HTTP 服务器 ----------
 #define SERVER_URL  ""
 
-// ---------- WiFi 定位 (百度 LBS) ----------
-// 百度 LBS 控制台 → 应用管理 → 创建服务端类型应用 → 勾选 Geolocation
-#define BAIDU_LBS_AK   "xHymZ1Vp0cXDtydqxy9t5hubdneGx0aE"
+// ---------- WiFi 定位 (Unwired Labs) ----------
+// https://unwiredlabs.com — 免费注册获取 token (格式 pk.xxxxxxxx)
+#define UNWIRED_TOKEN   "pk.0876d19a5a65b9a877aed0e4c93bbbbc"
 #define WIFI_POS_INTERVAL_MS  60000UL   // 每隔 60s 扫描+定位一次
 
 // ---------- GPS 接口 (ATGM336H) ----------
