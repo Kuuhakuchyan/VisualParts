@@ -4,6 +4,10 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <DNSServer.h>
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEServer.h>
+#include <BLE2902.h>
 
 // ====================================================================
 // WiFi 热点 — DNS 劫持让手机连接后弹出页面
@@ -15,6 +19,28 @@ DNSServer dnsServer;
 bool wifi_ok = false;
 char deviceIP[16] = "0.0.0.0";
 float lastTemp = NAN, lastHumid = NAN;
+
+// ====================================================================
+// BLE 蓝牙 — 手机通过蓝牙收数据, 用自己的网络发到服务器
+// 绕过校园网网页认证, 手机 BLE 收到后自动 HTTP POST 到你的服务器
+//
+// 接收端推荐:
+//   Android: nRF Connect / Serial Bluetooth Terminal
+//   iOS: nRF Connect / LightBlue
+// 自动转发: Android 用 MacroDroid, iOS 用 Bluefy/Shortcuts
+// ====================================================================
+#define BLE_DEVICE_NAME "M5Stick_Weather"
+static BLEServer*         bleServer   = nullptr;
+static BLECharacteristic* bleTxChar   = nullptr;
+static bool               bleConnected = false;
+
+static void bleSend(const char* data);
+
+class BleCallbacks : public BLEServerCallbacks {
+    void onConnect(BLEServer* s)    { bleConnected = true;  Serial.println("BLE connected"); }
+    void onDisconnect(BLEServer* s) { bleConnected = false; Serial.println("BLE disconnected");
+        bleServer->startAdvertising(); }
+};
 
 // ====================================================================
 // 日志: 每日自动归档, 存储管理
@@ -195,6 +221,38 @@ static void manageStorage() {
         LittleFS.remove(files[i].name);
         Serial.printf("Clean: removed %s\n", files[i].name);
     }
+}
+
+// ====================================================================
+// BLE 初始化与发送
+// ====================================================================
+static void initBLE() {
+    BLEDevice::init(BLE_DEVICE_NAME);
+    bleServer = BLEDevice::createServer();
+    bleServer->setCallbacks(new BleCallbacks());
+
+    // 标准 UART 服务 (Nordic UART Service)
+    BLEService* svc = bleServer->createService("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
+    // TX 特征 (设备 → 手机)
+    bleTxChar = svc->createCharacteristic("6E400002-B5A3-F393-E0A9-E50E24DCCA9E",
+        BLECharacteristic::PROPERTY_NOTIFY);
+    bleTxChar->addDescriptor(new BLE2902());
+    // RX 特征 (手机 → 设备, 此处仅占位)
+    svc->createCharacteristic("6E400003-B5A3-F393-E0A9-E50E24DCCA9E",
+        BLECharacteristic::PROPERTY_WRITE);
+    svc->start();
+
+    BLEAdvertising* adv = BLEDevice::getAdvertising();
+    adv->addServiceUUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
+    adv->setScanResponse(true);
+    adv->start();
+    Serial.println("BLE started: " BLE_DEVICE_NAME);
+}
+
+static void bleSend(const char* data) {
+    if (!bleConnected || bleTxChar == nullptr) return;
+    bleTxChar->setValue((uint8_t*)data, strlen(data));
+    bleTxChar->notify();
 }
 
 // ====================================================================
@@ -614,6 +672,10 @@ void setup() {
     });
     server.begin();
 
+    // ---- BLE 蓝牙 ----
+    initBLE();
+    showDiag("BLE ready", 3);
+
     // 初始仪表盘
     M5.Display.fillScreen(BLACK);
     M5.Display.setTextColor(ORANGE);
@@ -678,12 +740,21 @@ void loop() {
         drawLineChart("Humi Trend", YELLOW, chartHumids, "%", humid);
     }
 
-    // 日志 (仪表盘页更新显示)
+    // 日志 + BLE 推送 (每 30s)
     if (now - lastLogTime >= LOG_INTERVAL_MS) {
         lastLogTime = now;
         if (!isnan(temp) && !isnan(humid)) {
             writeLogLine(temp, humid);
             logCount++;
+
+            // BLE 发送 JSON 数据
+            char bleBuf[256];
+            char ts[24]; getTimeStr(ts, sizeof(ts));
+            snprintf(bleBuf, sizeof(bleBuf),
+                "{\"temp\":%.1f,\"humid\":%.1f,\"gps\":\"%.6fN %.6fE\","
+                "\"bat\":%.2f,\"time\":\"%s\"}",
+                temp, humid, FIXED_GPS_LAT, FIXED_GPS_LON, batVol, ts);
+            bleSend(bleBuf);
         }
         if (currentPage == PAGE_DASHBOARD) {
             M5.Display.fillRect(10, LOG_Y, 220, 18, BLACK);
