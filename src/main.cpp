@@ -78,12 +78,12 @@ const unsigned long CHART_INTERVAL_MS = 2000UL;
 // 显示坐标
 // ====================================================================
 #define TITLE_Y      2
-#define TIME_Y      2     // 时间显示在标题栏右侧
-#define TEMP_Y      24
-#define HUMI_Y      48
-#define GPS_Y       72
-#define BAT_Y       96
-#define LOG_Y       118
+#define TIME_Y      20    // 日期时间 (在标题下方)
+#define TEMP_Y      36
+#define HUMI_Y      58
+#define GPS_Y       80
+#define BAT_Y       100
+#define LOG_Y       120
 
 // ====================================================================
 // 工具函数：用编译时间初始化 RTC
@@ -220,7 +220,8 @@ static bool readSHT30(float &temp, float &humid) {
 static void getTimeStr(char *buf, size_t len) {
     m5::rtc_datetime_t now = M5.Rtc.getDateTime();
     if (now.date.year >= 2025 && now.date.year <= 2099) {
-        snprintf(buf, len, "%02d:%02d:%02d",
+        snprintf(buf, len, "%04d-%02d-%02d %02d:%02d:%02d",
+                 now.date.year, now.date.month, now.date.date,
                  now.time.hours, now.time.minutes, now.time.seconds);
     } else {
         unsigned long ms = millis() / 1000;
@@ -233,7 +234,7 @@ static void getTimeStr(char *buf, size_t len) {
 // ====================================================================
 static void drawDashboard(float temp, float humid, float batVol, bool fullInit) {
     char buf[32];
-    char timeStr[16];
+    char timeStr[24];
     getTimeStr(timeStr, sizeof(timeStr));
 
     if (fullInit) {
@@ -241,12 +242,6 @@ static void drawDashboard(float temp, float humid, float batVol, bool fullInit) 
         M5.Display.setTextColor(ORANGE);
         M5.Display.setCursor(10, TITLE_Y);
         M5.Display.print("M5StickC Plus2");
-
-        // 时间 (右上角, text size 1.5)
-        M5.Display.setTextSize(1.5);
-        M5.Display.setTextColor(WHITE, BLACK);
-        M5.Display.setCursor(148, TIME_Y);
-        M5.Display.print(timeStr);
         M5.Display.setTextSize(2);
 
         M5.Display.setTextColor(WHITE, BLACK);
@@ -267,17 +262,14 @@ static void drawDashboard(float temp, float humid, float batVol, bool fullInit) 
             M5.Display.setTextColor(RED, BLACK);
             M5.Display.print("Log: NO FS    ");
         }
-    } else {
-        // 每次更新时间和标题在同一行
-        // 先清时间区域再重绘
-        M5.Display.setTextSize(1.5);
-        M5.Display.setTextColor(WHITE, BLACK);
-        M5.Display.setCursor(148, TIME_Y);
-        M5.Display.print("             ");  // 清行
-        M5.Display.setCursor(148, TIME_Y);
-        M5.Display.print(timeStr);
-        M5.Display.setTextSize(2);
     }
+
+    // 日期时间行 (每次刷新)
+    M5.Display.setTextSize(1);
+    M5.Display.setTextColor(WHITE, BLACK);
+    M5.Display.setCursor(10, TIME_Y);
+    snprintf(buf, sizeof(buf), "%-20s", timeStr);  // 左对齐，清行
+    M5.Display.print(buf);
 
     M5.Display.setTextColor(WHITE, BLACK);
     M5.Display.setCursor(10, TEMP_Y);
@@ -315,7 +307,7 @@ static void drawChartPage(float currentTemp) {
     char buf[32];
     M5.Display.fillScreen(BLACK);
 
-    char timeStr[16];
+    char timeStr[24];
     getTimeStr(timeStr, sizeof(timeStr));
 
     M5.Display.setTextColor(ORANGE);
@@ -323,10 +315,10 @@ static void drawChartPage(float currentTemp) {
     M5.Display.setCursor(10, TITLE_Y);
     M5.Display.print("Temp Trend");
 
-    M5.Display.setTextSize(1.5);
+    M5.Display.setTextSize(1);
     M5.Display.setTextColor(WHITE, BLACK);
-    M5.Display.setCursor(148, TITLE_Y);
-    M5.Display.print(timeStr);
+    M5.Display.setCursor(10, TIME_Y);
+    M5.Display.printf("%-22s", timeStr);
     M5.Display.setTextSize(2);
 
     if (chartPointCount < 2) {
@@ -341,7 +333,7 @@ static void drawChartPage(float currentTemp) {
         return;
     }
 
-    const int CX = 10, CY = 24, CW = 220, CH = 86;
+    const int CX = 10, CY = 34, CW = 220, CH = 76;
 
     int start = 0;
     int count = chartPointCount;
@@ -514,12 +506,12 @@ void setup() {
     M5.Display.setCursor(10, TITLE_Y);
     M5.Display.print("M5StickC Plus2");
 
-    char timeStr[16];
+    char timeStr[24];
     getTimeStr(timeStr, sizeof(timeStr));
-    M5.Display.setTextSize(1.5);
+    M5.Display.setTextSize(1);
     M5.Display.setTextColor(WHITE, BLACK);
-    M5.Display.setCursor(148, TIME_Y);
-    M5.Display.print(timeStr);
+    M5.Display.setCursor(10, TIME_Y);
+    M5.Display.printf("%-22s", timeStr);
     M5.Display.setTextSize(2);
 
     M5.Display.setTextColor(WHITE, BLACK);
@@ -604,3 +596,4 @@ void loop() {
 
     delay(200);
 }
+
