@@ -44,13 +44,13 @@ void draw_dashboard(float temp, float humid, float bat_v, bool full_init, const 
     M5.Display.print(buf);
 
     // 位置 (GPS/WiFi/Fixed)
-    M5.Display.fillRect(10, GPS_Y, 220, 14, BLACK);
-    M5.Display.setTextSize(1);
+    M5.Display.fillRect(10, GPS_Y, 220, 16, BLACK);
+    M5.Display.setTextSize(1.4);
     M5.Display.setTextColor(YELLOW, BLACK);
     M5.Display.setCursor(10, GPS_Y);
     const char* src = pos_get_source();
     if (pos_has_fix()) {
-        snprintf(buf, sizeof(buf), "%s: %.4fN %.4fE  ",
+        snprintf(buf, sizeof(buf), "%s: %.3fN %.3fE  ",
                  src, pos_get_lat(), pos_get_lon());
     } else {
         snprintf(buf, sizeof(buf), "Pos: searching...  ");

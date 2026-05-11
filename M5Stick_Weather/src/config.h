@@ -29,14 +29,11 @@
 #define AP_PASS  "Dsrdd159987@"
 
 // ---------- WiFi STA + 校园网认证 ----------
-// STA_SSID/STA_PASS: WiFi 连接凭据 (开放网络留空)
-// STA_USER/STA_PWD:  校园网 Portal 认证账号
-// LOGIN_URL:         Portal POST 地址 (非页面地址)
-#define STA_SSID    "MCMer"
-#define STA_PASS    "0d000721"
-#define STA_USER    ""
-#define STA_PWD     ""
-#define LOGIN_URL   ""
+#define STA_SSID    "ZZU-WLAN"
+#define STA_PASS    ""
+#define STA_USER    "202410000303"
+#define STA_PWD     "Dsrdd159987@"
+#define LOGIN_URL   "http://172.16.2.9/"
 
 // ---------- HTTP 服务器 ----------
 #define SERVER_URL  ""
@@ -44,7 +41,7 @@
 // ---------- WiFi 定位 (高德 IP 定位) ----------
 // lbs.amap.com → 控制台 → 应用管理 → Web服务 API Key
 #define AMAP_KEY   "a0481addec6dc5d01360c4e6b03d18a4"
-#define WIFI_POS_INTERVAL_MS  15000UL   // 每隔 15s 定位一次 (测试用, 之后改回60s)
+#define WIFI_POS_INTERVAL_MS  30000UL   // 每隔 30s 定位一次
 
 // ---------- GPS 接口 (ATGM336H) ----------
 // 底部排针 G26 (UART2 RX)
