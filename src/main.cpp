@@ -254,25 +254,29 @@ static void manageStorage() {
 // ====================================================================
 static void initBLE() {
     BLEDevice::init(BLE_DEVICE_NAME);
+    BLEDevice::setPower(ESP_PWR_LVL_P9);  // 最大发射功率
+
     bleServer = BLEDevice::createServer();
     bleServer->setCallbacks(new BleCallbacks());
 
     // 标准 UART 服务 (Nordic UART Service)
     BLEService* svc = bleServer->createService("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
-    // TX 特征 (设备 → 手机)
     bleTxChar = svc->createCharacteristic("6E400002-B5A3-F393-E0A9-E50E24DCCA9E",
         BLECharacteristic::PROPERTY_NOTIFY);
     bleTxChar->addDescriptor(new BLE2902());
-    // RX 特征 (手机 → 设备, 此处仅占位)
     svc->createCharacteristic("6E400003-B5A3-F393-E0A9-E50E24DCCA9E",
         BLECharacteristic::PROPERTY_WRITE);
     svc->start();
 
+    // 广播配置 (显式声明可连接)
     BLEAdvertising* adv = BLEDevice::getAdvertising();
     adv->addServiceUUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
     adv->setScanResponse(true);
+    adv->setMinPreferred(0x06);  // 7.5ms 最小连接间隔
+    adv->setMaxPreferred(0x0C);  // 15ms 最大连接间隔
     adv->start();
-    Serial.println("BLE started: " BLE_DEVICE_NAME);
+
+    Serial.println("BLE: " BLE_DEVICE_NAME);
 }
 
 static void bleSend(const char* data) {
@@ -833,7 +837,7 @@ void loop() {
             M5.Display.fillRect(10, LOG_Y, 220, 18, BLACK);
             M5.Display.setTextColor(CYAN, BLACK);
             M5.Display.setCursor(10, LOG_Y);
-            M5.Display.printf("Log: %lu (%luB)", logCount, logFileSize);
+            M5.Display.printf("Log: %lu (%luB)", logCount, logFileSize);  
         }
     }
 
