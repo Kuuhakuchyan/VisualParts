@@ -5,53 +5,32 @@
 // ====================================================================
 // SHT30 直接 I2C 操作
 // ENV III: SHT30 @ 0x44 + QMP6988 @ 0x70, Grove 口连接
-//
-// SHT30 数据格式 (I2C):
-//   发送: [0x24, 0x00]   — 测量命令 (高重复性, 无时钟拉伸)
-//   返回: [T_H, T_L, CRC, H_H, H_L, CRC]  — 6 字节
-//   温度换算: T = -45 + 175 * (raw / 65535)
-//   湿度换算: RH = 100 * (raw / 65535)
 // ====================================================================
 #define SHT30_ADDR    0x44
-#define I2C_FREQ      50000    // 50kHz, 降低速度提高 Grove 长线可靠性
+#define I2C_FREQ      50000
 
 bool sht30_found = false;
 int used_sda = 32, used_scl = 33;
 
-// SHT30 原始 I2C 读取 (跳过 CRC, 直接换算)
 static bool sht30_read_raw(float &temp, float &humid) {
-    // 发测量命令: 0x2400
     Wire.beginTransmission(SHT30_ADDR);
     Wire.write(0x24);
     Wire.write(0x00);
-    if (Wire.endTransmission(true) != 0) {  // sendStop=true
-        Serial.println("SHT30: cmd failed");
-        return false;
-    }
+    if (Wire.endTransmission(true) != 0) return false;
 
-    delay(30);  // 等待转换 (datasheet 典型 12.5ms, 放宽到 30ms)
+    delay(30);
 
-    // 读 6 字节原始数据
     int n = Wire.requestFrom(SHT30_ADDR, 6);
-    if (n < 6) {
-        Serial.printf("SHT30: read %d bytes (need 6)\n", n);
-        return false;
-    }
+    if (n < 6) return false;
 
     uint8_t d[6];
     for (int i = 0; i < 6; i++) d[i] = Wire.read();
 
-    Serial.printf("SHT30 raw: %02X %02X %02X %02X %02X %02X\n",
-                  d[0], d[1], d[2], d[3], d[4], d[5]);
-
-    // 换算 (忽略 CRC)
     uint16_t t_raw = ((uint16_t)d[0] << 8) | d[1];
     uint16_t h_raw = ((uint16_t)d[3] << 8) | d[4];
 
     temp  = -45.0f + 175.0f * (float)t_raw / 65535.0f;
     humid = 100.0f * (float)h_raw / 65535.0f;
-
-    Serial.printf("SHT30: temp=%.2f humid=%.2f\n", temp, humid);
     return true;
 }
 
@@ -76,6 +55,7 @@ const unsigned long LOG_INTERVAL_MS = 30000UL;
 unsigned long lastLogTime = 0;
 const char* LOG_FILE = "/log.txt";
 unsigned long logCount = 0;
+unsigned long logFileSize = 0;
 bool fs_ok = false;
 
 // ====================================================================
@@ -98,6 +78,7 @@ const unsigned long CHART_INTERVAL_MS = 2000UL;
 // 显示坐标
 // ====================================================================
 #define TITLE_Y      2
+#define TIME_Y      2     // 时间显示在标题栏右侧
 #define TEMP_Y      24
 #define HUMI_Y      48
 #define GPS_Y       72
@@ -141,7 +122,6 @@ static void writeLogLine(float temp, float humid) {
     if (!fs_ok) return;
 
     m5::rtc_datetime_t now = M5.Rtc.getDateTime();
-    if (now.date.year < 2025) return;
 
     File f = LittleFS.open(LOG_FILE, FILE_APPEND);
     if (!f) {
@@ -153,16 +133,61 @@ static void writeLogLine(float temp, float humid) {
         f.println("datetime,temp_c,humidity_pct,gps_lat,gps_lon");
     }
 
+    // 如果 RTC 年份不对，用上位时间戳
     char line[128];
-    snprintf(line, sizeof(line),
-             "%04d-%02d-%02d %02d:%02d:%02d,%.1f,%.1f,%.6f,%.6f",
-             now.date.year, now.date.month, now.date.date,
-             now.time.hours, now.time.minutes, now.time.seconds,
-             temp, humid, FIXED_GPS_LAT, FIXED_GPS_LON);
+    if (now.date.year >= 2025) {
+        snprintf(line, sizeof(line),
+                 "%04d-%02d-%02d %02d:%02d:%02d,%.1f,%.1f,%.6f,%.6f",
+                 now.date.year, now.date.month, now.date.date,
+                 now.time.hours, now.time.minutes, now.time.seconds,
+                 temp, humid, FIXED_GPS_LAT, FIXED_GPS_LON);
+    } else {
+        // RTC 未设置时用 millis() 替代
+        unsigned long ms = millis() / 1000;
+        snprintf(line, sizeof(line),
+                 "1970-01-01 00:%02lu:%02lu,%.1f,%.1f,%.6f,%.6f",
+                 ms / 60, ms % 60,
+                 temp, humid, FIXED_GPS_LAT, FIXED_GPS_LON);
+    }
 
     f.println(line);
+    logFileSize = f.size();
     f.close();
+    Serial.print("LOG: ");
     Serial.println(line);
+}
+
+// ====================================================================
+// 串口命令处理: 输入 'd' 或 'dump' 打印日志
+// ====================================================================
+static void handleSerialCommand() {
+    if (Serial.available() <= 0) return;
+
+    char cmd = Serial.read();
+    if (cmd == 'd' || cmd == 'D') {
+        if (!fs_ok) {
+            Serial.println("FS not available");
+            return;
+        }
+        File f = LittleFS.open(LOG_FILE, FILE_READ);
+        if (!f) {
+            Serial.println("No log file yet");
+            return;
+        }
+        Serial.printf("--- LOG DUMP (%lu bytes) ---\n", f.size());
+        while (f.available()) {
+            Serial.write(f.read());
+        }
+        Serial.println("\n--- END ---");
+        f.close();
+    } else if (cmd == 'c' || cmd == 'C') {
+        if (fs_ok) {
+            LittleFS.remove(LOG_FILE);
+            logCount = 0;
+            logFileSize = 0;
+            Serial.println("Log cleared");
+        }
+    }
 }
 
 // ====================================================================
@@ -186,8 +211,21 @@ static bool readSHT30(float &temp, float &humid) {
         if (sht30_read_raw(temp, humid)) return true;
         delay(50);
     }
-    Serial.println("SHT30: all retries failed");
     return false;
+}
+
+// ====================================================================
+// 获取 RTC 时间字符串
+// ====================================================================
+static void getTimeStr(char *buf, size_t len) {
+    m5::rtc_datetime_t now = M5.Rtc.getDateTime();
+    if (now.date.year >= 2025 && now.date.year <= 2099) {
+        snprintf(buf, len, "%02d:%02d:%02d",
+                 now.time.hours, now.time.minutes, now.time.seconds);
+    } else {
+        unsigned long ms = millis() / 1000;
+        snprintf(buf, len, "UP %02lum%02lus", ms / 60, ms % 60);
+    }
 }
 
 // ====================================================================
@@ -195,12 +233,21 @@ static bool readSHT30(float &temp, float &humid) {
 // ====================================================================
 static void drawDashboard(float temp, float humid, float batVol, bool fullInit) {
     char buf[32];
+    char timeStr[16];
+    getTimeStr(timeStr, sizeof(timeStr));
 
     if (fullInit) {
         M5.Display.fillScreen(BLACK);
         M5.Display.setTextColor(ORANGE);
         M5.Display.setCursor(10, TITLE_Y);
         M5.Display.print("M5StickC Plus2");
+
+        // 时间 (右上角, text size 1.5)
+        M5.Display.setTextSize(1.5);
+        M5.Display.setTextColor(WHITE, BLACK);
+        M5.Display.setCursor(148, TIME_Y);
+        M5.Display.print(timeStr);
+        M5.Display.setTextSize(2);
 
         M5.Display.setTextColor(WHITE, BLACK);
         M5.Display.setCursor(10, TEMP_Y);
@@ -214,7 +261,22 @@ static void drawDashboard(float temp, float humid, float batVol, bool fullInit) 
         M5.Display.setTextSize(2);
         M5.Display.setTextColor(CYAN, BLACK);
         M5.Display.setCursor(10, LOG_Y);
-        M5.Display.print("Log: Ready");
+        if (fs_ok) {
+            M5.Display.print("Log: Ready    ");
+        } else {
+            M5.Display.setTextColor(RED, BLACK);
+            M5.Display.print("Log: NO FS    ");
+        }
+    } else {
+        // 每次更新时间和标题在同一行
+        // 先清时间区域再重绘
+        M5.Display.setTextSize(1.5);
+        M5.Display.setTextColor(WHITE, BLACK);
+        M5.Display.setCursor(148, TIME_Y);
+        M5.Display.print("             ");  // 清行
+        M5.Display.setCursor(148, TIME_Y);
+        M5.Display.print(timeStr);
+        M5.Display.setTextSize(2);
     }
 
     M5.Display.setTextColor(WHITE, BLACK);
@@ -253,19 +315,19 @@ static void drawChartPage(float currentTemp) {
     char buf[32];
     M5.Display.fillScreen(BLACK);
 
+    char timeStr[16];
+    getTimeStr(timeStr, sizeof(timeStr));
+
     M5.Display.setTextColor(ORANGE);
     M5.Display.setTextSize(2);
     M5.Display.setCursor(10, TITLE_Y);
     M5.Display.print("Temp Trend");
 
+    M5.Display.setTextSize(1.5);
     M5.Display.setTextColor(WHITE, BLACK);
     M5.Display.setCursor(148, TITLE_Y);
-    if (!isnan(currentTemp)) {
-        snprintf(buf, sizeof(buf), "Now:%.1f", currentTemp);
-    } else {
-        snprintf(buf, sizeof(buf), "Now:--.-");
-    }
-    M5.Display.print(buf);
+    M5.Display.print(timeStr);
+    M5.Display.setTextSize(2);
 
     if (chartPointCount < 2) {
         M5.Display.setTextColor(DARKGREY);
@@ -343,7 +405,7 @@ static void drawChartPage(float currentTemp) {
 }
 
 // ====================================================================
-// 诊断信息显示
+// Setup
 // ====================================================================
 static void showDiag(const char* msg, int row) {
     M5.Display.setTextColor(WHITE, BLACK);
@@ -355,9 +417,6 @@ static void showDiag(const char* msg, int row) {
     M5.Display.setTextSize(2);
 }
 
-// ====================================================================
-// Setup
-// ====================================================================
 void setup() {
     auto cfg = M5.config();
     M5.begin(cfg);
@@ -371,7 +430,7 @@ void setup() {
     M5.Display.setCursor(10, TITLE_Y);
     M5.Display.print("M5StickC Plus2");
 
-    // ---- I2C 初始化 + SHT30 探测 (使用 Wire, 50kHz) ----
+    // ---- I2C + SHT30 ----
     static const int pinTrials[][2] = {{32,33},{0,26},{21,22}};
     sht30_found = false;
     char dbg[64];
@@ -379,64 +438,45 @@ void setup() {
     for (int t = 0; t < 3 && !sht30_found; t++) {
         used_sda = pinTrials[t][0];
         used_scl = pinTrials[t][1];
-
-        snprintf(dbg, sizeof(dbg), "Try Wire SDA=%d SCL=%d", used_sda, used_scl);
+        snprintf(dbg, sizeof(dbg), "Try SDA=%d SCL=%d", used_sda, used_scl);
         showDiag(dbg, 0);
-        Serial.println(dbg);
-
         Wire.begin(used_sda, used_scl, I2C_FREQ);
         delay(10);
-
-        // 探测 SHT30 地址
         Wire.beginTransmission(SHT30_ADDR);
         if (Wire.endTransmission(true) == 0) {
             sht30_found = true;
-            snprintf(dbg, sizeof(dbg), "SHT30 found! Reset...");
-            showDiag(dbg, 1);
-            Serial.println(dbg);
-
-            // 软复位 + 预热
             sht30_reset();
-
-            // 试读 (预热期可能失败, 正常)
             float dummy_t, dummy_h;
             for (int r = 0; r < 3; r++) {
-                if (sht30_read_raw(dummy_t, dummy_h)) {
-                    Serial.println("SHT30: first read OK");
-                    break;
-                }
+                if (sht30_read_raw(dummy_t, dummy_h)) break;
                 delay(50);
             }
-
-            snprintf(dbg, sizeof(dbg), "SHT30@0x%02x Pins:%d/%d %dHz",
-                     SHT30_ADDR, used_sda, used_scl, I2C_FREQ);
-            showDiag(dbg, 2);
+            snprintf(dbg, sizeof(dbg), "SHT30@0x%02x Pins:%d/%d",
+                     SHT30_ADDR, used_sda, used_scl);
+            showDiag(dbg, 1);
         }
     }
 
     if (!sht30_found) {
         showDiag("SHT30: NOT FOUND!", 1);
-        // 全面扫描
         for (int t = 0; t < 3; t++) {
             int sda = pinTrials[t][0], scl = pinTrials[t][1];
-            Wire.begin(sda, scl, I2C_FREQ);
-            delay(10);
+            Wire.begin(sda, scl, I2C_FREQ); delay(10);
             for (int addr = 3; addr < 0x78; addr++) {
                 Wire.beginTransmission(addr);
                 if (Wire.endTransmission(true) == 0) {
                     snprintf(dbg, sizeof(dbg), "I2C 0x%02x@%d/%d", addr, sda, scl);
                     showDiag(dbg, 2);
                     Serial.printf("I2C: 0x%02x on SDA=%d SCL=%d\n", addr, sda, scl);
-                    delay(1000);
+                    delay(800);
                 }
             }
         }
-        showDiag("Check wiring/ports", 3);
+        showDiag("Check wiring", 3);
         delay(2000);
     } else {
-        // 成功找到, 继续其他初始化
-        showDiag("SHT30 OK! Warm up...", 3);
-        delay(500);
+        showDiag("SHT30 OK", 2);
+        delay(300);
     }
 
     // ---- RTC ----
@@ -454,13 +494,33 @@ void setup() {
         LittleFS.format();
         fs_ok = LittleFS.begin();
     }
-    Serial.printf("LittleFS: %s\n", fs_ok ? "OK" : "FAILED");
+    if (fs_ok) {
+        // 检查已有日志文件行数
+        File f = LittleFS.open(LOG_FILE, FILE_READ);
+        if (f) {
+            while (f.available()) {
+                char c = f.read();
+                if (c == '\n') logCount++;
+            }
+            logFileSize = f.size();
+            f.close();
+        }
+    }
+    Serial.printf("LittleFS: %s, log %lu lines\n", fs_ok ? "OK" : "FAIL", logCount);
 
     // ---- 初始仪表盘 ----
     M5.Display.fillScreen(BLACK);
     M5.Display.setTextColor(ORANGE);
     M5.Display.setCursor(10, TITLE_Y);
     M5.Display.print("M5StickC Plus2");
+
+    char timeStr[16];
+    getTimeStr(timeStr, sizeof(timeStr));
+    M5.Display.setTextSize(1.5);
+    M5.Display.setTextColor(WHITE, BLACK);
+    M5.Display.setCursor(148, TIME_Y);
+    M5.Display.print(timeStr);
+    M5.Display.setTextSize(2);
 
     M5.Display.setTextColor(WHITE, BLACK);
     M5.Display.setCursor(10, TEMP_Y);
@@ -477,9 +537,15 @@ void setup() {
     M5.Display.print("BAT: --.--V  ");
     M5.Display.setTextColor(CYAN, BLACK);
     M5.Display.setCursor(10, LOG_Y);
-    M5.Display.print("Log: Ready");
+    if (fs_ok) {
+        M5.Display.printf("Log: %lu lines", logCount);
+    } else {
+        M5.Display.setTextColor(RED, BLACK);
+        M5.Display.print("Log: NO FS");
+    }
 
     Serial.println("--- System Ready ---");
+    Serial.println("Commands: d=dump log, c=clear log");
 }
 
 // ====================================================================
@@ -487,6 +553,9 @@ void setup() {
 // ====================================================================
 void loop() {
     M5.update();
+
+    // 串口命令
+    handleSerialCommand();
 
     float temp = NAN, humid = NAN;
     readSHT30(temp, humid);
@@ -524,12 +593,12 @@ void loop() {
             if (currentPage == PAGE_DASHBOARD) {
                 M5.Display.setTextColor(CYAN, BLACK);
                 M5.Display.setCursor(10, LOG_Y);
-                M5.Display.printf("Log: #%lu  ", logCount);
+                M5.Display.printf("Log: %lu (%luB)", logCount, logFileSize);
             }
         } else if (currentPage == PAGE_DASHBOARD) {
             M5.Display.setTextColor(RED, BLACK);
             M5.Display.setCursor(10, LOG_Y);
-            M5.Display.print("Log: Err  ");
+            M5.Display.print("Log: Err Read  ");
         }
     }
 
