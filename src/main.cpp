@@ -3,20 +3,28 @@
 #include <time.h>
 #include <WiFi.h>
 #include <WebServer.h>
+#include <DNSServer.h>
 
 // ====================================================================
-// WiFi 热点模式 — 设备自己开 WiFi, 手机/电脑直连
-// 不依赖校园网/路由器, 任何环境都能用
+// WiFi 热点 — DNS 劫持让手机连接后弹出页面
 // ====================================================================
 const char* AP_SSID = "M5Stick_Weather";
 const char* AP_PASS = "Dsrdd159987@";
 WebServer server(80);
+DNSServer dnsServer;
 bool wifi_ok = false;
 char deviceIP[16] = "0.0.0.0";
-float lastTemp = NAN, lastHumid = NAN;  // 供网页服务读取
+float lastTemp = NAN, lastHumid = NAN;
 
-// 前向声明
-static void getTimeStr(char *buf, size_t len);
+// ====================================================================
+// 日志: 每日自动归档, 存储管理
+// ====================================================================
+const unsigned long LOG_INTERVAL_MS = 30000UL;
+unsigned long lastLogTime = 0;
+unsigned long logCount = 0, logFileSize = 0;
+bool fs_ok = false;
+char currentLogFile[32] = "/log.txt";
+int  lastLogDay = 0;
 
 // ====================================================================
 // SHT30 直接 I2C 操作
@@ -54,17 +62,11 @@ static void sht30_reset() {
 #define FIXED_GPS_LAT  34.821085
 #define FIXED_GPS_LON  113.527073
 
-// ====================================================================
-// 日志
-// ====================================================================
-const unsigned long LOG_INTERVAL_MS = 30000UL;
-unsigned long lastLogTime = 0;
-const char* LOG_FILE = "/log.txt";
-unsigned long logCount = 0, logFileSize = 0;
-bool fs_ok = false;
+// 前向声明
+static void getTimeStr(char *buf, size_t len);
 
 // ====================================================================
-// 页面系统 (3 页: 仪表盘/温度趋势/湿度趋势)
+// SHT30 直接 I2C 操作
 // ====================================================================
 enum Page { PAGE_DASHBOARD = 0, PAGE_TEMPCHART = 1, PAGE_HUMICHART = 2, PAGE_COUNT = 3 };
 Page currentPage = PAGE_DASHBOARD;
@@ -110,14 +112,26 @@ static void setRtcFromCompileTime() {
 }
 
 // ====================================================================
-// 日志写入
+// 日志写入 (每日自动归档)
 // ====================================================================
+static void manageStorage();
+
 static void writeLogLine(float temp, float humid) {
     if (!fs_ok) return;
     m5::rtc_datetime_t now = M5.Rtc.getDateTime();
-    File f = LittleFS.open(LOG_FILE, FILE_APPEND);
+
+    // 检测日期变更 → 自动旋转到新文件
+    if (now.date.year >= 2025 && now.date.date != lastLogDay) {
+        lastLogDay = now.date.date;
+        snprintf(currentLogFile, sizeof(currentLogFile),
+                 "/log_%04d%02d%02d.csv", now.date.year, now.date.month, now.date.date);
+        logCount = 0;
+    }
+
+    File f = LittleFS.open(currentLogFile, FILE_APPEND);
     if (!f) return;
     if (f.size() == 0) f.println("datetime,temp_c,humidity_pct,gps_lat,gps_lon");
+
     char line[128];
     if (now.date.year >= 2025)
         snprintf(line, sizeof(line), "%04d-%02d-%02d %02d:%02d:%02d,%.1f,%.1f,%.6f,%.6f",
@@ -130,7 +144,57 @@ static void writeLogLine(float temp, float humid) {
                  ms/60, ms%60, temp, humid, FIXED_GPS_LAT, FIXED_GPS_LON);
     }
     f.println(line); logFileSize = f.size(); f.close();
+    logCount++;
     Serial.println(line);
+    manageStorage();
+}
+
+// ====================================================================
+// 存储管理: 保留最近 14 天或 1MB 以内
+// ====================================================================
+static void manageStorage() {
+    static unsigned long lastCheck = 0;
+    unsigned long now = millis();
+    if (now - lastCheck < 60000) return;
+    lastCheck = now;
+
+    struct LF { char name[32]; unsigned long size; };
+    LF files[50]; int n = 0; unsigned long total = 0;
+
+    File root = LittleFS.open("/");
+    if (!root || !root.isDirectory()) return;
+    File f = root.openNextFile();
+    while (f && n < 50) {
+        String s = f.name();
+        if (s.startsWith("log_")) {
+            strncpy(files[n].name, s.c_str(), 31);
+            total += (files[n].size = f.size());
+            n++;
+        }
+        f.close(); f = root.openNextFile();
+    }
+    root.close();
+
+    if (n <= 5 && total < 1048576) return;
+
+    // 按文件名排序 (日期序)
+    for (int i = 0; i < n-1; i++)
+        for (int j = i+1; j < n; j++)
+            if (strcmp(files[i].name, files[j].name) > 0) {
+                LF t = files[i]; files[i] = files[j]; files[j] = t;
+            }
+
+    // 保留最近 14 天或 1MB
+    int keep = n;
+    for (unsigned long acc = 0, i = n-1; i >= 0 && i < n; i--) {
+        acc += files[i].size;
+        if (acc > 1048576 && i > 0) { keep = n - i; break; }
+    }
+    if (keep > 14) keep = 14;
+    for (int i = 0; i < n - keep; i++) {
+        LittleFS.remove(files[i].name);
+        Serial.printf("Clean: removed %s\n", files[i].name);
+    }
 }
 
 // ====================================================================
@@ -168,7 +232,7 @@ static void sendLiveHTML() {
         "</div>"
         "<canvas id='cTemp'></canvas>"
         "<canvas id='cHumi'></canvas>"
-        "<div style='margin:8px'><a href='/log'>Download Log CSV</a> &nbsp; <a href='/api/data'>JSON</a></div>"
+        "<div style='margin:8px'><a href='/files'>[Log Files]</a> &nbsp; <a href='/log'>[Download CSV]</a></div>"
         "<script>"
         "function draw(id,data,clr,unit){"
         "var c=document.getElementById(id),ctx=c.getContext('2d'),w=c.width=440,h=c.height=150;"
@@ -202,10 +266,37 @@ static void sendLiveHTML() {
 }
 static void sendLogFile() {
     if (!fs_ok) { server.send(503, "text/plain", "FS unavailable"); return; }
-    File f = LittleFS.open(LOG_FILE, FILE_READ);
-    if (!f) { server.send(404, "text/plain", "No log yet"); return; }
+    String path = server.uri();
+    if (path == "/log" || path == "/log.txt") path = String(currentLogFile);
+    else if (path.startsWith("/log/")) path = "/" + path.substring(5);
+    File f = LittleFS.open(path.c_str(), FILE_READ);
+    if (!f) { server.send(404, "text/plain", "File not found"); return; }
     server.streamFile(f, "text/csv");
     f.close();
+}
+static void sendFileList() {
+    if (!fs_ok) { server.send(503, "text/plain", "FS unavailable"); return; }
+    String html = "<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<title>Log Files</title>"
+        "<style>body{font-family:sans-serif;background:#111;color:#fff;padding:16px}"
+        "a{color:#4fc3f7;display:block;padding:6px 0}"
+        ".h{color:orange;font-size:18px;margin-bottom:12px}"
+        ".s{color:#888;font-size:12px}</style></head><body>"
+        "<div class='h'>Log Files</div>";
+    File root = LittleFS.open("/");
+    if (root && root.isDirectory()) {
+        File f = root.openNextFile();
+        while (f) {
+            String name = f.name();
+            if (name.startsWith("log_"))
+                html += "<a href='/log/" + name + "'>" + name + " (" + String(f.size()) + "B)</a>";
+            f.close(); f = root.openNextFile();
+        }
+        root.close();
+    }
+    html += "<div class='s'>Current: " + String(currentLogFile) + "</div>";
+    html += "<p><a href='/'>Back</a></p></body></html>";
+    server.send(200, "text/html; charset=UTF-8", html);
 }
 static void sendChartJSON() {
     int n = chartPointCount;
@@ -234,13 +325,13 @@ static void handleSerialCommand() {
     char cmd = Serial.read();
     if (cmd == 'd' || cmd == 'D') {
         if (!fs_ok) { Serial.println("FS not available"); return; }
-        File f = LittleFS.open(LOG_FILE, FILE_READ);
+        File f = LittleFS.open(currentLogFile, FILE_READ);
         if (!f) { Serial.println("No log file yet"); return; }
         Serial.printf("--- LOG DUMP (%lu bytes) ---\n", f.size());
         while (f.available()) Serial.write(f.read());
         Serial.println("\n--- END ---"); f.close();
     } else if (cmd == 'c' || cmd == 'C') {
-        if (fs_ok) { LittleFS.remove(LOG_FILE); logCount = 0; logFileSize = 0; Serial.println("Log cleared"); }
+        if (fs_ok) { LittleFS.remove(currentLogFile); logCount = 0; logFileSize = 0; Serial.println("Log cleared"); }
     } else if (cmd == 'i' || cmd == 'I') {
         Serial.printf("AP: %s | IP: %s | Pass: %s\n", AP_SSID, deviceIP, AP_PASS);
     }
@@ -486,7 +577,7 @@ void setup() {
     fs_ok = LittleFS.begin();
     if (!fs_ok) { LittleFS.format(); fs_ok = LittleFS.begin(); }
     if (fs_ok) {
-        File f = LittleFS.open(LOG_FILE, FILE_READ);
+        File f = LittleFS.open(currentLogFile, FILE_READ);
         if (f) { while (f.available()) { if (f.read() == '\n') logCount++; } logFileSize = f.size(); f.close(); }
     }
     Serial.printf("LittleFS: %s, log %lu lines\n", fs_ok ? "OK" : "FAIL", logCount);
@@ -500,9 +591,27 @@ void setup() {
     strncpy(deviceIP, WiFi.softAPIP().toString().c_str(), sizeof(deviceIP) - 1);
     Serial.printf("AP: %s | IP: %s | Pass: %s\n", AP_SSID, deviceIP, AP_PASS);
     showDiag(deviceIP, 3);
+    // DNS 劫持: 所有域名都指向设备 IP → 手机连接后弹页面
+    dnsServer.start(53, "*", WiFi.softAPIP());
+
     server.on("/", sendLiveHTML);
     server.on("/log", sendLogFile);
+    server.on("/files", sendFileList);
     server.on("/api/data", sendChartJSON);
+    server.on("/api/chart", sendChartJSON);
+    // 路由: /log_xxx.csv 或 /log/log_xxx.csv
+    server.on("/log.txt", sendLogFile);
+    // 给 archive 文件用的通配路由
+    server.onNotFound([]() {
+        String uri = server.uri();
+        if (uri.startsWith("/log_") || uri.startsWith("/log/log_")) {
+            sendLogFile();
+        } else {
+            server.send(302, "", "<!DOCTYPE html><html><head>"
+                "<meta http-equiv='refresh' content='0;url=/'>"
+                "</head></html>");
+        }
+    });
     server.begin();
 
     // 初始仪表盘
@@ -538,7 +647,7 @@ void setup() {
 void loop() {
     M5.update();
     handleSerialCommand();
-    if (wifi_ok) server.handleClient();
+    if (wifi_ok) { dnsServer.processNextRequest(); server.handleClient(); }
 
     float temp = NAN, humid = NAN;
     readSHT30(temp, humid);
@@ -586,3 +695,8 @@ void loop() {
 
     delay(200);
 }
+
+
+
+
+
