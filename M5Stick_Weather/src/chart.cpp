@@ -20,7 +20,7 @@ void chart_add_point(float temp, float humid) {
 }
 
 int chart_get_count()   { return count; }
-int chart_get_start()   { return count > MAX_CHART_POINTS ? count - MAX_CHART_POINTS : 0; }
+int chart_get_start()   { return 0; }  // 圆环缓冲已保证 data[0] 为最旧的有效数据
 int chart_get_max()     { return MAX_CHART_POINTS; }
 float chart_get_temp(int i)  { return temps[i]; }
 float chart_get_humid(int i) { return humids[i]; }

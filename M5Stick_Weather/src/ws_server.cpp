@@ -80,13 +80,12 @@ static void handle_root() {
         "var _m=document.getElementById('map');"
         "function initMap(){try{"
         "var m=L.map('map',{zoomControl:false}).setView([_lat,_lon],16);"
-        // 天地图 WMTS (标准 OGC 瓦片格式)
-        "var tianditu='https://t{s}.tianditu.gov.cn/';"
-        "var tk='?tk=" AMAP_TK "';"
-        "var wmts='SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles';"
-        "L.tileLayer(tianditu+'vec_w/wmts?'+wmts+'&LAYER=vec&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}'+tk,"
+        // 天地图 DataServer (云平台新版接口)
+        "var tk='" AMAP_TK "';"
+        "var td='https://t{s}.tianditu.gov.cn/DataServer?T=';"
+        "L.tileLayer(td+'vec_w&x={x}&y={y}&l={z}&tk='+tk,"
         "{maxZoom:18,subdomains:['0','1','2','3','4','5','6','7']}).addTo(m);"
-        "L.tileLayer(tianditu+'cva_w/wmts?'+wmts+'&LAYER=cva&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}'+tk,"
+        "L.tileLayer(td+'cva_w&x={x}&y={y}&l={z}&tk='+tk,"
         "{maxZoom:18,subdomains:['0','1','2','3','4','5','6','7'],opacity:.7}).addTo(m);"
         "var dot=L.circleMarker([_lat,_lon],{radius:9,color:'#2196F3',"
         "fillColor:'#2196F3',fillOpacity:.8,weight:3}).addTo(m);"
@@ -175,17 +174,16 @@ static void handle_files() {
 static void handle_chart_json() {
     int n = chart_get_count();
     int mx = chart_get_max();
-    int start = n > mx ? n - mx : 0;
     int cnt = n > mx ? mx : n;
 
     String json = "{\"count\":" + String(cnt) + ",\"temp\":[";
-    for (int i = start; i < start + cnt; i++) {
-        if (i > start) json += ",";
+    for (int i = 0; i < cnt; i++) {
+        if (i > 0) json += ",";
         json += String(isnan(chart_get_temp(i)) ? 0 : chart_get_temp(i), 1);
     }
     json += "],\"humid\":[";
-    for (int i = start; i < start + cnt; i++) {
-        if (i > start) json += ",";
+    for (int i = 0; i < cnt; i++) {
+        if (i > 0) json += ",";
         json += String(isnan(chart_get_humid(i)) ? 0 : chart_get_humid(i), 1);
     }
     json += "]}";

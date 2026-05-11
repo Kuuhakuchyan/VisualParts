@@ -104,11 +104,10 @@ void draw_line_chart(const char *title, uint16_t color, float *data, int count, 
     }
 
     const int CX = 10, CY = 34, CW = 220, CH = 76;
-    int start = count > MAX_CHART_POINTS ? count - MAX_CHART_POINTS : 0;
-    int cnt   = count > MAX_CHART_POINTS ? MAX_CHART_POINTS : count;
+    int cnt = count > MAX_CHART_POINTS ? MAX_CHART_POINTS : count;
 
     float dMin = 999, dMax = -999;
-    for (int i = start; i < start + cnt; i++) {
+    for (int i = 0; i < cnt; i++) {
         if (!isnan(data[i])) {
             if (data[i] < dMin) dMin = data[i];
             if (data[i] > dMax) dMax = data[i];
@@ -131,11 +130,11 @@ void draw_line_chart(const char *title, uint16_t color, float *data, int count, 
         M5.Display.drawLine(CX, yy, CX + CW - 1, yy, 0x2117);
     }
 
-    for (int i = start + 1; i < start + cnt; i++) {
+    for (int i = 1; i < cnt; i++) {
         if (isnan(data[i]) || isnan(data[i-1])) continue;
-        int x1 = CX + (i-1-start) * CW / (cnt-1);
+        int x1 = CX + (i-1) * CW / (cnt-1);
         int y1 = CY + CH - (int)((data[i-1] - dMin) * CH / range);
-        int x2 = CX + (i-start) * CW / (cnt-1);
+        int x2 = CX + i * CW / (cnt-1);
         int y2 = CY + CH - (int)((data[i] - dMin) * CH / range);
         M5.Display.drawLine(x1, y1, x2, y2, color);
     }
