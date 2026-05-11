@@ -80,11 +80,14 @@ static void handle_root() {
         "var _m=document.getElementById('map');"
         "function initMap(){try{"
         "var m=L.map('map',{zoomControl:false}).setView([_lat,_lon],16);"
-        // 天地图 (国内可用, 需要 tk)
-        "L.tileLayer('https://t{s}.tianditu.gov.cn/vec_w/{z}/{x}/{y}.png?tk=" AMAP_TK "',"
+        // 天地图 WMTS (标准 OGC 瓦片格式)
+        "var tianditu='https://t{s}.tianditu.gov.cn/';"
+        "var tk='?tk=" AMAP_TK "';"
+        "var wmts='SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles';"
+        "L.tileLayer(tianditu+'vec_w/wmts?'+wmts+'&LAYER=vec&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}'+tk,"
         "{maxZoom:18,subdomains:['0','1','2','3','4','5','6','7']}).addTo(m);"
-        "L.tileLayer('https://t{s}.tianditu.gov.cn/cva_w/{z}/{x}/{y}.png?tk=" AMAP_TK "',"
-        "{maxZoom:18,subdomains:['0','1','2','3','4','5','6','7']}).addTo(m);"
+        "L.tileLayer(tianditu+'cva_w/wmts?'+wmts+'&LAYER=cva&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}'+tk,"
+        "{maxZoom:18,subdomains:['0','1','2','3','4','5','6','7'],opacity:.7}).addTo(m);"
         "var dot=L.circleMarker([_lat,_lon],{radius:9,color:'#2196F3',"
         "fillColor:'#2196F3',fillOpacity:.8,weight:3}).addTo(m);"
         "setInterval(function(){fetch('/api/position').then(r=>r.json()).then(d=>{"

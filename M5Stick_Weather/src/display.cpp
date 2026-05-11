@@ -1,6 +1,7 @@
 #include "display.h"
 #include "config.h"
 #include "position.h"
+#include <WiFi.h>
 #include <M5Unified.h>
 
 void display_init() {
@@ -56,6 +57,18 @@ void draw_dashboard(float temp, float humid, float bat_v, bool full_init, const 
         snprintf(buf, sizeof(buf), "Pos: searching...  ");
     }
     M5.Display.print(buf);
+
+    // STA IP 地址 (手机同网络可直接访问)
+    M5.Display.fillRect(10, IP_Y, 220, 12, BLACK);
+    M5.Display.setTextSize(1);
+    M5.Display.setTextColor(DARKGREY, BLACK);
+    M5.Display.setCursor(10, IP_Y);
+    if (WiFi.status() == WL_CONNECTED) {
+        M5.Display.print("STA: ");
+        M5.Display.print(WiFi.localIP());
+    } else {
+        M5.Display.print("STA: --");
+    }
 
     // 电池
     M5.Display.fillRect(10, BAT_Y, 220, 18, BLACK);

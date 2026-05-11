@@ -40,8 +40,8 @@
 // ---------- HTTP 服务器 ----------
 #define SERVER_URL  ""
 
-// ---------- 天地图 (Leaflet 瓦片图层) ----------
-#define AMAP_TK   "10592651dd8630ba054edde53f2c10a6"
+// ---------- 天地图 (Leaflet 瓦片图层, 需要浏览器端 Key) ----------
+#define AMAP_TK   "1b37405bc436d1078f80e15278c0d402"
 
 // ---------- WiFi 定位 (高德 IP 定位) ----------
 // lbs.amap.com → 控制台 → 应用管理 → Web服务 API Key
@@ -60,9 +60,10 @@
 #define TIME_Y      20
 #define TEMP_Y      36
 #define HUMI_Y      58
-#define GPS_Y       80
-#define BAT_Y       100
-#define LOG_Y       120
+#define GPS_Y       76
+#define IP_Y        92
+#define BAT_Y       106
+#define LOG_Y       116
 
 // ---------- 页面枚举 ----------
 enum Page {
