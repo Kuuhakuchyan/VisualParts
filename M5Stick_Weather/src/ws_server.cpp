@@ -74,23 +74,41 @@ static void handle_root() {
         "setInterval(function(){fetch('/api/chart').then(r=>r.json()).then(d=>{"
         "draw('cTemp',d.temp,'#00e5ff','Temperature (C)');"
         "draw('cHumi',d.humid,'#ffea00','Humidity (%)')})},8000);"
-        // 地图 (Leaflet, CDN 加载失败则保留位置文本)
-        "var s=document.createElement('link');s.rel='stylesheet';"
-        "s.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css';"
-        "document.head.appendChild(s);"
-        "var j=document.createElement('script');j.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js';"
-        "j.onload=function(){"
-        "var ll=[" + String(lat, 5) + "," + String(lon, 5) + "];"
-        "var map=L.map('map',{zoomControl:false}).setView(ll,16);"
-        "L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);"
-        "var m=L.circleMarker(ll,{radius:8,color:'#2196F3',fillColor:'#2196F3',fillOpacity:.8,weight:2}).addTo(map);"
+        // 实时位置 Canvas 地图 (不依赖外网, 蓝点随坐标移动)
+        "var clat=" + String(lat, 5) + ",clon=" + String(lon, 5) + ";"
+        + "var mc=document.getElementById('map');"
+        "mc.innerHTML='<canvas id=\"cPos\" width=\"440\" height=\"240\""
+        " style=\"width:100%;height:240px;border-radius:10px\"></canvas>';"
+        "var cp=document.getElementById('cPos'),cx=cp.getContext('2d');"
+        "function drawPos(lat,lon,src,acc){"
+        "var w=440,h=240,mr=100;cx.fillStyle='#1a1a2e';cx.fillRect(0,0,w,h);"
+        // 十字交叉线
+        "cx.strokeStyle='#2a2a4e';cx.lineWidth=1;"
+        "cx.beginPath();cx.moveTo(w/2,0);cx.lineTo(w/2,h);"
+        "cx.moveTo(0,h/2);cx.lineTo(w,h/2);cx.stroke();"
+        // 精度圈
+        "cx.strokeStyle='#444488';cx.lineWidth=1;cx.setLineDash([4,4]);"
+        "cx.beginPath();cx.arc(w/2,h/2,40,0,Math.PI*2);cx.stroke();"
+        "cx.setLineDash([]);"
+        // 坐标文字
+        "cx.fillStyle='#888';cx.font='11px sans-serif';cx.textAlign='center';"
+        "cx.fillText(lat.toFixed(5)+'N',w/2,18);"
+        "cx.fillText(lon.toFixed(5)+'E',w/2,34);"
+        "cx.fillText(src+' ±'+acc+'m',w/2,50);"
+        // 蓝点 (中心)
+        "var grd=cx.createRadialGradient(w/2,h/2,2,w/2,h/2,12);"
+        "grd.addColorStop(0,'#64B5F6');grd.addColorStop(1,'#1565C0');"
+        "cx.fillStyle=grd;cx.beginPath();cx.arc(w/2,h/2,10,0,Math.PI*2);cx.fill();"
+        // 外圈光晕
+        "cx.strokeStyle='#2196F380';cx.lineWidth=3;"
+        "cx.beginPath();cx.arc(w/2,h/2,14,0,Math.PI*2);cx.stroke();"
+        "}"
+        "drawPos(clat,clon,'"+ String(pos_get_source()) + "'," + String(pos_get_accuracy()) + ");"
         "setInterval(function(){fetch('/api/position').then(r=>r.json()).then(d=>{"
-        "if(!d.lat)return;var l=[d.lat,d.lon];m.setLatLng(l);"
+        "if(!d.lat)return;clat=d.lat;clon=d.lon;drawPos(d.lat,d.lon,d.src,d.acc);"
         "document.getElementById('posInfo').textContent="
         "d.lat.toFixed(5)+'N '+d.lon.toFixed(5)+'E '+d.src+' ±'+d.acc+'m';"
         "})},5000);"
-        "};j.onerror=function(){document.getElementById('map').innerHTML='';};"
-        "document.body.appendChild(j);"
         "</script></body></html>";
     server.send(200, "text/html; charset=UTF-8", html);
 }
