@@ -4,6 +4,7 @@
 #include "chart.h"
 #include "rtc.h"
 #include "position.h"
+#include <esp_netif.h>
 #include <Arduino.h>
 #include <M5Unified.h>
 #include <LittleFS.h>
@@ -74,41 +75,60 @@ static void handle_root() {
         "setInterval(function(){fetch('/api/chart').then(r=>r.json()).then(d=>{"
         "draw('cTemp',d.temp,'#00e5ff','Temperature (C)');"
         "draw('cHumi',d.humid,'#ffea00','Humidity (%)')})},8000);"
-        // 实时位置 Canvas 地图 (不依赖外网, 蓝点随坐标移动)
-        "var clat=" + String(lat, 5) + ",clon=" + String(lon, 5) + ";"
-        + "var mc=document.getElementById('map');"
-        "mc.innerHTML='<canvas id=\"cPos\" width=\"440\" height=\"240\""
+        // 实时位置: 优先 Leaflet 卫星图 (需要外网), 失败降级 Canvas
+        "var _lat=" + String(lat, 5) + ",_lon=" + String(lon, 5) + ";"
+        "var _m=document.getElementById('map');"
+        "function initMap(){try{"
+        "var m=L.map('map',{zoomControl:false}).setView([_lat,_lon],16);"
+        // 天地图 (国内可用, 需要 tk)
+        "L.tileLayer('https://t{s}.tianditu.gov.cn/vec_w/{z}/{x}/{y}.png?tk=" AMAP_TK "',"
+        "{maxZoom:18,subdomains:['0','1','2','3','4','5','6','7']}).addTo(m);"
+        "L.tileLayer('https://t{s}.tianditu.gov.cn/cva_w/{z}/{x}/{y}.png?tk=" AMAP_TK "',"
+        "{maxZoom:18,subdomains:['0','1','2','3','4','5','6','7']}).addTo(m);"
+        "var dot=L.circleMarker([_lat,_lon],{radius:9,color:'#2196F3',"
+        "fillColor:'#2196F3',fillOpacity:.8,weight:3}).addTo(m);"
+        "setInterval(function(){fetch('/api/position').then(r=>r.json()).then(d=>{"
+        "if(!d.lat)return;_lat=d.lat;_lon=d.lon;dot.setLatLng([d.lat,d.lon]);"
+        "document.getElementById('posInfo').textContent="
+        "d.lat.toFixed(5)+'N '+d.lon.toFixed(5)+'E '+d.src+' ±'+d.acc+'m';"
+        "})},5000);"
+        "}catch(e){drawCanvas()}}"
+        // Canvas 降级
+        "function drawCanvas(){"
+        "_m.innerHTML='<canvas id=\"cPos\" width=\"440\" height=\"240\""
         " style=\"width:100%;height:240px;border-radius:10px\"></canvas>';"
-        "var cp=document.getElementById('cPos'),cx=cp.getContext('2d');"
-        "function drawPos(lat,lon,src,acc){"
-        "var w=440,h=240,mr=100;cx.fillStyle='#1a1a2e';cx.fillRect(0,0,w,h);"
-        // 十字交叉线
+        "var cx=document.getElementById('cPos').getContext('2d');"
+        "function d(lat,lon,src,acc){"
+        "var w=440,h=240;cx.fillStyle='#1a1a2e';cx.fillRect(0,0,w,h);"
         "cx.strokeStyle='#2a2a4e';cx.lineWidth=1;"
         "cx.beginPath();cx.moveTo(w/2,0);cx.lineTo(w/2,h);"
         "cx.moveTo(0,h/2);cx.lineTo(w,h/2);cx.stroke();"
-        // 精度圈
-        "cx.strokeStyle='#444488';cx.lineWidth=1;cx.setLineDash([4,4]);"
-        "cx.beginPath();cx.arc(w/2,h/2,40,0,Math.PI*2);cx.stroke();"
-        "cx.setLineDash([]);"
-        // 坐标文字
         "cx.fillStyle='#888';cx.font='11px sans-serif';cx.textAlign='center';"
         "cx.fillText(lat.toFixed(5)+'N',w/2,18);"
         "cx.fillText(lon.toFixed(5)+'E',w/2,34);"
         "cx.fillText(src+' ±'+acc+'m',w/2,50);"
-        // 蓝点 (中心)
-        "var grd=cx.createRadialGradient(w/2,h/2,2,w/2,h/2,12);"
-        "grd.addColorStop(0,'#64B5F6');grd.addColorStop(1,'#1565C0');"
-        "cx.fillStyle=grd;cx.beginPath();cx.arc(w/2,h/2,10,0,Math.PI*2);cx.fill();"
-        // 外圈光晕
+        "var g=cx.createRadialGradient(w/2,h/2,2,w/2,h/2,12);"
+        "g.addColorStop(0,'#64B5F6');g.addColorStop(1,'#1565C0');"
+        "cx.fillStyle=g;cx.beginPath();cx.arc(w/2,h/2,10,0,Math.PI*2);cx.fill();"
         "cx.strokeStyle='#2196F380';cx.lineWidth=3;"
         "cx.beginPath();cx.arc(w/2,h/2,14,0,Math.PI*2);cx.stroke();"
-        "}"
-        "drawPos(clat,clon,'"+ String(pos_get_source()) + "'," + String(pos_get_accuracy()) + ");"
-        "setInterval(function(){fetch('/api/position').then(r=>r.json()).then(d=>{"
-        "if(!d.lat)return;clat=d.lat;clon=d.lon;drawPos(d.lat,d.lon,d.src,d.acc);"
+        "}d(_lat,_lon,'"+ String(pos_get_source()) + "'," + String(pos_get_accuracy()) + ");"
+        "setInterval(function(){fetch('/api/position').then(r=>r.json()).then(dd=>{"
+        "if(!dd.lat)return;_lat=dd.lat;_lon=dd.lon;"
+        "d(dd.lat,dd.lon,dd.src,dd.acc);"
         "document.getElementById('posInfo').textContent="
-        "d.lat.toFixed(5)+'N '+d.lon.toFixed(5)+'E '+d.src+' ±'+d.acc+'m';"
-        "})},5000);"
+        "dd.lat.toFixed(5)+'N '+dd.lon.toFixed(5)+'E '+dd.src+' ±'+dd.acc+'m';"
+        "})},5000);}"
+        // 动态加载 Leaflet
+        "var ls=document.createElement('link');ls.rel='stylesheet';"
+        "ls.href='https://cdn.bootcdn.net/ajax/libs/leaflet/1.9.4/leaflet.css';"
+        "document.head.appendChild(ls);"
+        "var lj=document.createElement('script');"
+        "lj.src='https://cdn.bootcdn.net/ajax/libs/leaflet/1.9.4/leaflet.js';"
+        "lj.onload=initMap;lj.onerror=drawCanvas;"
+        "document.body.appendChild(lj);"
+        // 5s CDN 超时降级 Canvas
+        "setTimeout(function(){if(typeof L==='undefined')drawCanvas();},5000);"
         "</script></body></html>";
     server.send(200, "text/html; charset=UTF-8", html);
 }
@@ -178,7 +198,15 @@ bool webserver_init() {
     strncpy(_ip, WiFi.softAPIP().toString().c_str(), sizeof(_ip) - 1);
     Serial.printf("AP: %s | IP: %s\n", AP_SSID, _ip);
 
-    dns.start(53, "*", WiFi.softAPIP());
+    // DHCP 提供真实 DNS (114.114.114.114), 手机可解析 CDN/天地图域名
+    // 注: 无 NAT, 手机通过蜂窝数据访问互联网资源
+    {
+        esp_netif_dns_info_t dns;
+        dns.ip.type = ESP_IPADDR_TYPE_V4;
+        IP4_ADDR(&dns.ip.u_addr.ip4, 114, 114, 114, 114);
+        esp_netif_set_dns_info(esp_netif_get_handle_from_ifkey("WiFi AP"),
+                               ESP_NETIF_DNS_MAIN, &dns);
+    }
 
     server.on("/", handle_root);
     server.on("/log", handle_log);
@@ -204,6 +232,6 @@ bool webserver_init() {
     return true;
 }
 
-void webserver_handle() { if (_active) { dns.processNextRequest(); server.handleClient(); } }
+void webserver_handle() { if (_active) server.handleClient(); }
 bool webserver_is_active() { return _active; }
 const char* webserver_get_ip() { return _ip; }
