@@ -107,11 +107,6 @@ void loop() {
     // 页面渲染 (采集暂停时仍可查看)
     if (currentPage == PAGE_DASHBOARD) {
         draw_dashboard(temp, humid, batVol, true, ts);
-        M5.Display.setTextSize(1);
-        M5.Display.setTextColor(collecting ? GREEN : RED, BLACK);
-        M5.Display.setCursor(180, TITLE_Y);
-        M5.Display.print(collecting ? "REC" : "STOP");
-        M5.Display.setTextSize(2);
     } else {
         const char* title = (currentPage == PAGE_TEMPCHART) ? "Temp Trend" : "Humi Trend";
         uint16_t    color = (currentPage == PAGE_TEMPCHART) ? CYAN : YELLOW;
@@ -119,6 +114,9 @@ void loop() {
         float*      data  = (currentPage == PAGE_TEMPCHART) ? chart_get_temp_ptr() : chart_get_humid_ptr();
         draw_line_chart(title, color, data, chart_get_count(), unit, ts);
     }
+    // 右上角状态灯: 绿=采集中 红=暂停
+    M5.Display.fillCircle(228, 10, 4, collecting ? GREEN : RED);
+    M5.Display.drawCircle(228, 10, 4, WHITE);
 
     // ---- 暂停时跳过所有采集 ----
     if (!collecting) { delay(200); return; }
