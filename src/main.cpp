@@ -4,13 +4,39 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <DNSServer.h>
+#include <HTTPClient.h>
 #include <BLEDevice.h>
 #include <BLEUtils.h>
 #include <BLEServer.h>
 #include <BLE2902.h>
 
 // ====================================================================
-// WiFi 热点 — DNS 劫持让手机连接后弹出页面
+// WiFi STA — 连接本地 WiFi/校园网, 自主推送数据到服务器
+// ====================================================================
+// 校园网网页认证配置:
+//   1. 设备先连上校园网 WiFi (通常不需要密码或 WPA2)
+//   2. 然后 POST 学号/密码到认证页面
+//   3. 登录成功后即可发送 HTTP 请求到你的服务器
+//
+// 在你自己的服务器上搭建接收端:
+//   POST http://<server>/api/upload
+//   Content-Type: application/json
+//   Body: {"temp":25.3,"humid":60.2,"gps":"34.821N 113.527E","bat":4.12,"time":"..."}
+//   Response: {"status":"ok"}
+// ====================================================================
+const char* STA_SSID  = "";              // 校园网 WiFi 名称
+const char* STA_PASS  = "";              // WiFi 密码 (没有就留空)
+const char* STA_USER  = "";              // 学号 (校园网认证用)
+const char* STA_PWD   = "";              // 密码 (校园网认证用)
+const char* LOGIN_URL = "";              // 认证页面地址
+const char* SERVER_URL = "http://192.168.1.100:8080"; // 你的服务器
+
+bool sta_ok = false;
+unsigned long lastSendTime = 0;
+const unsigned long SEND_INTERVAL_MS = 30000UL;
+
+// ====================================================================
+// WiFi 热点 (保留, 供直接连接查看)
 // ====================================================================
 const char* AP_SSID = "M5Stick_Weather";
 const char* AP_PASS = "Dsrdd159987@";
@@ -253,6 +279,45 @@ static void bleSend(const char* data) {
     if (!bleConnected || bleTxChar == nullptr) return;
     bleTxChar->setValue((uint8_t*)data, strlen(data));
     bleTxChar->notify();
+}
+
+// ====================================================================
+// WiFi STA + HTTP 推送数据到服务器
+// ====================================================================
+static bool staConnect() {
+    if (strlen(STA_SSID) == 0) return false;
+    Serial.printf("STA: connecting %s\n", STA_SSID);
+    WiFi.mode(WIFI_AP_STA);
+    WiFi.begin(STA_SSID, STA_PASS);
+    for (int i = 0; i < 20 && WiFi.status() != WL_CONNECTED; i++) { delay(500); Serial.print("."); }
+    if (WiFi.status() != WL_CONNECTED) return false;
+    Serial.printf("\nSTA: IP %s\n", WiFi.localIP().toString().c_str());
+
+    // 校园网网页认证
+    if (strlen(LOGIN_URL) > 0 && strlen(STA_USER) > 0 && strlen(STA_PWD) > 0) {
+        HTTPClient h; h.begin("http://connectivitycheck.gstatic.com/generate_204");
+        int r = h.GET(); h.end();
+        if (r == 302 || r == 301) {
+            HTTPClient l; l.begin(LOGIN_URL);
+            l.addHeader("Content-Type", "application/x-www-form-urlencoded");
+            int c = l.POST("username=" + String(STA_USER) + "&password=" + String(STA_PWD));
+            Serial.printf("STA: login %d\n", c); l.end();
+            delay(1000);
+        }
+    }
+    return true;
+}
+static bool httpSend(float temp, float humid, float bat) {
+    if (!sta_ok || strlen(SERVER_URL) == 0) return false;
+    char ts[24]; getTimeStr(ts, sizeof(ts));
+    char json[256]; snprintf(json, sizeof(json),
+        "{\"temp\":%.1f,\"humid\":%.1f,\"gps\":\"%.6fN %.6fE\","
+        "\"bat\":%.2f,\"time\":\"%s\",\"device\":\"M5StickC_Plus2\"}",
+        temp, humid, FIXED_GPS_LAT, FIXED_GPS_LON, bat, ts);
+    HTTPClient h; h.begin(String(SERVER_URL) + "/api/upload");
+    h.addHeader("Content-Type", "application/json");
+    int c = h.POST(json); h.end();
+    return c == 200;
 }
 
 // ====================================================================
@@ -674,6 +739,13 @@ void setup() {
 
     // ---- BLE 蓝牙 ----
     initBLE();
+
+    // ---- WiFi STA (校园网 + HTTP 推送) ----
+    if (strlen(STA_SSID) > 0) {
+        showDiag("Connecting STA...", 4);
+        sta_ok = staConnect();
+        showDiag(sta_ok ? "STA connected" : "STA failed", 4);
+    }
     showDiag("BLE ready", 3);
 
     // 初始仪表盘
@@ -755,6 +827,7 @@ void loop() {
                 "\"bat\":%.2f,\"time\":\"%s\"}",
                 temp, humid, FIXED_GPS_LAT, FIXED_GPS_LON, batVol, ts);
             bleSend(bleBuf);
+            httpSend(temp, humid, batVol);
         }
         if (currentPage == PAGE_DASHBOARD) {
             M5.Display.fillRect(10, LOG_Y, 220, 18, BLACK);
