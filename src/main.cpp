@@ -1,6 +1,21 @@
 #include <M5Unified.h>
 #include <LittleFS.h>
 #include <time.h>
+#include <WiFi.h>
+#include <WebServer.h>
+
+// ====================================================================
+// WiFi 配置 (改成你的路由器名称和密码)
+// ====================================================================
+const char* WIFI_SSID = "YourWiFi";
+const char* WIFI_PASS = "YourPassword";
+WebServer server(80);
+bool wifi_ok = false;
+char deviceIP[16] = "0.0.0.0";
+float lastTemp = NAN, lastHumid = NAN;  // 供网页服务读取
+
+// 前向声明
+static void getTimeStr(char *buf, size_t len);
 
 // ====================================================================
 // SHT30 直接 I2C 操作
@@ -118,6 +133,55 @@ static void writeLogLine(float temp, float humid) {
 }
 
 // ====================================================================
+// 网页服务
+// ====================================================================
+static void sendLiveHTML() {
+    char t[8], h[8];
+    snprintf(t, sizeof(t), "%.1f", isnan(lastTemp) ? 0.0 : lastTemp);
+    snprintf(h, sizeof(h), "%.1f", isnan(lastHumid) ? 0.0 : lastHumid);
+    char timeStr[24]; getTimeStr(timeStr, sizeof(timeStr));
+
+    String html = "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<meta http-equiv='refresh' content='5'>"
+        "<title>M5StickC Plus2</title>"
+        "<style>body{font-family:sans-serif;text-align:center;margin:16px}"
+        ".v{font-size:32px;margin:4px}.l{color:#888;font-size:14px}</style>"
+        "</head><body>"
+        "<h2>M5StickC Plus2</h2>"
+        "<p style='color:#888'>" + String(timeStr) + "</p>"
+        "<div class='l'>Temperature</div><div class='v'>" + String(t) + " °C</div>"
+        "<div class='l'>Humidity</div><div class='v'>" + String(h) + " %</div>"
+        "<div class='l'>GPS</div><div class='v'>" + String(FIXED_GPS_LAT, 6) + "N<br>" + String(FIXED_GPS_LON, 6) + "E</div>"
+        "<div class='l'>Battery</div><div class='v'>" + String(M5.Power.getBatteryVoltage()/1000.0f, 2) + " V</div>"
+        "<div class='l'>Log</div><div>" + String(logCount) + " lines (" + String(logFileSize) + "B)</div>"
+        "<p><a href='/log'>[Download Log CSV]</a></p>"
+        "<p><a href='/api/data'>[JSON Data]</a></p>"
+        "</body></html>";
+    server.send(200, "text/html; charset=UTF-8", html);
+}
+static void sendLogFile() {
+    if (!fs_ok) { server.send(503, "text/plain", "FS unavailable"); return; }
+    File f = LittleFS.open(LOG_FILE, FILE_READ);
+    if (!f) { server.send(404, "text/plain", "No log yet"); return; }
+    server.streamFile(f, "text/csv");
+    f.close();
+}
+static void sendJSON() {
+    char buf[256];
+    char ts[24]; getTimeStr(ts, sizeof(ts));
+    float t = isnan(lastTemp) ? -99 : lastTemp;
+    float h = isnan(lastHumid) ? -99 : lastHumid;
+    snprintf(buf, sizeof(buf),
+        "{\"time\":\"%s\",\"temp\":%.1f,\"humid\":%.1f,"
+        "\"gps_lat\":%.6f,\"gps_lon\":%.6f,"
+        "\"bat_v\":%.2f,\"log_lines\":%lu,\"log_bytes\":%lu}",
+        ts, t, h, FIXED_GPS_LAT, FIXED_GPS_LON,
+        M5.Power.getBatteryVoltage()/1000.0f, logCount, logFileSize);
+    server.send(200, "application/json", buf);
+}
+
+// ====================================================================
 // 串口命令
 // ====================================================================
 static void handleSerialCommand() {
@@ -132,6 +196,8 @@ static void handleSerialCommand() {
         Serial.println("\n--- END ---"); f.close();
     } else if (cmd == 'c' || cmd == 'C') {
         if (fs_ok) { LittleFS.remove(LOG_FILE); logCount = 0; logFileSize = 0; Serial.println("Log cleared"); }
+    } else if (cmd == 'i' || cmd == 'I') {
+        Serial.printf("IP: %s\n", wifi_ok ? deviceIP : "WiFi not connected");
     }
 }
 
@@ -380,6 +446,31 @@ void setup() {
     }
     Serial.printf("LittleFS: %s, log %lu lines\n", fs_ok ? "OK" : "FAIL", logCount);
 
+    // ---- WiFi ----
+    showDiag("WiFi connecting...", 3);
+    Serial.printf("Connecting to %s", WIFI_SSID);
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(WIFI_SSID, WIFI_PASS);
+    int wTimeout = 30;
+    while (WiFi.status() != WL_CONNECTED && wTimeout-- > 0) {
+        delay(500); Serial.print(".");
+    }
+    if (WiFi.status() == WL_CONNECTED) {
+        wifi_ok = true;
+        strncpy(deviceIP, WiFi.localIP().toString().c_str(), sizeof(deviceIP) - 1);
+        Serial.printf("\nWiFi OK, IP: %s\n", deviceIP);
+        showDiag(deviceIP, 3);
+        // 启动 Web Server
+        server.on("/", sendLiveHTML);
+        server.on("/log", sendLogFile);
+        server.on("/api/data", sendJSON);
+        server.begin();
+    } else {
+        Serial.println("\nWiFi FAIL (continuing without network)");
+        showDiag("WiFi FAIL", 3);
+    }
+    delay(800);
+
     // 初始仪表盘
     M5.Display.fillScreen(BLACK);
     M5.Display.setTextColor(ORANGE);
@@ -413,9 +504,12 @@ void setup() {
 void loop() {
     M5.update();
     handleSerialCommand();
+    if (wifi_ok) server.handleClient();
 
     float temp = NAN, humid = NAN;
     readSHT30(temp, humid);
+    if (!isnan(temp)) lastTemp = temp;
+    if (!isnan(humid)) lastHumid = humid;
     float batVol = M5.Power.getBatteryVoltage() / 1000.0f;
 
     // BtnA: 0 → 1 → 2 → 0
