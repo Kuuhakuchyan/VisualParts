@@ -55,3 +55,8 @@ bool sta_send(float temp, float humid, float bat_v) {
 }
 
 bool sta_is_connected() { return _ok; }
+
+
+
+
+

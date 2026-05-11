@@ -41,10 +41,10 @@
 // ---------- HTTP 服务器 ----------
 #define SERVER_URL  ""
 
-// ---------- WiFi 定位 (Unwired Labs) ----------
-// https://unwiredlabs.com — 免费注册获取 token (格式 pk.xxxxxxxx)
-#define UNWIRED_TOKEN   "pk.0876d19a5a65b9a877aed0e4c93bbbbc"
-#define WIFI_POS_INTERVAL_MS  60000UL   // 每隔 60s 扫描+定位一次
+// ---------- WiFi 定位 (高德 IP 定位) ----------
+// lbs.amap.com → 控制台 → 应用管理 → Web服务 API Key
+#define AMAP_KEY   "a0481addec6dc5d01360c4e6b03d18a4"
+#define WIFI_POS_INTERVAL_MS  15000UL   // 每隔 15s 定位一次 (测试用, 之后改回60s)
 
 // ---------- GPS 接口 (ATGM336H) ----------
 // 底部排针 G26 (UART2 RX)
