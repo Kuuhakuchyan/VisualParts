@@ -11,12 +11,13 @@
 #include "ble.h"
 
 // ---------- 全局共享状态 ----------
-float lastTemp  = NAN;  // webserver.cpp 通过 extern 读取
+float lastTemp  = NAN;
 float lastHumid = NAN;
 
 Page  currentPage = PAGE_DASHBOARD;
 unsigned long lastLogTime   = 0;
 unsigned long lastChartTime = 0;
+bool          collecting    = true;  // BtnB / 串口 's' 切换
 
 // ---------- 串口命令 ----------
 static void handleSerial() {
@@ -25,6 +26,7 @@ static void handleSerial() {
     if (cmd == 'd' || cmd == 'D')        logger_dump();
     else if (cmd == 'c' || cmd == 'C') { logger_clear(); Serial.println("Log cleared"); }
     else if (cmd == 'i' || cmd == 'I')   Serial.printf("AP: %s | IP: %s\n", AP_SSID, webserver_get_ip());
+    else if (cmd == 's' || cmd == 'S') { collecting = !collecting; Serial.printf("Collect: %s\n", collecting ? "ON" : "OFF"); }
 }
 
 // ====================================================================
@@ -89,12 +91,37 @@ void loop() {
     if (!isnan(humid)) lastHumid = humid;
     float batVol = M5.Power.getBatteryVoltage() / 1000.0f;
 
-    // 页面切换
+    // 页面切换 (BtnA)
     if (M5.BtnA.wasPressed())
         currentPage = (Page)((currentPage + 1) % PAGE_COUNT);
 
+    // 采集启停 (BtnB)
+    if (M5.BtnB.wasPressed()) {
+        collecting = !collecting;
+        Serial.printf("Collect: %s\n", collecting ? "ON" : "OFF");
+    }
+
     unsigned long now = millis();
     char ts[24]; rtc_get_time_str(ts, sizeof(ts));
+
+    // 页面渲染 (采集暂停时仍可查看)
+    if (currentPage == PAGE_DASHBOARD) {
+        draw_dashboard(temp, humid, batVol, true, ts);
+        M5.Display.setTextSize(1);
+        M5.Display.setTextColor(collecting ? GREEN : RED, BLACK);
+        M5.Display.setCursor(180, TITLE_Y);
+        M5.Display.print(collecting ? "REC" : "STOP");
+        M5.Display.setTextSize(2);
+    } else {
+        const char* title = (currentPage == PAGE_TEMPCHART) ? "Temp Trend" : "Humi Trend";
+        uint16_t    color = (currentPage == PAGE_TEMPCHART) ? CYAN : YELLOW;
+        const char* unit  = (currentPage == PAGE_TEMPCHART) ? "C" : "%";
+        float*      data  = (currentPage == PAGE_TEMPCHART) ? chart_get_temp_ptr() : chart_get_humid_ptr();
+        draw_line_chart(title, color, data, chart_get_count(), unit, ts);
+    }
+
+    // ---- 暂停时跳过所有采集 ----
+    if (!collecting) { delay(200); return; }
 
     // 图表采集 (2s)
     if (now - lastChartTime >= CHART_INTERVAL_MS) {
