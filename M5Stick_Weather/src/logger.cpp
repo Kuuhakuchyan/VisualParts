@@ -1,5 +1,6 @@
 #include "logger.h"
 #include "config.h"
+#include "position.h"
 #include <M5Unified.h>
 #include <LittleFS.h>
 
@@ -89,11 +90,11 @@ void logger_write(float temp, float humid) {
         snprintf(line, sizeof(line), "%04d-%02d-%02d %02d:%02d:%02d,%.1f,%.1f,%.6f,%.6f",
                  now.date.year, now.date.month, now.date.date,
                  now.time.hours, now.time.minutes, now.time.seconds,
-                 temp, humid, FIXED_GPS_LAT, FIXED_GPS_LON);
+                 temp, humid, pos_get_lat(), pos_get_lon());
     else {
         unsigned long ms = millis()/1000;
         snprintf(line, sizeof(line), "1970-01-01 00:%02lu:%02lu,%.1f,%.1f,%.6f,%.6f",
-                 ms/60, ms%60, temp, humid, FIXED_GPS_LAT, FIXED_GPS_LON);
+                 ms/60, ms%60, temp, humid, pos_get_lat(), pos_get_lon());
     }
     f.println(line); _size = f.size(); f.close();
     _count++;

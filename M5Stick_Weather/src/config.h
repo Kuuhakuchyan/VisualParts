@@ -28,15 +28,27 @@
 #define AP_SSID  "M5Stick_Weather"
 #define AP_PASS  "Dsrdd159987@"
 
-// ---------- WiFi STA + HTTP 服务器 ----------
-// 你的服务器接收 POST /api/upload
-// (留空则禁用该功能)
-#define STA_SSID    ""
-#define STA_PASS    ""
+// ---------- WiFi STA + 校园网认证 ----------
+// STA_SSID/STA_PASS: WiFi 连接凭据 (开放网络留空)
+// STA_USER/STA_PWD:  校园网 Portal 认证账号
+// LOGIN_URL:         Portal POST 地址 (非页面地址)
+#define STA_SSID    "MCMer"
+#define STA_PASS    "0d000721"
 #define STA_USER    ""
 #define STA_PWD     ""
 #define LOGIN_URL   ""
-#define SERVER_URL  "http://192.168.1.100:8080"
+
+// ---------- HTTP 服务器 ----------
+#define SERVER_URL  ""
+
+// ---------- WiFi 定位 (百度 LBS) ----------
+// 百度 LBS 控制台 → 应用管理 → 创建服务端类型应用 → 勾选 Geolocation
+#define BAIDU_LBS_AK   "xHymZ1Vp0cXDtydqxy9t5hubdneGx0aE"
+#define WIFI_POS_INTERVAL_MS  60000UL   // 每隔 60s 扫描+定位一次
+
+// ---------- GPS 接口 (ATGM336H) ----------
+// 底部排针 G26 (UART2 RX)
+#define GPS_RX_PIN   26
 
 // ---------- BLE ----------
 #define BLE_DEVICE_NAME "M5Stick_Weather"

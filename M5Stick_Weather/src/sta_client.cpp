@@ -1,6 +1,7 @@
 #include "sta_client.h"
 #include "config.h"
 #include "rtc.h"
+#include "position.h"
 #include <WiFi.h>
 #include <HTTPClient.h>
 
@@ -15,16 +16,22 @@ bool sta_init() {
     if (WiFi.status() != WL_CONNECTED) return false;
     Serial.printf("\nSTA: IP %s\n", WiFi.localIP().toString().c_str());
 
-    // 校园网认证
+    // 校园网 Portal 认证
     if (strlen(LOGIN_URL) > 0 && strlen(STA_USER) > 0 && strlen(STA_PWD) > 0) {
-        HTTPClient h; h.begin("http://connectivitycheck.gstatic.com/generate_204");
+        HTTPClient h;
+        h.begin("http://connectivitycheck.gstatic.com/generate_204");
         int r = h.GET(); h.end();
-        if (r == 302 || r == 301) {
-            HTTPClient l; l.begin(LOGIN_URL);
+        Serial.printf("STA: connectivity check %d\n", r);
+        // 非 204 → 被重定向到 Portal 页，需要登录
+        if (r != 204) {
+            HTTPClient l;
+            l.begin(LOGIN_URL);
             l.addHeader("Content-Type", "application/x-www-form-urlencoded");
-            int c = l.POST("username=" + String(STA_USER) + "&password=" + String(STA_PWD));
-            Serial.printf("STA: login %d\n", c); l.end();
-            delay(1000);
+            int c = l.POST("username=" + String(STA_USER)
+                        + "&password=" + String(STA_PWD));
+            Serial.printf("STA: portal login %d\n", c);
+            l.end();
+            delay(2000);  // 等待 Portal 生效
         }
     }
     _ok = true;
@@ -34,10 +41,13 @@ bool sta_init() {
 bool sta_send(float temp, float humid, float bat_v) {
     if (!_ok || strlen(SERVER_URL) == 0) return false;
     char ts[24]; rtc_get_time_str(ts, sizeof(ts));
-    char json[256]; snprintf(json, sizeof(json),
+    double lat = pos_get_lat();
+    double lon = pos_get_lon();
+    const char* src = pos_get_source();
+    char json[320]; snprintf(json, sizeof(json),
         "{\"temp\":%.1f,\"humid\":%.1f,\"gps\":\"%.6fN %.6fE\","
-        "\"bat\":%.2f,\"time\":\"%s\",\"device\":\"M5StickC_Plus2\"}",
-        temp, humid, FIXED_GPS_LAT, FIXED_GPS_LON, bat_v, ts);
+        "\"bat\":%.2f,\"time\":\"%s\",\"device\":\"M5StickC_Plus2\",\"pos_src\":\"%s\"}",
+        temp, humid, lat, lon, bat_v, ts, src);
     HTTPClient h; h.begin(String(SERVER_URL) + "/api/upload");
     h.addHeader("Content-Type", "application/json");
     int c = h.POST(json); h.end();

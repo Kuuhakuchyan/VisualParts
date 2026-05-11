@@ -4,6 +4,7 @@
 #include <BLEDevice.h>
 #include <BLEUtils.h>
 #include <BLEServer.h>
+#include <BLEAdvertising.h>
 #include <BLE2902.h>
 
 static BLEServer* _srv = nullptr;
@@ -27,6 +28,12 @@ bool ble_init() {
         BLECharacteristic::PROPERTY_WRITE);
     svc->start();
     auto* adv = BLEDevice::getAdvertising();
+
+    // 显式广播标志，确保手机能识别为通用 BLE 设备
+    BLEAdvertisementData advData;
+    advData.setFlags(ESP_BLE_ADV_FLAG_GEN_DISC | ESP_BLE_ADV_FLAG_BREDR_NOT_SPT);
+    adv->setAdvertisementData(advData);
+
     adv->addServiceUUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
     adv->setScanResponse(true); adv->setMinPreferred(6); adv->setMaxPreferred(12);
     adv->start();

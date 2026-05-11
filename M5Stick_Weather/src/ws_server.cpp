@@ -3,6 +3,7 @@
 #include "logger.h"
 #include "chart.h"
 #include "rtc.h"
+#include "position.h"
 #include <Arduino.h>
 #include <M5Unified.h>
 #include <LittleFS.h>
@@ -44,8 +45,8 @@ static void handle_root() {
         "<div class='b'><div class='l'>Battery</div><div class='v' style='color:#76ff03'>" + String(M5.Power.getBatteryVoltage()/1000.0f, 2) + "V</div></div>"
         "</div>"
         "<div style='color:#888;font-size:12px;margin:8px'>"
-        + String(FIXED_GPS_LAT, 6) + "N / " + String(FIXED_GPS_LON, 6)
-        + "E &nbsp;|&nbsp; Log: " + String(logger_get_count()) + " lines</div>"
+        + String(pos_get_lat(), 5) + "N / " + String(pos_get_lon(), 5)
+        + "E " + String(pos_get_source()) + " &nbsp;|&nbsp; Log: " + String(logger_get_count()) + " lines</div>"
         "<canvas id='cTemp'></canvas><canvas id='cHumi'></canvas>"
         "<div style='margin:8px'><a href='/files'>[Log Files]</a> &nbsp; <a href='/log'>[Download CSV]</a></div>"
         "<script>"

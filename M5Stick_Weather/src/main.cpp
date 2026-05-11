@@ -9,6 +9,7 @@
 #include "ws_server.h"
 #include "sta_client.h"
 #include "ble.h"
+#include "position.h"
 
 // ---------- 全局共享状态 ----------
 float lastTemp  = NAN;
@@ -54,13 +55,16 @@ void setup() {
     draw_diag("FS...", 3);
     logger_init();
 
+    // BLE (先于 WiFi 启动，改善射频共存)
+    ble_init();
+
+    // 定位系统: GPS → WiFi → Fixed
+    pos_setup();
+
     // WiFi AP + Web server
     draw_diag("Starting AP...", 4);
     webserver_init();
     draw_diag(webserver_get_ip(), 4);
-
-    // BLE
-    ble_init();
 
     // WiFi STA
     if (strlen(STA_SSID) > 0) {
@@ -90,6 +94,9 @@ void loop() {
     if (!isnan(temp))  lastTemp  = temp;
     if (!isnan(humid)) lastHumid = humid;
     float batVol = M5.Power.getBatteryVoltage() / 1000.0f;
+
+    // 定位更新 (GPS 每帧读 UART, WiFi 定位内部 60s 节流)
+    pos_update();
 
     // 页面切换 (BtnA)
     if (M5.BtnA.wasPressed())
@@ -145,11 +152,11 @@ void loop() {
             logger_write(temp, humid);
 
             // BLE
-            char bleBuf[256];
+            char bleBuf[320];
             snprintf(bleBuf, sizeof(bleBuf),
                 "{\"temp\":%.1f,\"humid\":%.1f,\"gps\":\"%.6fN %.6fE\","
-                "\"bat\":%.2f,\"time\":\"%s\"}",
-                temp, humid, FIXED_GPS_LAT, FIXED_GPS_LON, batVol, ts);
+                "\"bat\":%.2f,\"time\":\"%s\",\"pos_src\":\"%s\"}",
+                temp, humid, pos_get_lat(), pos_get_lon(), batVol, ts, pos_get_source());
             ble_send(bleBuf);
 
             // HTTP push

@@ -1,5 +1,6 @@
 #include "display.h"
 #include "config.h"
+#include "position.h"
 #include <M5Unified.h>
 
 void display_init() {
@@ -42,12 +43,18 @@ void draw_dashboard(float temp, float humid, float bat_v, bool full_init, const 
     snprintf(buf, sizeof(buf), !isnan(humid) ? "Humi: %.1f %%  " : "Humi: --.- %%  ", humid);
     M5.Display.print(buf);
 
-    // GPS
+    // 位置 (GPS/WiFi/Fixed)
     M5.Display.fillRect(10, GPS_Y, 220, 16, BLACK);
     M5.Display.setTextSize(1.8);
     M5.Display.setTextColor(YELLOW, BLACK);
     M5.Display.setCursor(10, GPS_Y);
-    snprintf(buf, sizeof(buf), "%.6fN %.6fE  ", FIXED_GPS_LAT, FIXED_GPS_LON);
+    const char* src = pos_get_source();
+    if (pos_has_fix()) {
+        snprintf(buf, sizeof(buf), "%s: %.5fN %.5fE  ",
+                 src, pos_get_lat(), pos_get_lon());
+    } else {
+        snprintf(buf, sizeof(buf), "Pos: searching...  ");
+    }
     M5.Display.print(buf);
 
     // 电池
