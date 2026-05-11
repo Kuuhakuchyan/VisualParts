@@ -144,21 +144,60 @@ static void sendLiveHTML() {
 
     String html = "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-        "<meta http-equiv='refresh' content='5'>"
         "<title>M5StickC Plus2</title>"
-        "<style>body{font-family:sans-serif;text-align:center;margin:16px}"
-        ".v{font-size:32px;margin:4px}.l{color:#888;font-size:14px}</style>"
-        "</head><body>"
+        "<style>"
+        "*{margin:0;padding:0;box-sizing:border-box}"
+        "body{font-family:sans-serif;text-align:center;padding:12px;background:#111;color:#fff}"
+        "h2{color:orange;font-size:20px}"
+        ".ts{color:#888;font-size:12px;margin:4px 0 12px}"
+        ".g{display:flex;justify-content:center;gap:16px;flex-wrap:wrap}"
+        ".b{background:#1a1a2e;border-radius:10px;padding:10px 16px;min-width:100px}"
+        ".l{color:#888;font-size:12px}.v{font-size:28px;font-weight:bold}"
+        "canvas{width:100%;max-width:440px;height:150px;background:#1a1a2e;border-radius:10px;margin:4px 0}"
+        "a{color:#4fc3f7;font-size:13px}"
+        "</style></head><body>"
         "<h2>M5StickC Plus2</h2>"
-        "<p style='color:#888'>" + String(timeStr) + "</p>"
-        "<div class='l'>Temperature</div><div class='v'>" + String(t) + " °C</div>"
-        "<div class='l'>Humidity</div><div class='v'>" + String(h) + " %</div>"
-        "<div class='l'>GPS</div><div class='v'>" + String(FIXED_GPS_LAT, 6) + "N<br>" + String(FIXED_GPS_LON, 6) + "E</div>"
-        "<div class='l'>Battery</div><div class='v'>" + String(M5.Power.getBatteryVoltage()/1000.0f, 2) + " V</div>"
-        "<div class='l'>Log</div><div>" + String(logCount) + " lines (" + String(logFileSize) + "B)</div>"
-        "<p><a href='/log'>[Download Log CSV]</a></p>"
-        "<p><a href='/api/data'>[JSON Data]</a></p>"
-        "</body></html>";
+        "<div class='ts'>" + String(timeStr) + "</div>"
+        "<div class='g'>"
+        "<div class='b'><div class='l'>Temp</div><div class='v' style='color:#00e5ff'>" + String(t) + "C</div></div>"
+        "<div class='b'><div class='l'>Humi</div><div class='v' style='color:#ffea00'>" + String(h) + "%</div></div>"
+        "<div class='b'><div class='l'>Battery</div><div class='v' style='color:#76ff03'>" + String(M5.Power.getBatteryVoltage()/1000.0f, 2) + "V</div></div>"
+        "</div>"
+        "<div style='color:#888;font-size:12px;margin:8px'>"
+        + String(FIXED_GPS_LAT, 6) + "N / " + String(FIXED_GPS_LON, 6) + "E &nbsp;|&nbsp; Log: " + String(logCount) + " lines"
+        "</div>"
+        "<canvas id='cTemp'></canvas>"
+        "<canvas id='cHumi'></canvas>"
+        "<div style='margin:8px'><a href='/log'>Download Log CSV</a> &nbsp; <a href='/api/data'>JSON</a></div>"
+        "<script>"
+        "function draw(id,data,clr,unit){"
+        "var c=document.getElementById(id),ctx=c.getContext('2d'),w=c.width=440,h=c.height=150;"
+        "var P={t:15,r:10,b:22,l:36},cw=w-P.l-P.r,ch=h-P.t-P.b;"
+        "ctx.fillStyle='#1a1a2e';ctx.fillRect(0,0,w,h);"
+        "if(!data||data.length<2)return;"
+        "var mn=Math.min.apply(null,data),mx=Math.max.apply(null,data),rg=mx-mn||1;"
+        "mn-=rg*0.1;mx+=rg*0.1;rg=mx-mn;"
+        "ctx.strokeStyle='#333';ctx.lineWidth=1;ctx.font='10px sans-serif';ctx.textAlign='right';"
+        "for(var i=0;i<=4;i++){"
+        "var yy=P.t+ch*i/4;"
+        "ctx.beginPath();ctx.moveTo(P.l,yy);ctx.lineTo(w-P.r,yy);ctx.stroke();"
+        "ctx.fillStyle='#888';ctx.fillText((mx-rg*i/4).toFixed(1),P.l-4,yy+3)}"
+        "ctx.strokeStyle=clr;ctx.lineWidth=2;ctx.lineJoin='round';ctx.beginPath();"
+        "for(var i=0;i<data.length;i++){"
+        "var x=P.l+i*cw/(data.length-1),y=P.t+ch-(data[i]-mn)*ch/rg;"
+        "i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)}"
+        "ctx.stroke();"
+        "ctx.fillStyle='#888';ctx.textAlign='center';ctx.font='11px sans-serif';"
+        "ctx.fillText(unit,w/2,h-4)}"
+        "fetch('/api/chart').then(function(r){return r.json()}).then(function(d){"
+        "draw('cTemp',d.temp,'#00e5ff','Temperature (C)');"
+        "draw('cHumi',d.humid,'#ffea00','Humidity (%)')});"
+        "setInterval(function(){"
+        "fetch('/api/chart').then(function(r){return r.json()}).then(function(d){"
+        "draw('cTemp',d.temp,'#00e5ff','Temperature (C)');"
+        "draw('cHumi',d.humid,'#ffea00','Humidity (%)')})"
+        "},8000);"
+        "</script></body></html>";
     server.send(200, "text/html; charset=UTF-8", html);
 }
 static void sendLogFile() {
@@ -168,18 +207,23 @@ static void sendLogFile() {
     server.streamFile(f, "text/csv");
     f.close();
 }
-static void sendJSON() {
-    char buf[256];
-    char ts[24]; getTimeStr(ts, sizeof(ts));
-    float t = isnan(lastTemp) ? -99 : lastTemp;
-    float h = isnan(lastHumid) ? -99 : lastHumid;
-    snprintf(buf, sizeof(buf),
-        "{\"time\":\"%s\",\"temp\":%.1f,\"humid\":%.1f,"
-        "\"gps_lat\":%.6f,\"gps_lon\":%.6f,"
-        "\"bat_v\":%.2f,\"log_lines\":%lu,\"log_bytes\":%lu}",
-        ts, t, h, FIXED_GPS_LAT, FIXED_GPS_LON,
-        M5.Power.getBatteryVoltage()/1000.0f, logCount, logFileSize);
-    server.send(200, "application/json", buf);
+static void sendChartJSON() {
+    int n = chartPointCount;
+    int start = n > MAX_CHART_POINTS ? n - MAX_CHART_POINTS : 0;
+    int count = n > MAX_CHART_POINTS ? MAX_CHART_POINTS : n;
+
+    String json = "{\"count\":" + String(count) + ",\"temp\":[";
+    for (int i = start; i < start + count; i++) {
+        if (i > start) json += ",";
+        json += String(isnan(chartTemps[i]) ? 0 : chartTemps[i], 1);
+    }
+    json += "],\"humid\":[";
+    for (int i = start; i < start + count; i++) {
+        if (i > start) json += ",";
+        json += String(isnan(chartHumids[i]) ? 0 : chartHumids[i], 1);
+    }
+    json += "]}";
+    server.send(200, "application/json", json);
 }
 
 // ====================================================================
@@ -458,7 +502,7 @@ void setup() {
     showDiag(deviceIP, 3);
     server.on("/", sendLiveHTML);
     server.on("/log", sendLogFile);
-    server.on("/api/data", sendJSON);
+    server.on("/api/data", sendChartJSON);
     server.begin();
 
     // 初始仪表盘
