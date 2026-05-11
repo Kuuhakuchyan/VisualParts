@@ -9,7 +9,7 @@
 // 不依赖校园网/路由器, 任何环境都能用
 // ====================================================================
 const char* AP_SSID = "M5Stick_Weather";
-const char* AP_PASS = "12345678";  // 至少 8 位
+const char* AP_PASS = "Dsrdd159987@";
 WebServer server(80);
 bool wifi_ok = false;
 char deviceIP[16] = "0.0.0.0";
