@@ -95,8 +95,9 @@ void loop() {
     if (!isnan(humid)) lastHumid = humid;
     float batVol = M5.Power.getBatteryVoltage() / 1000.0f;
 
-    // 定位更新 (GPS 每帧读 UART, WiFi 定位内部 60s 节流)
+    // 定位更新 + STA 重连 (60s 节流, 5 次后放弃)
     pos_update();
+    sta_tick();
 
     // 页面切换 (BtnA)
     if (M5.BtnA.wasPressed())

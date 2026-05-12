@@ -6,14 +6,19 @@
 #include <HTTPClient.h>
 
 static bool _ok = false;
+static unsigned long _lastTryMs = 0;
+static int _retryCount = 0;
+static const unsigned long RECONNECT_INTERVAL = 60000UL; // 60s 间隔
+static const int MAX_RETRIES = 5;                        // 最多尝试 5 次后放弃
 
 bool sta_init() {
     if (strlen(STA_SSID) == 0) return false;
+    WiFi.setAutoReconnect(false); // 禁止 ESP32 自动频繁重连
     Serial.printf("STA: connecting %s\n", STA_SSID);
     WiFi.mode(WIFI_AP_STA);
     WiFi.begin(STA_SSID, STA_PASS);
     for (int i = 0; i < 20 && WiFi.status() != WL_CONNECTED; i++) { delay(500); Serial.print("."); }
-    if (WiFi.status() != WL_CONNECTED) return false;
+    if (WiFi.status() != WL_CONNECTED) { Serial.println("\nSTA: fail (will retry later)"); return false; }
     Serial.printf("\nSTA: IP %s\n", WiFi.localIP().toString().c_str());
 
     // 校园网 Portal 认证
@@ -22,7 +27,6 @@ bool sta_init() {
         h.begin("http://connectivitycheck.gstatic.com/generate_204");
         int r = h.GET(); h.end();
         Serial.printf("STA: connectivity check %d\n", r);
-        // 非 204 → 被重定向到 Portal 页，需要登录
         if (r != 204) {
             HTTPClient l;
             l.begin(LOGIN_URL);
@@ -31,11 +35,35 @@ bool sta_init() {
                         + "&password=" + String(STA_PWD));
             Serial.printf("STA: portal login %d\n", c);
             l.end();
-            delay(2000);  // 等待 Portal 生效
+            delay(2000);
         }
     }
     _ok = true;
     return true;
+}
+
+/** 主循环中定期调用, 尝试 5 次后放弃重连 */
+void sta_tick() {
+    if (strlen(STA_SSID) == 0) return;
+    if (_retryCount >= MAX_RETRIES) return;     // 已放弃重连
+    if (WiFi.status() == WL_CONNECTED) { _ok = true; _retryCount = 0; return; }
+
+    unsigned long now = millis();
+    if (now - _lastTryMs < RECONNECT_INTERVAL) return;
+    _lastTryMs = now;
+    _ok = false;
+    _retryCount++;
+    Serial.printf("STA: retry %d/%d...\n", _retryCount, MAX_RETRIES);
+
+    WiFi.begin(STA_SSID, STA_PASS);
+    for (int i = 0; i < 10; i++) { delay(200); if (WiFi.status() == WL_CONNECTED) break; }
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.printf("STA: reconnected, IP %s\n", WiFi.localIP().toString().c_str());
+        _ok = true;
+        _retryCount = 0;
+    } else if (_retryCount >= MAX_RETRIES) {
+        Serial.println("STA: give up (max retries)");
+    }
 }
 
 bool sta_send(float temp, float humid, float bat_v) {
