@@ -16,9 +16,6 @@ void chart_add_point(float temp, float humid) {
         humids[MAX_CHART_POINTS-1] = humid;
     }
 }
-int chart_get_count()  { return count; }
-int chart_get_max()    { return MAX_CHART_POINTS; }
-float chart_get_temp(int i)  { return temps[i]; }
-float chart_get_humid(int i) { return humids[i]; }
-float* chart_get_temp_ptr()  { return temps; }
+int chart_get_count() { return count; }
+float* chart_get_temp_ptr() { return temps; }
 float* chart_get_humid_ptr() { return humids; }

@@ -2,8 +2,8 @@
 #include <WebServer.h>
 #include <DNSServer.h>
 
-bool webserver_init();
-void webserver_handle();
-const char* webserver_get_ip();
+bool ws_init();
+void ws_handle();
+const char* ws_get_ip();
 extern float ws_lastTemp;
 extern float ws_lastHumid;
