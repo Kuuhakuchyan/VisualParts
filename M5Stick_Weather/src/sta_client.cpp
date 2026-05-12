@@ -9,25 +9,38 @@ static bool _ok = false;
 static unsigned long _lastTryMs = 0;
 static int _retryCount = 0;
 static const unsigned long RECONNECT_INTERVAL = 30000UL;
-static const int MAX_RETRIES = 10;
+static const int MAX_RETRIES = 5;
 
 bool sta_init() {
     if (strlen(STA_SSID) == 0) return false;
     WiFi.setAutoReconnect(false);
 
-    // 用 AP_STA 模式初始化 WiFi 堆栈(同原工作代码), 但不广播 AP
-    WiFi.mode(WIFI_AP_STA);
-    delay(100);
-    WiFi.begin(STA_SSID, STA_PASS);
-
     Serial.printf("STA: trying %s", STA_SSID);
-    int i;
-    for (i = 0; i < 30; i++) {
+
+    // 第 1 轮: 不干扰现有 AP, 静默尝试 15 秒
+    WiFi.begin(STA_SSID, STA_PASS);
+    for (int i = 0; i < 30; i++) {
         delay(500); Serial.print(".");
         if (WiFi.status() == WL_CONNECTED) break;
     }
+
+    // 第 2 轮: 暂停 AP 射频, 全力重试 5 秒
     if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("\nSTA: unavailable (AP will start instead)");
+        Serial.print("\nSTA: pause AP, retry...");
+        WiFi.mode(WIFI_STA);
+        delay(100);
+        WiFi.begin(STA_SSID, STA_PASS);
+        for (int i = 0; i < 10; i++) {
+            delay(500); Serial.print(".");
+            if (WiFi.status() == WL_CONNECTED) break;
+        }
+        // 恢复 AP (webserver_init 已配好)
+        WiFi.mode(WIFI_AP_STA);
+        delay(50);
+    }
+
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("\nSTA: unavailable (AP only mode)");
         return false;
     }
     Serial.printf("\nSTA: IP %s\n", WiFi.localIP().toString().c_str());
