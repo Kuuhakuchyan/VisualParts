@@ -6,5 +6,5 @@ __pycache__/
 output/
 *.png
 *.jpg
-gee_data/cache/
+gee/data/cache/
 .DS_Store

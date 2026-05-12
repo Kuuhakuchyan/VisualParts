@@ -14,7 +14,7 @@ from pathlib import Path
 from datetime import date
 from typing import Optional
 
-from gee_config import (
+from gee.config import (
     initialize_gee, get_gee_project_id, get_study_region, get_date_range,
     STUDY_AREA, LANDSAT_COLLECTIONS, BAND_MAP_L8, CLOUD_FILTER,
     GEE_DATA_DIR, LCZ_RF_PARAMS

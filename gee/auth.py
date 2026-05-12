@@ -42,7 +42,7 @@ def run_authentication():
     print("步骤2: 运行以下命令完成认证:")
     print()
     print("   # 激活虚拟环境")
-    venv_activate = Path(__file__).parent / ".venv" / "Scripts" / "activate"
+    venv_activate = Path(__file__).parent.parent / ".venv" / "Scripts" / "activate"
     print(f"   source {venv_activate}")
     print()
     print("   # GEE认证")

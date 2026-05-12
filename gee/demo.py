@@ -15,7 +15,7 @@ GEE交互式使用示例 (Jupyter Notebook 兼容)
 
 # %% 1. 初始化GEE
 import ee
-from gee_config import initialize_gee, STUDY_AREA
+from gee.config import initialize_gee, STUDY_AREA
 
 # 首次使用需要先认证:
 # 终端运行: earthengine authenticate

@@ -7,7 +7,7 @@ import ee, json, io, urllib.request
 from pathlib import Path
 from datetime import datetime
 
-from gee_config import initialize_gee
+from gee.config import initialize_gee
 
 # ========================
 # 校园范围 (郑州大学主校区)
@@ -17,7 +17,7 @@ CAMPUS_BOUNDS = {
     "min_lat": 34.80884, "max_lat": 34.82807,
 }
 
-OUTPUT_DIR = Path(__file__).parent / "gee_data" / "lcz_campus"
+OUTPUT_DIR = Path(__file__).parent / "data" / "lcz_campus"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # ========================

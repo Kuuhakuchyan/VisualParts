@@ -15,8 +15,8 @@ import urllib.request
 from pathlib import Path
 from datetime import datetime
 
-from gee_config import initialize_gee, GEE_DATA_DIR
-from gee_fetcher import GEEFetcher
+from gee.config import initialize_gee, GEE_DATA_DIR
+from gee.fetcher import GEEFetcher
 
 # ========================
 # 郑州市区范围

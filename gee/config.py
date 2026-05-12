@@ -13,8 +13,8 @@ from typing import Optional
 # ========================
 # 基础路径配置
 # ========================
-BASE_DIR = Path(__file__).parent
-GEE_DATA_DIR = BASE_DIR / "gee_data"
+BASE_DIR = Path(__file__).parent.parent   # 指向 Data_prcessing/
+GEE_DATA_DIR = BASE_DIR / "gee" / "data"
 GEE_CACHE_DIR = GEE_DATA_DIR / "cache"
 
 for d in [GEE_DATA_DIR, GEE_CACHE_DIR]:
