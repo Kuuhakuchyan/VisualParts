@@ -61,17 +61,17 @@ void setup() {
     // 定位系统: GPS → WiFi → Fixed
     pos_setup();
 
-    // 先连 WiFi STA (热点), 再开 AP, 避免射频冲突
-    if (strlen(STA_SSID) > 0) {
-        draw_diag("Connecting STA...", 4);
-        sta_init();
-        draw_diag(sta_is_connected() ? "STA OK" : "STA fail", 4);
-    }
-
-    // WiFi AP + Web server
-    draw_diag("Starting AP...", 5);
+    // WiFi AP (立即开启, 手机可随时连接)
+    draw_diag("Starting AP...", 4);
     webserver_init();
-    draw_diag(webserver_get_ip(), 5);
+    draw_diag(webserver_get_ip(), 4);
+
+    // STA 后台静默连接 (不影响 AP)
+    if (strlen(STA_SSID) > 0) {
+        draw_diag("STA background...", 5);
+        sta_init();
+        draw_diag(sta_is_connected() ? "STA OK" : "STA fail", 5);
+    }
 
     // 初始仪表盘
     char ts[24]; rtc_get_time_str(ts, sizeof(ts));

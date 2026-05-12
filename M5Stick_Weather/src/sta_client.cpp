@@ -8,17 +8,25 @@
 static bool _ok = false;
 static unsigned long _lastTryMs = 0;
 static int _retryCount = 0;
-static const unsigned long RECONNECT_INTERVAL = 30000UL; // 30s 间隔
-static const int MAX_RETRIES = 10;                       // 最多尝试 10 次后放弃
+static const unsigned long RECONNECT_INTERVAL = 30000UL;
+static const int MAX_RETRIES = 10;
 
 bool sta_init() {
     if (strlen(STA_SSID) == 0) return false;
-    WiFi.setAutoReconnect(false); // 禁止 ESP32 自动频繁重连
-    Serial.printf("STA: connecting %s\n", STA_SSID);
-    WiFi.mode(WIFI_STA);          // 先纯 STA 模式, AP 后续启动
+    WiFi.setAutoReconnect(false);
+
+    Serial.printf("STA: trying %s\n", STA_SSID);
     WiFi.begin(STA_SSID, STA_PASS);
-    for (int i = 0; i < 30 && WiFi.status() != WL_CONNECTED; i++) { delay(500); Serial.print("."); }
-    if (WiFi.status() != WL_CONNECTED) { Serial.println("\nSTA: fail (will retry later)"); return false; }
+
+    for (int i = 0; i < 20; i++) {
+        delay(500);
+        Serial.print(".");
+        if (WiFi.status() == WL_CONNECTED) break;
+    }
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("\nSTA: not available (background retry active)");
+        return false;
+    }
     Serial.printf("\nSTA: IP %s\n", WiFi.localIP().toString().c_str());
 
     // 校园网 Portal 认证
@@ -42,23 +50,36 @@ bool sta_init() {
     return true;
 }
 
-/** 主循环中定期调用, 尝试 5 次后放弃重连 */
 void sta_tick() {
     if (strlen(STA_SSID) == 0) return;
-    if (_retryCount >= MAX_RETRIES) return;     // 已放弃重连
+    if (_retryCount >= MAX_RETRIES) return;
     if (WiFi.status() == WL_CONNECTED) { _ok = true; _retryCount = 0; return; }
 
     unsigned long now = millis();
     if (now - _lastTryMs < RECONNECT_INTERVAL) return;
     _lastTryMs = now;
-    _ok = false;
     _retryCount++;
-    Serial.printf("STA: retry %d/%d...\n", _retryCount, MAX_RETRIES);
+    _ok = false;
 
+    Serial.printf("STA: retry %d/%d (AP pause)\n", _retryCount, MAX_RETRIES);
+
+    // 临时切 STA-only, AP 停止广播约 2.5s
+    WiFi.mode(WIFI_STA);
+    delay(50);
     WiFi.begin(STA_SSID, STA_PASS);
-    for (int i = 0; i < 10; i++) { delay(200); if (WiFi.status() == WL_CONNECTED) break; }
+
+    for (int i = 0; i < 10; i++) {
+        delay(200);
+        if (WiFi.status() == WL_CONNECTED) break;
+    }
+
+    // 恢复 AP
+    WiFi.mode(WIFI_AP_STA);
+    delay(50);
+    WiFi.softAP(AP_SSID, AP_PASS);
+
     if (WiFi.status() == WL_CONNECTED) {
-        Serial.printf("STA: reconnected, IP %s\n", WiFi.localIP().toString().c_str());
+        Serial.println("STA: reconnected");
         _ok = true;
         _retryCount = 0;
     } else if (_retryCount >= MAX_RETRIES) {
@@ -83,8 +104,3 @@ bool sta_send(float temp, float humid, float bat_v) {
 }
 
 bool sta_is_connected() { return _ok; }
-
-
-
-
-
