@@ -15,7 +15,7 @@ bool sta_init() {
     if (strlen(STA_SSID) == 0) return false;
     WiFi.setAutoReconnect(false); // 禁止 ESP32 自动频繁重连
     Serial.printf("STA: connecting %s\n", STA_SSID);
-    WiFi.mode(WIFI_AP_STA);
+    WiFi.mode(WIFI_STA);          // 先纯 STA 模式, AP 后续启动
     WiFi.begin(STA_SSID, STA_PASS);
     for (int i = 0; i < 30 && WiFi.status() != WL_CONNECTED; i++) { delay(500); Serial.print("."); }
     if (WiFi.status() != WL_CONNECTED) { Serial.println("\nSTA: fail (will retry later)"); return false; }
