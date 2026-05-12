@@ -8,8 +8,8 @@
 static bool _ok = false;
 static unsigned long _lastTryMs = 0;
 static int _retryCount = 0;
-static const unsigned long RECONNECT_INTERVAL = 60000UL; // 60s 间隔
-static const int MAX_RETRIES = 5;                        // 最多尝试 5 次后放弃
+static const unsigned long RECONNECT_INTERVAL = 30000UL; // 30s 间隔
+static const int MAX_RETRIES = 10;                       // 最多尝试 10 次后放弃
 
 bool sta_init() {
     if (strlen(STA_SSID) == 0) return false;
@@ -17,7 +17,7 @@ bool sta_init() {
     Serial.printf("STA: connecting %s\n", STA_SSID);
     WiFi.mode(WIFI_AP_STA);
     WiFi.begin(STA_SSID, STA_PASS);
-    for (int i = 0; i < 20 && WiFi.status() != WL_CONNECTED; i++) { delay(500); Serial.print("."); }
+    for (int i = 0; i < 30 && WiFi.status() != WL_CONNECTED; i++) { delay(500); Serial.print("."); }
     if (WiFi.status() != WL_CONNECTED) { Serial.println("\nSTA: fail (will retry later)"); return false; }
     Serial.printf("\nSTA: IP %s\n", WiFi.localIP().toString().c_str());
 
