@@ -15,16 +15,19 @@ bool sta_init() {
     if (strlen(STA_SSID) == 0) return false;
     WiFi.setAutoReconnect(false);
 
-    Serial.printf("STA: trying %s\n", STA_SSID);
+    // 用 AP_STA 模式初始化 WiFi 堆栈(同原工作代码), 但不广播 AP
+    WiFi.mode(WIFI_AP_STA);
+    delay(100);
     WiFi.begin(STA_SSID, STA_PASS);
 
-    for (int i = 0; i < 20; i++) {
-        delay(500);
-        Serial.print(".");
+    Serial.printf("STA: trying %s", STA_SSID);
+    int i;
+    for (i = 0; i < 30; i++) {
+        delay(500); Serial.print(".");
         if (WiFi.status() == WL_CONNECTED) break;
     }
     if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("\nSTA: not available (background retry active)");
+        Serial.println("\nSTA: unavailable (AP will start instead)");
         return false;
     }
     Serial.printf("\nSTA: IP %s\n", WiFi.localIP().toString().c_str());
