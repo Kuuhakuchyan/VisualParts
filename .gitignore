@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+output/
+*.png
+*.jpg
+gee_data/cache/
+.DS_Store
