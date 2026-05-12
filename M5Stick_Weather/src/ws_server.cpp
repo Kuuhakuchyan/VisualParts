@@ -5,6 +5,7 @@
 #include "rtc.h"
 #include "position.h"
 #include <esp_netif.h>
+#include <ESPmDNS.h>
 #include <Arduino.h>
 #include <M5Unified.h>
 #include <LittleFS.h>
@@ -192,22 +193,20 @@ static void handle_chart_json() {
 
 // ---------- 初始化 ----------
 bool webserver_init() {
-    WiFi.mode(WIFI_AP);
+    WiFi.mode(WIFI_AP_STA);
     WiFi.softAP(AP_SSID, AP_PASS);
     delay(500);
     _active = true;
     strncpy(_ip, WiFi.softAPIP().toString().c_str(), sizeof(_ip) - 1);
     Serial.printf("AP: %s | IP: %s\n", AP_SSID, _ip);
 
-    // DHCP 提供真实 DNS (114.114.114.114), 手机可解析 CDN/天地图域名
-    // 注: 无 NAT, 手机通过蜂窝数据访问互联网资源
-    {
-        esp_netif_dns_info_t dns;
-        dns.ip.type = ESP_IPADDR_TYPE_V4;
-        IP4_ADDR(&dns.ip.u_addr.ip4, 114, 114, 114, 114);
-        esp_netif_set_dns_info(esp_netif_get_handle_from_ifkey("WiFi AP"),
-                               ESP_NETIF_DNS_MAIN, &dns);
+    // mDNS: 连接 AP 后打开 http://m5weather.local 即可访问
+    if (MDNS.begin("m5weather")) {
+        MDNS.addService("http", "tcp", 80);
+        Serial.println("mDNS: http://m5weather.local");
     }
+
+    // 不启用 DNS 劫持, 手机连接 AP 后手动打开
 
     server.on("/", handle_root);
     server.on("/log", handle_log);

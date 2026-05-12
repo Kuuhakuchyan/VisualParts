@@ -28,11 +28,10 @@
 #define AP_SSID  "M5Stick_Weather"
 #define AP_PASS  "Dsrdd159987@"
 
-// ---------- WiFi STA (ESP32 仅支持 2.4GHz) ----------
-// 校园网 ZZU-WLAN 为 5GHz, ESP32 无法连接
-// 改用手机热点 (802.11b/g/n 2.4GHz)
-#define STA_SSID    "MCMer"
-#define STA_PASS    "0d000721"
+// ---------- WiFi STA (暂禁用, 使用 AP 直连) ----------
+// 以后接 2.4GHz 路由器或 ESP-NOW/LoRa 时启用
+#define STA_SSID    ""
+#define STA_PASS    ""
 #define STA_USER    ""
 #define STA_PWD     ""
 #define LOGIN_URL   ""
@@ -41,7 +40,7 @@
 #define SERVER_URL  ""
 
 // ---------- 天地图 (Leaflet 瓦片图层, 需要浏览器端 Key) ----------
-#define AMAP_TK   "1b37405bc436d1078f80e15278c0d402"
+#define AMAP_TK   "3f612f90e997ebccbf74793fdf6d9264"
 
 // ---------- WiFi 定位 (高德 IP 定位) ----------
 // lbs.amap.com → 控制台 → 应用管理 → Web服务 API Key

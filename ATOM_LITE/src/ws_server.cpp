@@ -5,6 +5,7 @@
 #include "rtc.h"
 #include "position.h"
 #include <esp_netif.h>
+#include <ESPmDNS.h>
 #include <Arduino.h>
 #include <M5Unified.h>
 #include <LittleFS.h>
@@ -198,7 +199,13 @@ bool webserver_init() {
     strncpy(_ip, WiFi.softAPIP().toString().c_str(), sizeof(_ip) - 1);
     Serial.printf("AP: %s | IP: %s\n", AP_SSID, _ip);
 
-    // 不启用 DNS 劫持, 手机连接 AP 后手动打开 http://192.168.4.1
+    // mDNS: 连接 AP 后打开 http://atomweather.local 即可访问
+    if (MDNS.begin("atomweather")) {
+        MDNS.addService("http", "tcp", 80);
+        Serial.println("mDNS: http://atomweather.local");
+    }
+
+    // 不启用 DNS 劫持, 手机连接 AP 后手动打开
 
     server.on("/", handle_root);
     server.on("/log", handle_log);
