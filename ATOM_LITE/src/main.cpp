@@ -107,7 +107,8 @@ void loop() {
                 "\"bat\":0,\"time\":\"%s\",\"pos_src\":\"%s\"}",
                 temp, humid, pos_get_lat(), pos_get_lon(), ts, pos_get_source());
             ble_send(buf);
-            sta_send(temp, humid, 0);
+            sta_publish_telemetry(temp, humid, 0);
+            sta_publish_gps();
         }
 
         led_set(LED_OK, 80);
