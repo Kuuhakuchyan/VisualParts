@@ -1,6 +1,7 @@
 #include "display.h"
 #include "config.h"
 #include "position.h"
+#include "sta_client.h"
 #include <WiFi.h>
 #include <M5Unified.h>
 
@@ -66,6 +67,8 @@ void draw_dashboard(float temp, float humid, float bat_v, bool full_init, const 
     if (WiFi.status() == WL_CONNECTED) {
         M5.Display.print("STA: ");
         M5.Display.print(WiFi.localIP());
+	        if (sta_mqtt_connected())
+	            M5.Display.print("  MQTT:OK");
     } else {
         M5.Display.print("STA: --");
     }

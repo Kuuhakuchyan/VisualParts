@@ -160,8 +160,9 @@ void loop() {
                 temp, humid, pos_get_lat(), pos_get_lon(), batVol, ts, pos_get_source());
             ble_send(bleBuf);
 
-            // HTTP push
-            sta_send(temp, humid, batVol);
+            // MQTT push
+            sta_publish_telemetry(temp, humid, batVol);
+            sta_publish_gps();
         }
         if (currentPage == PAGE_DASHBOARD)
             draw_log_line(logger_get_count(), logger_get_size());

@@ -36,7 +36,12 @@
 #define STA_PWD     ""
 #define LOGIN_URL   ""
 
-// ---------- HTTP 服务器 ----------
+// ---------- MQTT ----------
+#define MQTT_BROKER     ""                   // 服务器公网 IP
+#define MQTT_PORT       1883
+#define MQTT_DEVICE_ID  "M5Stick_Plus2"
+
+// ---------- HTTP 服务器 (已弃用, MQTT 替代) ----------
 #define SERVER_URL  ""
 
 // ---------- 天地图 (Leaflet 瓦片图层, 需要浏览器端 Key) ----------
