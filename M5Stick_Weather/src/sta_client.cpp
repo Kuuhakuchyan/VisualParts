@@ -4,6 +4,7 @@
 #include "position.h"
 #include <WiFi.h>
 #include <PubSubClient.h>
+#include <HTTPClient.h>
 #include <sys/time.h>
 
 #ifndef MQTT_MAX_PACKET_SIZE
@@ -15,10 +16,52 @@ static PubSubClient  _mqtt(_wifiClient);
 static bool _staOk       = false;
 static bool _mqttOk      = false;
 static bool _ntpSynced   = false;
-static unsigned long _lastReconnectMs = 0;
+static unsigned long _lastReconnectMs   = 0;
+static unsigned long _lastMqttRetryMs    = 0;
+static unsigned long _lastMqttActivity   = 0;
 static int  _retryCount = 0;
-static const unsigned long RECONNECT_INTERVAL = 30000UL;
-static const int MAX_RETRIES = 5;
+static int  _portFailCount = 0;
+static const unsigned long RECONNECT_INTERVAL  = 30000UL;
+static const unsigned long MQTT_RETRY_INTERVAL = 15000UL;
+static const unsigned long HEALTH_TIMEOUT = 90000UL;
+static const int MAX_RETRIES = 999;
+static const int PORT_FAIL_LIMIT = 5;
+static const int PORT_LIST[] = {443, 8081, 1883};
+static const int PORT_COUNT = 3;
+static int _portIdx = 0;
+
+// 断网补传
+#define BACKFILL_SIZE 600
+struct BackfillPoint { unsigned long epoch; float temp; float humid; };
+static BackfillPoint _bf[BACKFILL_SIZE];
+static int _bfCount = 0, _bfIdx = 0;
+static bool _bfNeedsFlush = false;
+
+void backfill_push(unsigned long epoch, float temp, float humid) {
+    _bf[_bfIdx].epoch = epoch; _bf[_bfIdx].temp = temp; _bf[_bfIdx].humid = humid;
+    _bfIdx = (_bfIdx + 1) % BACKFILL_SIZE;
+    if (_bfCount < BACKFILL_SIZE) _bfCount++;
+}
+bool backfill_needed() { return _bfNeedsFlush; }
+
+static void backfill_flush() {
+    if (_bfCount == 0) { _bfNeedsFlush = false; return; }
+    if (WiFi.status() != WL_CONNECTED) return;
+    HTTPClient http; http.setTimeout(10000);
+    http.begin("http://47.97.165.176:8080/api/backfill");
+    http.addHeader("Content-Type", "application/json");
+    String json; json.reserve(_bfCount * 25 + 100);
+    json = "{\"device\":\"" + String(MQTT_DEVICE_ID) + "\",\"data\":[";
+    for (int i = 0; i < _bfCount; i++) {
+        int idx = (_bfIdx - _bfCount + i + BACKFILL_SIZE) % BACKFILL_SIZE;
+        if (i > 0) json += ",";
+        char buf[80]; snprintf(buf, sizeof(buf), "[%lu,%.1f,%.1f]", (unsigned long)_bf[idx].epoch, _bf[idx].temp, _bf[idx].humid);
+        json += buf;
+    }
+    json += "]}";
+    if (http.POST(json) == 200) { _bfCount = 0; _bfIdx = 0; _bfNeedsFlush = false; }
+    http.end();
+}
 
 // ====================================================================
 // NTP
@@ -56,18 +99,23 @@ static bool mqtt_connect() {
     if (WiFi.status() != WL_CONNECTED) return false;
     if (strlen(MQTT_BROKER) == 0) return false;
 
-    _mqtt.setServer(MQTT_BROKER, MQTT_PORT);
+    int port = PORT_LIST[_portIdx];
+    _mqtt.setServer(MQTT_BROKER, port);
+    _mqtt.setKeepAlive(120);
     String will = "sensor/" + String(MQTT_DEVICE_ID) + "/status";
 
-    if (_mqtt.connect(MQTT_DEVICE_ID, NULL, NULL,
+    if (_mqtt.connect(MQTT_DEVICE_ID, MQTT_USER, MQTT_PASS,
             will.c_str(), 0, true, "{\"status\":\"offline\"}")) {
         _mqtt.publish(will.c_str(), "{\"status\":\"online\"}", true);
-        _mqttOk = true;
-        Serial.printf("MQTT: connected %s:%d\n", MQTT_BROKER, MQTT_PORT);
+        if (_bfCount > 0) _bfNeedsFlush = true;
+        _mqttOk = true; _portFailCount = 0;
+        _lastMqttActivity = millis();
+        Serial.printf("MQTT: connected %s:%d\n", MQTT_BROKER, port);
         return true;
     }
-    _mqttOk = false;
-    Serial.printf("MQTT: connect fail rc=%d\n", _mqtt.state());
+    _mqttOk = false; _portFailCount++;
+    Serial.printf("MQTT: fail port %d rc=%d\n", port, _mqtt.state());
+    if (_portFailCount >= PORT_FAIL_LIMIT) { _portIdx = (_portIdx + 1) % PORT_COUNT; _portFailCount = 0; }
     return false;
 }
 
@@ -76,6 +124,7 @@ static bool mqtt_connect() {
 // ====================================================================
 bool sta_init() {
     if (strlen(STA_SSID) == 0) return false;
+    WiFi.setSleep(true);             // BLE+WiFi 共存必须开
     WiFi.setAutoReconnect(false);
 
     Serial.printf("STA: connecting %s", STA_SSID);
@@ -119,7 +168,10 @@ bool sta_init() {
 // 断线重连
 // ====================================================================
 void sta_tick() {
-    if (_mqtt.connected()) _mqtt.loop();
+    static unsigned long _lastFlush = 0;
+    if (_bfNeedsFlush && _mqtt.connected() && millis() - _lastFlush > 30000) { _lastFlush = millis(); backfill_flush(); }
+    if (_mqtt.connected()) { _mqtt.loop(); _lastMqttActivity = millis(); }
+    if (_mqtt.connected() && millis() - _lastMqttActivity > HEALTH_TIMEOUT) { Serial.println("MQTT: health timeout"); _mqtt.disconnect(); _lastMqttRetryMs = 0; }
 
     if (strlen(STA_SSID) == 0) return;
     if (_retryCount >= MAX_RETRIES) return;
@@ -155,13 +207,8 @@ void sta_tick() {
     }
 
     if (WiFi.status() == WL_CONNECTED && strlen(MQTT_BROKER) > 0) {
-        if (_mqtt.connected()) {
-            _staOk = true;
-            _retryCount = 0;
-        } else if (mqtt_connect()) {
-            _staOk = true;
-            _retryCount = 0;
-        }
+        if (_mqtt.connected()) { _staOk = true; _retryCount = 0; }
+        else { unsigned long n = millis(); if (n - _lastMqttRetryMs >= MQTT_RETRY_INTERVAL) { _lastMqttRetryMs = n; if (mqtt_connect()) { _staOk = true; _retryCount = 0; } } }
     }
 }
 

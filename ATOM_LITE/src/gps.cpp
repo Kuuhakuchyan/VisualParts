@@ -45,22 +45,13 @@ static void parseGPGGA(char* buf) {
 }
 
 void gps_init() {
-    _gpsPort.begin(9600, SERIAL_8N1, GPS_RX_PIN, -1);
-    Serial.printf("GPS: UART2 RX=G%d\n", GPS_RX_PIN);
+    // GPS 禁用: ATGM336H 与 SHT30 共享 G26, 且室内无固定信号
+    // _gpsPort.begin(9600, SERIAL_8N1, GPS_RX_PIN, -1);
+    Serial.println("GPS: disabled (using fixed coords)");
 }
 
 void gps_update() {
-    while (_gpsPort.available() && _pos < (int)sizeof(_buf) - 1) {
-        char c = _gpsPort.read();
-        if (c == '\n') {
-            _buf[_pos] = '\0';
-            if (strncmp(_buf, "$GPGGA", 6) == 0) parseGPGGA(_buf);
-            _pos = 0;
-        } else if (c != '\r') {
-            _buf[_pos++] = c;
-        }
-    }
-    if (_pos >= (int)sizeof(_buf) - 1) _pos = 0;
+    return;  // GPS 禁用
 }
 
 double gps_get_lat()    { return _lat; }

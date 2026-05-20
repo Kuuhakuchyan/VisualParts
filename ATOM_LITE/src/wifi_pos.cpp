@@ -68,6 +68,7 @@ static bool do_locate(double &out_lat, double &out_lon, int &out_acc) {
 void wifi_pos_setup() {}
 
 void wifi_pos_update() {
+    if (WIFI_POS_INTERVAL_MS == 0) return;  // 禁用
     unsigned long now = millis();
     unsigned long remain = (WIFI_POS_INTERVAL_MS > (now - _lastMs))
         ? WIFI_POS_INTERVAL_MS - (now - _lastMs) : 0;

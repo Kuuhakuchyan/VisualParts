@@ -31,7 +31,9 @@ bool sht30_init(int sda, int scl) {
     _found = false;
     for (int t = 0; t < 3 && !_found; t++) {
         int a = pins[t][0], b = pins[t][1];
-        Wire.begin(a, b, I2C_FREQ); delay(10);
+        Wire.begin(a, b, I2C_FREQ);
+        Wire.setTimeOut(100);  // I2C 超时 100ms, 防止阻塞主循环
+        delay(10);
         Wire.beginTransmission(SHT30_ADDR);
         if (Wire.endTransmission(true) == 0) {
             _found = true; do_reset();

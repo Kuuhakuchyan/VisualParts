@@ -84,6 +84,7 @@ void setup() {
 
 // ====================================================================
 void loop() {
+    sta_tick();
     M5.update();
     handleSerial();
     webserver_handle();
@@ -95,9 +96,7 @@ void loop() {
     if (!isnan(humid)) lastHumid = humid;
     float batVol = M5.Power.getBatteryVoltage() / 1000.0f;
 
-    // 定位更新 + STA 重连 (60s 节流, 5 次后放弃)
     pos_update();
-    sta_tick();
 
     // 页面切换 (BtnA)
     if (M5.BtnA.wasPressed())
@@ -135,22 +134,12 @@ void loop() {
         if (!isnan(temp) && !isnan(humid)) chart_add_point(temp, humid);
     }
 
-    // 页面渲染
-    if (currentPage == PAGE_DASHBOARD) {
-        draw_dashboard(temp, humid, batVol, true, ts);
-    } else {
-        const char* title = (currentPage == PAGE_TEMPCHART) ? "Temp Trend" : "Humi Trend";
-        uint16_t    color = (currentPage == PAGE_TEMPCHART) ? CYAN : YELLOW;
-        const char* unit  = (currentPage == PAGE_TEMPCHART) ? "C" : "%";
-        float*      data  = (currentPage == PAGE_TEMPCHART) ? chart_get_temp_ptr() : chart_get_humid_ptr();
-        draw_line_chart(title, color, data, chart_get_count(), unit, ts);
-    }
-
-    // 日志 + BLE + HTTP (30s)
+    // 日志 + MQTT (2s)
     if (now - lastLogTime >= LOG_INTERVAL_MS) {
         lastLogTime = now;
         if (!isnan(temp) && !isnan(humid)) {
             logger_write(temp, humid);
+            backfill_push(time(nullptr) - 8*3600, temp, humid);  // CST→UTC
 
             // BLE
             char bleBuf[320];
@@ -160,9 +149,10 @@ void loop() {
                 temp, humid, pos_get_lat(), pos_get_lon(), batVol, ts, pos_get_source());
             ble_send(bleBuf);
 
-            // MQTT push
             sta_publish_telemetry(temp, humid, batVol);
             sta_publish_gps();
+        } else {
+            sta_publish_gps();  // SHT30 故障时保持心跳
         }
         if (currentPage == PAGE_DASHBOARD)
             draw_log_line(logger_get_count(), logger_get_size());

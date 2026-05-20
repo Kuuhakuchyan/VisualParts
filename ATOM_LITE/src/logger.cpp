@@ -19,6 +19,7 @@ static void manage_storage() {
     int nf = 0; unsigned long total = 0;
     File r = LittleFS.open("/");
     if (!r || !r.isDirectory()) return;
+    
     File f = r.openNextFile();
     while (f && nf < 50) {
         String s = f.name();
@@ -60,23 +61,27 @@ bool logger_init() {
 void logger_write(float temp, float humid) {
     if (!_ok) return;
 
-    // 日切 (用 rtc_get_day)
-    int day = rtc_get_day();
-    if (day != _lastDay) {
-        _lastDay = day;
-        unsigned long d = millis() / 86400000UL;
-        snprintf(_file, sizeof(_file), "/log_day%04lu.csv", d);
+    // 日切 (NTP 同步后用真实日期，否则用开机天数)
+    int y = 0, m = 0, d = 0;
+    bool haveDate = rtc_get_date(y, m, d);
+    int dayId = haveDate ? (y * 10000 + m * 100 + d) : (millis() / 86400000UL);
+    if (dayId != _lastDay) {
+        _lastDay = dayId;
+        if (haveDate)
+            snprintf(_file, sizeof(_file), "/log_%04d%02d%02d.csv", y, m, d);
+        else
+            snprintf(_file, sizeof(_file), "/log_day%04d.csv", (int)(millis() / 86400000UL));
         _count = 0;
     }
 
     File f = LittleFS.open(_file, FILE_APPEND);
     if (!f) return;
-    if (f.size() == 0) f.println("uptime_s,temp_c,humidity_pct,gps_lat,gps_lon");
+    if (f.size() == 0) f.println("datetime,temp_c,humidity_pct,gps_lat,gps_lon");
 
-    unsigned long ms = millis() / 1000;
     char line[128];
-    snprintf(line, sizeof(line), "%lu,%.1f,%.1f,%.6f,%.6f",
-             ms, temp, humid, FIXED_GPS_LAT, FIXED_GPS_LON);
+    char ts[24]; rtc_get_time_str(ts, sizeof(ts));
+    snprintf(line, sizeof(line), "%s,%.1f,%.1f,%.6f,%.6f",
+             ts, temp, humid, FIXED_GPS_LAT, FIXED_GPS_LON);
     f.println(line); _size = f.size(); f.close();
     _count++;
     Serial.println(line);

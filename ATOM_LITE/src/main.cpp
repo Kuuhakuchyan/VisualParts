@@ -72,6 +72,9 @@ void setup() {
 
 // ====================================================================
 void loop() {
+    // ===== 最先喂 MQTT 心跳 =====
+    sta_tick();
+
     M5.update();
     handleSerial();
     webserver_handle();
@@ -82,9 +85,8 @@ void loop() {
     if (!isnan(temp)) ws_lastTemp = temp;
     if (!isnan(humid)) ws_lastHumid = humid;
 
-    // 定位更新 + STA 重连
+    // 定位更新
     pos_update();
-    sta_tick();
 
     unsigned long now = millis();
 
@@ -94,11 +96,12 @@ void loop() {
         if (!isnan(temp) && !isnan(humid)) chart_add_point(temp, humid);
     }
 
-    // 日志 + BLE + HTTP 30s
+    // 日志 + MQTT + 补传 (2s)
     if (now - lastLogTime >= LOG_INTERVAL_MS) {
         lastLogTime = now;
         if (!isnan(temp) && !isnan(humid)) {
             logger_write(temp, humid);
+            backfill_push(time(nullptr), temp, humid);  // 写入补传缓冲区
 
             char ts[24]; rtc_get_time_str(ts, sizeof(ts));
             char buf[320];
@@ -108,6 +111,9 @@ void loop() {
                 temp, humid, pos_get_lat(), pos_get_lon(), ts, pos_get_source());
             ble_send(buf);
             sta_publish_telemetry(temp, humid, 0);
+            sta_publish_gps();
+        } else {
+            // 传感器故障时保持 MQTT 心跳
             sta_publish_gps();
         }
 
