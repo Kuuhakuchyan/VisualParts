@@ -18,13 +18,15 @@ static char       _ip[16] = "0.0.0.0";
 // 引用 main.cpp 中的全局缓存
 extern float lastTemp;
 extern float lastHumid;
+extern float lastBat;
+extern char lastTime[24];
 
 // ---------- 网页首页 ----------
 static void handle_root() {
     char t[8], h[8];
     snprintf(t, sizeof(t), "%.1f", isnan(lastTemp) ? 0.0 : lastTemp);
     snprintf(h, sizeof(h), "%.1f", isnan(lastHumid) ? 0.0 : lastHumid);
-    char timeStr[24]; rtc_get_time_str(timeStr, sizeof(timeStr));
+    const char* timeStr = lastTime;
     double lat = pos_get_lat(), lon = pos_get_lon();
 
     String html = "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
@@ -46,7 +48,7 @@ static void handle_root() {
         "<div class='g'>"
         "<div class='b'><div class='l'>Temp</div><div class='v' style='color:#00e5ff'>" + String(t) + "C</div></div>"
         "<div class='b'><div class='l'>Humi</div><div class='v' style='color:#ffea00'>" + String(h) + "%</div></div>"
-        "<div class='b'><div class='l'>Battery</div><div class='v' style='color:#76ff03'>" + String(M5.Power.getBatteryVoltage()/1000.0f, 2) + "V</div></div>"
+        "<div class='b'><div class='l'>Battery</div><div class='v' style='color:#76ff03'>" + String(lastBat, 2) + "V</div></div>"
         "</div>"
         "<div class='pos' id='posInfo'>"
         + String(lat, 5) + "N " + String(lon, 5) + "E " + String(pos_get_source()) + " ±" + String(pos_get_accuracy()) + "m</div>"

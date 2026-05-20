@@ -31,7 +31,7 @@ static const int PORT_COUNT = 3;
 static int _portIdx = 0;
 
 // 断网补传
-#define BACKFILL_SIZE 600
+#define BACKFILL_SIZE 2400  // 1h20m @ 2s
 struct BackfillPoint { unsigned long epoch; float temp; float humid; };
 static BackfillPoint _bf[BACKFILL_SIZE];
 static int _bfCount = 0, _bfIdx = 0;

@@ -14,6 +14,8 @@
 // ---------- 全局共享状态 ----------
 float lastTemp  = NAN;
 float lastHumid = NAN;
+float lastBat   = 0.0f;
+char  lastTime[24] = "";
 
 Page  currentPage = PAGE_DASHBOARD;
 unsigned long lastLogTime   = 0;
@@ -95,6 +97,7 @@ void loop() {
     if (!isnan(temp))  lastTemp  = temp;
     if (!isnan(humid)) lastHumid = humid;
     float batVol = M5.Power.getBatteryVoltage() / 1000.0f;
+    lastBat = batVol;
 
     pos_update();
 
@@ -110,6 +113,7 @@ void loop() {
 
     unsigned long now = millis();
     char ts[24]; rtc_get_time_str(ts, sizeof(ts));
+    strncpy(lastTime, ts, sizeof(lastTime));
 
     // 页面渲染 (采集暂停时仍可查看)
     if (currentPage == PAGE_DASHBOARD) {

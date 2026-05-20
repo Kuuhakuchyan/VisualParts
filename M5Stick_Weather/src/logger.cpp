@@ -56,7 +56,7 @@ static void manage_storage() {
 // ---------- 初始化 ----------
 bool logger_init() {
     _ok = LittleFS.begin();
-    if (!_ok) { LittleFS.format(); _ok = LittleFS.begin(); }
+    if (!_ok) Serial.println("Log: LittleFS mount FAIL");
     if (_ok) {
         File f = LittleFS.open(_file, FILE_READ);
         if (f) {

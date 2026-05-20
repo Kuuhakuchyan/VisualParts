@@ -1,0 +1,19 @@
+{
+	"folders": [
+		{
+			"name": "M5Stick_Weather",
+			"path": "M5Stick_Weather"
+		},
+		{
+			"name": "ATOM_LITE",
+			"path": "ATOM_LITE"
+		},
+		{
+			"path": "../Data_prcessing"
+		},
+		{
+			"path": "../VisualParts-master"
+		}
+	],
+	"settings": {}
+}

@@ -49,7 +49,7 @@ static void manage_storage() {
 
 bool logger_init() {
     _ok = LittleFS.begin();
-    if (!_ok) { LittleFS.format(); _ok = LittleFS.begin(); }
+    if (!_ok) Serial.println("Log: LittleFS mount FAIL (no format)");
     if (_ok) {
         File f = LittleFS.open(_file, FILE_READ);
         if (f) { while (f.available()) if (f.read() == '\n') _count++; _size = f.size(); f.close(); }

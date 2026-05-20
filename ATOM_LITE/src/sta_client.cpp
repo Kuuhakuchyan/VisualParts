@@ -36,7 +36,7 @@ static int _portIdx = 0;
 // ====================================================================
 // 断网补传环形缓冲区 (必须在函数之前声明)
 // ====================================================================
-#define BACKFILL_SIZE 1800  // 1h @ 2s
+#define BACKFILL_SIZE 2400  // 1h20m @ 2s
 struct BackfillPoint {
     unsigned long epoch;
     float temp;

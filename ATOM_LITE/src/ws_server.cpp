@@ -16,7 +16,7 @@ static bool       _active = false;
 static char       _ip[16] = "0.0.0.0";
 
 // 引用 main.cpp 中的全局缓存
-extern float ws_ws_lastTemp, ws_ws_lastHumid;
+extern float ws_lastTemp, ws_lastHumid;
 
 // ---------- 网页首页 ----------
 static void handle_root() {
