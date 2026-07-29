@@ -1,0 +1,181 @@
+---
+import { Icon } from "astro-icon/components";
+import { url } from "@/utils/url-utils";
+
+const videoSrc = url("/media/tsunade/tsunade-harmonized.mp4");
+const posterSrc = url("/media/tsunade/preview.gif");
+---
+
+<div id="tsunade-video-mascot" class="tsunade-video-mascot" data-tsunade-mascot>
+	<div class="tsunade-video-frame">
+		<video
+			id="tsunade-video"
+			src={videoSrc}
+			poster={posterSrc}
+			autoplay
+			muted
+			loop
+			playsinline
+			preload="metadata"
+		></video>
+		<div class="tsunade-video-actions">
+			<button type="button" class="tsunade-video-button" data-tsunade-action="toggle" aria-label="播放或暂停">
+				<Icon name="mdi:pause" class="tsunade-icon tsunade-icon-pause" />
+				<Icon name="mdi:play" class="tsunade-icon tsunade-icon-play" />
+			</button>
+			<button type="button" class="tsunade-video-button" data-tsunade-action="sleep" aria-label="收起动态形象">
+				<Icon name="mdi:bed" class="tsunade-icon" />
+			</button>
+		</div>
+	</div>
+</div>
+
+<script>
+	function initTsunadeMascot() {
+		const mascot = document.querySelector<HTMLElement>("[data-tsunade-mascot]");
+		const video = document.getElementById("tsunade-video") as HTMLVideoElement | null;
+		if (!mascot || !video || mascot.dataset.initialized === "true") return;
+		mascot.dataset.initialized = "true";
+
+		const toggleButton = mascot.querySelector<HTMLButtonElement>('[data-tsunade-action="toggle"]');
+		const sleepButton = mascot.querySelector<HTMLButtonElement>('[data-tsunade-action="sleep"]');
+
+		function syncPausedState() {
+			mascot.classList.toggle("is-paused", video.paused);
+		}
+
+		toggleButton?.addEventListener("click", async () => {
+			if (video.paused) {
+				await video.play().catch(() => undefined);
+			} else {
+				video.pause();
+			}
+			syncPausedState();
+		});
+
+		sleepButton?.addEventListener("click", async () => {
+			const sleeping = mascot.classList.toggle("is-sleeping");
+			if (sleeping) {
+				video.pause();
+			} else {
+				await video.play().catch(() => undefined);
+			}
+			syncPausedState();
+		});
+
+		video.addEventListener("play", syncPausedState);
+		video.addEventListener("pause", syncPausedState);
+		video.play().catch(syncPausedState);
+		syncPausedState();
+	}
+
+	if (document.readyState === "loading") {
+		document.addEventListener("DOMContentLoaded", initTsunadeMascot);
+	} else {
+		initTsunadeMascot();
+	}
+
+	document.addEventListener("astro:page-load", initTsunadeMascot);
+</script>
+
+<style>
+	.tsunade-video-mascot {
+		position: fixed;
+		left: 18px;
+		bottom: 18px;
+		z-index: 9998;
+		width: clamp(150px, 13vw, 210px);
+		aspect-ratio: 16 / 9;
+		transition:
+			transform 0.35s ease,
+			opacity 0.35s ease;
+	}
+
+	.tsunade-video-frame {
+		position: relative;
+		width: 100%;
+		height: 100%;
+		overflow: hidden;
+		border: 1px solid rgba(255, 255, 255, 0.35);
+		border-radius: 8px;
+		background: rgba(15, 23, 42, 0.42);
+		box-shadow: 0 18px 45px rgba(15, 23, 42, 0.32);
+		backdrop-filter: blur(10px);
+	}
+
+	.tsunade-video-frame video {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		object-position: center;
+	}
+
+	.tsunade-video-actions {
+		position: absolute;
+		right: 8px;
+		bottom: 8px;
+		display: flex;
+		gap: 6px;
+		opacity: 0;
+		transform: translateY(6px);
+		transition:
+			opacity 0.2s ease,
+			transform 0.2s ease;
+	}
+
+	.tsunade-video-frame:hover .tsunade-video-actions,
+	.tsunade-video-actions:focus-within {
+		opacity: 1;
+		transform: translateY(0);
+	}
+
+	.tsunade-video-button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 30px;
+		height: 30px;
+		border: 1px solid rgba(255, 255, 255, 0.28);
+		border-radius: 999px;
+		background: rgba(15, 23, 42, 0.68);
+		color: rgba(255, 255, 255, 0.92);
+		cursor: pointer;
+		transition:
+			background 0.2s ease,
+			transform 0.2s ease;
+	}
+
+	.tsunade-video-button:hover {
+		background: rgba(37, 99, 235, 0.82);
+		transform: translateY(-1px);
+	}
+
+	.tsunade-icon {
+		width: 1rem;
+		height: 1rem;
+	}
+
+	.tsunade-icon-play {
+		display: none;
+	}
+
+	.tsunade-video-mascot.is-paused .tsunade-icon-pause {
+		display: none;
+	}
+
+	.tsunade-video-mascot.is-paused .tsunade-icon-play {
+		display: block;
+	}
+
+	.tsunade-video-mascot.is-sleeping {
+		transform: translateX(calc(-100% + 48px));
+		opacity: 0.82;
+	}
+
+	@media (max-width: 768px) {
+		.tsunade-video-mascot {
+			display: none;
+		}
+	}
+</style>

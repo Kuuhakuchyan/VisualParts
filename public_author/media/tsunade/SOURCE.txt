@@ -1,0 +1,12 @@
+Source:
+Steam Workshop item 3066260761
+
+Title:
+Naruto-Tsunade-侠隐纲手(和谐)-动态壁纸(Live Wallpaper)-BLZY
+
+Notes:
+The video and preview assets are installed locally through Steam Workshop and are not committed to this public repository.
+
+Expected deployed files:
+tsunade-harmonized.mp4
+preview.gif
