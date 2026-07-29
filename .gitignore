@@ -1,0 +1,9 @@
+﻿.env
+data/
+grafana_data/
+mosquitto/data/
+mosquitto/config/passwd
+pg_data/
+**/__pycache__/
+*.pyc
+

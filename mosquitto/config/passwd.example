@@ -1,0 +1,3 @@
+﻿# Create the real Mosquitto password file on the server.
+# Do not commit the generated passwd file.
+

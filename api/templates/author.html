@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>董少睿 | 作者主页</title>
+<style>
+:root {
+  color-scheme: light;
+  --ink: #172033;
+  --muted: #617084;
+  --line: #dce3ea;
+  --panel: #ffffff;
+  --soft: #f5f7fb;
+  --blue: #2463eb;
+  --green: #0f8b6f;
+  --amber: #b7791f;
+  --red: #b42318;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: var(--ink);
+  background: #f2f5f8;
+}
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(255,255,255,.95);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(12px);
+}
+.nav {
+  width: min(1160px, calc(100% - 32px));
+  margin: 0 auto;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.brand img {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.nav-links a {
+  color: #334155;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+.nav-links a.primary {
+  color: #ffffff;
+  background: var(--blue);
+}
+.page {
+  width: min(1160px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 34px 0 56px;
+}
+.intro {
+  display: grid;
+  grid-template-columns: 310px 1fr;
+  gap: 28px;
+  align-items: start;
+}
+.profile {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 24px;
+  position: sticky;
+  top: 82px;
+}
+.avatar {
+  width: 118px;
+  height: 118px;
+  border-radius: 8px;
+  background: #eef4ff;
+  border: 1px solid #d8e4ff;
+  display: grid;
+  place-items: center;
+  margin-bottom: 18px;
+}
+.avatar img {
+  width: 86px;
+  height: 86px;
+  object-fit: contain;
+}
+.profile h1 {
+  font-size: 30px;
+  line-height: 1.15;
+  letter-spacing: 0;
+  margin-bottom: 8px;
+}
+.role {
+  font-size: 15px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0;
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #f9fbfd;
+  color: #334155;
+  font-size: 12px;
+}
+.contact {
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+  display: grid;
+  gap: 10px;
+  font-size: 14px;
+}
+.contact span {
+  color: var(--muted);
+}
+.content {
+  display: grid;
+  gap: 18px;
+}
+.hero {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 30px;
+}
+.eyebrow {
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+.hero h2 {
+  font-size: 34px;
+  line-height: 1.25;
+  letter-spacing: 0;
+  margin-bottom: 14px;
+}
+.hero p {
+  color: #405066;
+  font-size: 16px;
+  line-height: 1.85;
+  max-width: 760px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+.button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  color: #1f2a3d;
+  font-size: 14px;
+  font-weight: 600;
+}
+.button.main {
+  border-color: var(--blue);
+  background: var(--blue);
+  color: #ffffff;
+}
+.section {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 24px;
+}
+.section h3 {
+  font-size: 19px;
+  margin-bottom: 16px;
+}
+.focus-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.focus-item {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  background: #fbfcfe;
+}
+.focus-item strong {
+  display: block;
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+.focus-item p,
+.timeline p,
+.note {
+  color: var(--muted);
+  line-height: 1.7;
+  font-size: 14px;
+}
+.timeline {
+  display: grid;
+  gap: 14px;
+}
+.timeline-item {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #edf1f5;
+}
+.timeline-item:last-child { border-bottom: 0; padding-bottom: 0; }
+.time {
+  color: var(--amber);
+  font-weight: 700;
+  font-size: 13px;
+}
+.timeline h4 {
+  font-size: 15px;
+  margin-bottom: 6px;
+}
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.metric {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+  padding: 14px;
+  min-height: 92px;
+}
+.metric strong {
+  display: block;
+  color: var(--green);
+  font-size: 22px;
+  margin-bottom: 4px;
+}
+.metric span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.footer {
+  margin-top: 24px;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+@media (max-width: 920px) {
+  .intro { grid-template-columns: 1fr; }
+  .profile { position: static; }
+  .focus-grid, .metrics { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 620px) {
+  .nav { align-items: flex-start; flex-direction: column; padding: 12px 0; }
+  .nav-links { justify-content: flex-start; }
+  .page { width: min(100% - 22px, 1160px); padding-top: 20px; }
+  .profile, .hero, .section { padding: 18px; }
+  .profile h1 { font-size: 26px; }
+  .hero h2 { font-size: 25px; }
+  .focus-grid, .metrics { grid-template-columns: 1fr; }
+  .timeline-item { grid-template-columns: 1fr; gap: 5px; }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <nav class="nav" aria-label="主导航">
+    <a class="brand" href="/">
+      <img src="/logo.png" alt="">
+      <span>微境探界</span>
+    </a>
+    <div class="nav-links">
+      <a href="/">平台</a>
+      <a href="/sensors">设备</a>
+      <a href="/logs">数据</a>
+      <a href="/grafana/">Grafana</a>
+      <a class="primary" href="/author">作者主页</a>
+    </div>
+  </nav>
+</header>
+
+<main class="page">
+  <div class="intro">
+    <aside class="profile">
+      <div class="avatar"><img src="/logo.png" alt="微境探界标识"></div>
+      <h1>董少睿</h1>
+      <p class="role">地球科学与技术学院<br>“微境探界”项目负责人</p>
+      <div class="tags" aria-label="研究标签">
+        <span class="tag">城市热胁迫</span>
+        <span class="tag">遥感诊断</span>
+        <span class="tag">微气候感知</span>
+        <span class="tag">AGI 仿生智能</span>
+      </div>
+      <div class="contact">
+        <div><span>邮箱</span><br>待补充</div>
+        <div><span>GitHub / ORCID</span><br>待补充</div>
+        <div><span>项目平台</span><br><a href="https://weather.nogamenolife.cn/">weather.nogamenolife.cn</a></div>
+      </div>
+    </aside>
+
+    <div class="content">
+      <section class="hero">
+        <div class="eyebrow">AUTHOR PROFILE</div>
+        <h2>面向城市热胁迫的遥感-物联网-智能诊断平台探索</h2>
+        <p>
+          当前工作围绕“微境探界”展开，聚焦城市微气候观测、热胁迫识别、遥感指标融合与智能诊断方法，
+          目标是把多源环境数据组织成可观测、可解释、可决策的平台能力。
+        </p>
+        <div class="actions">
+          <a class="button main" href="/">查看平台</a>
+          <a class="button" href="/api/devices">设备接口</a>
+          <a class="button" href="/grafana/">数据看板</a>
+        </div>
+      </section>
+
+      <section class="section">
+        <h3>研究方向</h3>
+        <div class="focus-grid">
+          <div class="focus-item">
+            <strong>城市热环境遥感</strong>
+            <p>围绕地表温度、下垫面、植被与城市形态等要素，建立热暴露与热风险的空间诊断框架。</p>
+          </div>
+          <div class="focus-item">
+            <strong>微气候物联网</strong>
+            <p>通过轻量传感器采集温湿度、定位与设备状态，实现街区尺度环境数据的连续记录。</p>
+          </div>
+          <div class="focus-item">
+            <strong>智能决策系统</strong>
+            <p>结合知识规则、时空数据处理与模型推理，为城市热胁迫识别和干预建议提供支撑。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h3>项目进展</h3>
+        <div class="timeline">
+          <div class="timeline-item">
+            <div class="time">当前</div>
+            <div>
+              <h4>微气候数据平台已上线</h4>
+              <p>设备数据接入、历史查询、地图定位、Grafana 看板与 HTTPS 域名访问已经形成基础闭环。</p>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="time">进行中</div>
+            <div>
+              <h4>遥感诊断与平台融合</h4>
+              <p>后续重点是把遥感处理流程、VisualParts 可视化模块和现有实时数据平台连成统一系统。</p>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="time">计划</div>
+            <div>
+              <h4>安全性、可靠性与高并发设计</h4>
+              <p>将补强权限控制、接口限流、反爬与逆向防护、日志审计、备份恢复、服务监控和部署流水线。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h3>平台能力</h3>
+        <div class="metrics">
+          <div class="metric"><strong>IoT</strong><span>MQTT 设备接入与传感数据入库</span></div>
+          <div class="metric"><strong>GIS</strong><span>位置轨迹、地图展示与空间分析扩展</span></div>
+          <div class="metric"><strong>RS</strong><span>遥感热环境指标与城市热风险识别</span></div>
+          <div class="metric"><strong>AGI</strong><span>诊断推理、策略生成与人机协同决策</span></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h3>资料与成果</h3>
+        <p class="note">
+          项目计划书、技术流程、论文、专利、演示视频、代码仓库和数据说明可在整理后集中放入本页。
+          当前页面先作为规范化作者主页骨架，后续可替换头像、补充履历并接入正式成果列表。
+        </p>
+      </section>
+    </div>
+  </div>
+  <div class="footer">© 2026 微境探界 · 作者主页</div>
+</main>
+</body>
+</html>

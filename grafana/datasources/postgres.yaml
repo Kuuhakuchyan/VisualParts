@@ -1,0 +1,16 @@
+apiVersion: 1
+datasources:
+  - name: PostgreSQL
+    type: postgres
+    # ---- 本地开发 (SSH 隧道 → 云 PG) ----
+    url: host.docker.internal:5433
+    # ---- 本地 PG (不用隧道时取消注释, 注释上面) ----
+    # url: postgres:5432
+    database: iot_platform
+    user: iot_user
+    secureJsonData:
+      password: $PG_PASS
+    jsonData:
+      sslmode: disable
+      postgresVersion: 1600
+      timescaledb: true
