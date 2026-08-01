@@ -17,6 +17,7 @@ export default defineConfig(({ mode }) => {
     ],
     build: {
       target: "esnext",
+      sourcemap: false,
     },
     server: {
       port: 5173,

@@ -8,16 +8,25 @@ IoT 平台对外 API + 可视化仪表盘
 import csv
 import io
 import json
+import logging
 import os
+import time
+import uuid
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse, RedirectResponse
 import asyncpg
 
-app = FastAPI(title="IoT Platform API")
+logging.basicConfig(
+    level=os.getenv("LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
+logger = logging.getLogger("weather-api")
+
+app = FastAPI(title="微境探界 IoT Platform API")
 BASE_DIR = Path(__file__).resolve().parent
 
 ALLOWED_HOSTS = [
@@ -27,6 +36,36 @@ ALLOWED_HOSTS = [
 ]
 if ALLOWED_HOSTS:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=ALLOWED_HOSTS)
+
+
+@app.middleware("http")
+async def request_context_middleware(request: Request, call_next):
+    request_id = request.headers.get("x-request-id") or uuid.uuid4().hex[:16]
+    start = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:
+        elapsed_ms = (time.perf_counter() - start) * 1000
+        logger.exception(
+            "request_failed id=%s method=%s path=%s elapsed_ms=%.1f",
+            request_id,
+            request.method,
+            request.url.path,
+            elapsed_ms,
+        )
+        raise
+
+    elapsed_ms = (time.perf_counter() - start) * 1000
+    response.headers["X-Request-ID"] = request_id
+    logger.info(
+        "request id=%s method=%s path=%s status=%s elapsed_ms=%.1f",
+        request_id,
+        request.method,
+        request.url.path,
+        response.status_code,
+        elapsed_ms,
+    )
+    return response
 
 PG_CONFIG = {
     "host": os.getenv("PG_HOST", "postgres"),
@@ -329,6 +368,16 @@ async def author_homepage():
     return FileResponse(BASE_DIR / "templates" / "author.html", media_type="text/html")
 
 
+@app.get("/monitor")
+async def monitor_alias():
+    return RedirectResponse("/", status_code=301)
+
+
+@app.get("/portal")
+async def portal_alias():
+    return RedirectResponse("/", status_code=301)
+
+
 # ====================================================================
 # 可视化仪表盘
 @app.get("/api/sensors/detail")
@@ -384,6 +433,11 @@ async def sensors_detail():
 
 
 # ====================================================================
+
+@app.head("/")
+async def dashboard_head():
+    return Response(status_code=200, media_type="text/html")
+
 
 @app.get("/", response_class=HTMLResponse)
 async def dashboard():
@@ -563,6 +617,43 @@ body {
 .header button.download:hover { background: #047857; }
 .last-update { font-size: 12px; color: #94a3b8; }
 
+.platform-bar {
+  background: #f8fafc; border-bottom: 1px solid #e5e7eb;
+}
+.platform-panel {
+  max-width: 1400px; margin: 0 auto; padding: 12px 16px;
+  display: grid; grid-template-columns: 1.4fr repeat(5, minmax(118px, 1fr));
+  gap: 10px; align-items: stretch;
+}
+.platform-summary {
+  padding: 8px 0; min-width: 0;
+}
+.platform-summary strong {
+  display: block; font-size: 13px; color: #0f172a; margin-bottom: 4px;
+}
+.platform-summary span {
+  display: block; font-size: 12px; color: #64748b; line-height: 1.45;
+}
+.platform-link {
+  display: flex; flex-direction: column; justify-content: center; gap: 4px;
+  min-height: 64px; padding: 10px 12px; border-radius: 8px;
+  border: 1px solid #dbeafe; background: #eff6ff; color: #1d4ed8;
+  text-decoration: none; font-weight: 700;
+}
+.platform-link:hover { background: #dbeafe; }
+.platform-link.active {
+  color: #0f766e; background: #ecfdf5; border-color: #99f6e4;
+}
+.platform-link.ops {
+  color: #6d28d9; background: #f5f3ff; border-color: #ddd6fe;
+}
+.platform-link.author {
+  color: #9a3412; background: #fff7ed; border-color: #fed7aa;
+}
+.platform-link small {
+  font-size: 11px; color: #64748b; font-weight: 500; line-height: 1.3;
+}
+
 .main { max-width: 1400px; margin: 0 auto; padding: 16px; display: grid;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: auto auto;
@@ -628,7 +719,17 @@ tbody tr:hover { background: #f8fafc; }
 @media (max-width: 900px) {
   .main { grid-template-columns: 1fr; }
   .map-card { grid-column: 1; }
+  .platform-panel { grid-template-columns: 1fr 1fr; }
+  .platform-summary { grid-column: 1 / -1; }
   .footer-panel { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 560px) {
+  .header { align-items: flex-start; }
+  .header h1 { width: 100%; }
+  .header-right { width: 100%; }
+  .header select, .header button { flex: 1 1 140px; }
+  .platform-panel { grid-template-columns: 1fr; }
 }
 
 /* Loading spinner */
@@ -652,6 +753,35 @@ tbody tr:hover { background: #f8fafc; }
     <span class="last-update" id="lastUpdate"></span>
   </div>
 </div>
+
+<nav class="platform-bar" aria-label="微境探界平台入口">
+  <div class="platform-panel">
+    <div class="platform-summary">
+      <strong>统一入口</strong>
+      <span>实时监测、三维决策、运维看板和作者主页分区管理；当前页面为 IoT 数据采集与监测视图。</span>
+    </div>
+    <a class="platform-link active" href="/">
+      实时监测
+      <small>传感器、趋势、定位</small>
+    </a>
+    <a class="platform-link" href="/decision/">
+      3D 决策
+      <small>Cesium 场景与推演</small>
+    </a>
+    <a class="platform-link ops" href="/grafana/">
+      Grafana
+      <small>运维指标与看板</small>
+    </a>
+    <a class="platform-link" href="/logs">
+      数据日志
+      <small>历史数据与调试</small>
+    </a>
+    <a class="platform-link author" href="/author/">
+      Kuuhakuchyan
+      <small>个人主页与项目记录</small>
+    </a>
+  </div>
+</nav>
 
 <div style="max-width:1400px; margin:0 auto; padding:0 16px 8px;">
   <div class="card" style="margin-bottom:8px;">
@@ -691,11 +821,9 @@ tbody tr:hover { background: #f8fafc; }
 <div class="footer">
   <div class="footer-panel">
     <div class="footer-group">
-      <span class="footer-title">平台操作</span>
-      <a class="footer-link" href="/decision/">3D决策平台</a>
-      <a class="footer-link" href="/logs">数据日志</a>
+      <span class="footer-title">管理入口</span>
       <a class="footer-link" href="/sensors">传感器管理</a>
-      <a class="footer-link" href="/author/">作者主页</a>
+      <a class="footer-link" href="/logs">数据日志</a>
     </div>
     <div class="footer-group">
       <span class="footer-title">设备直连</span>

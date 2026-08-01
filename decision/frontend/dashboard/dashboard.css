@@ -33,14 +33,15 @@ html, body {
 #app {
   display: grid;
   grid-template-rows: 52px 1fr 32px;
-  grid-template-columns: 280px 1fr 280px;
+  grid-template-columns: 1fr;
   grid-template-areas:
-    "header  header  header"
-    "left    center  right"
-    "footer  footer  footer";
+    "header"
+    "center"
+    "footer";
   width: 100vw;
   height: 100vh;
   gap: 0;
+  position: relative;
 }
 
 /* ── 通用面板 ──────────────────────────────────────────────────────────── */
@@ -233,12 +234,17 @@ html, body {
 
 /* ── LEFT PANEL ─────────────────────────────────────────────────────────── */
 #left-panel {
-  grid-area: left;
-  border-right: 1px solid var(--color-border);
+  position: absolute;
+  top: 64px;
+  left: 12px;
+  bottom: 44px;
+  width: clamp(220px, 18vw, 250px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
   overflow-y: auto;
   overflow-x: hidden;
-  position: relative;
-  z-index: 10;
+  z-index: 60;
+  box-shadow: var(--shadow-panel);
 }
 
 #left-panel::-webkit-scrollbar { width: 4px; }
@@ -266,7 +272,7 @@ html, body {
 /* 决策控制栏 */
 #control-bar {
   position: absolute;
-  bottom: 20px;
+  bottom: 22px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -279,7 +285,11 @@ html, body {
   backdrop-filter: blur(16px);
   z-index: 50;
   box-shadow: var(--shadow-panel);
+  max-width: min(760px, calc(100vw - 560px));
+  overflow-x: auto;
+  scrollbar-width: none;
 }
+#control-bar::-webkit-scrollbar { display: none; }
 
 .ctrl-btn {
   display: flex;
@@ -343,12 +353,12 @@ html, body {
 /* 横向时序图 */
 #timeseries-bar {
   position: absolute;
-  bottom: 80px;
+  bottom: 88px;
   left: 50%;
   transform: translateX(-50%);
-  width: calc(100% - 40px);
-  max-width: 900px;
-  height: 130px;
+  width: min(760px, calc(100vw - 560px));
+  min-width: 520px;
+  height: 118px;
   background: var(--color-bg-panel);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
@@ -370,12 +380,17 @@ html, body {
 
 /* ── RIGHT PANEL ────────────────────────────────────────────────────────── */
 #right-panel {
-  grid-area: right;
-  border-left: 1px solid var(--color-border);
+  position: absolute;
+  top: 64px;
+  right: 12px;
+  bottom: 44px;
+  width: clamp(240px, 19vw, 280px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
   overflow-y: auto;
   overflow-x: hidden;
-  position: relative;
-  z-index: 10;
+  z-index: 60;
+  box-shadow: var(--shadow-panel);
 }
 
 #right-panel::-webkit-scrollbar { width: 4px; }
@@ -907,4 +922,87 @@ html, body {
   height: 8px;
   border-right: 2px solid rgba(0, 180, 255, 0.4);
   border-bottom: 2px solid rgba(0, 180, 255, 0.4);
+}
+
+@media (max-width: 1180px) {
+  #left-panel {
+    width: 220px;
+  }
+
+  #right-panel {
+    width: 240px;
+  }
+
+  #timeseries-bar {
+    width: min(620px, calc(100vw - 500px));
+    min-width: 420px;
+  }
+
+  #control-bar {
+    max-width: min(620px, calc(100vw - 500px));
+  }
+}
+
+@media (max-width: 900px) {
+  html, body {
+    overflow: auto;
+  }
+
+  #app {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    height: auto;
+  }
+
+  #header {
+    order: 1;
+    min-height: 52px;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 14px;
+  }
+
+  .header-center,
+  .header-right {
+    flex-wrap: wrap;
+  }
+
+  #left-panel,
+  #right-panel {
+    position: static;
+    width: auto;
+    max-height: none;
+    margin: 12px;
+  }
+
+  #left-panel {
+    order: 3;
+  }
+
+  #right-panel {
+    order: 4;
+  }
+
+  #center {
+    order: 2;
+    min-height: 720px;
+  }
+
+  #footer {
+    order: 5;
+  }
+
+  #timeseries-bar {
+    width: calc(100% - 24px);
+    min-width: 0;
+    bottom: 96px;
+  }
+
+  #control-bar {
+    width: calc(100% - 24px);
+    max-width: none;
+    justify-content: flex-start;
+    bottom: 30px;
+  }
 }

@@ -5,7 +5,7 @@
     container_name: mosquitto
     ports:
       - "1883:1883"      # MQTT
-      - "8081:8081"      # MQTT (校园网备用)
+      - "127.0.0.1:8081:8081"      # MQTT 备用端口，仅本机调试
       - "127.0.0.1:9001:9001"      # WebSocket, exposed through Nginx when needed
     volumes:
       - ./mosquitto/config:/mosquitto/config
@@ -27,6 +27,11 @@
     volumes:
       - ./pg_data:/var/lib/postgresql/data
       - ./pg_init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U iot_user -d iot_platform"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
   # ========== Python MQTT -> PG 桥接 ==========
@@ -94,15 +99,22 @@
       PG_DB: iot_platform
       PG_USER: iot_user
       PG_PASS: ${PG_PASS:?Set PG_PASS in .env}
-      PG_POOL_MIN: ${PG_POOL_MIN:-2}
-      PG_POOL_MAX: ${PG_POOL_MAX:-20}
+      PG_POOL_MIN: ${PG_POOL_MIN:-1}
+      PG_POOL_MAX: ${PG_POOL_MAX:-10}
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
       AMAP_WEB_KEY: ${AMAP_WEB_KEY:-}
       AMAP_JS_KEY: ${AMAP_JS_KEY:-}
       API_WRITE_TOKEN: ${API_WRITE_TOKEN:-}
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-weather.nogamenolife.cn,localhost,127.0.0.1}
     depends_on:
       - postgres
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=5)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 

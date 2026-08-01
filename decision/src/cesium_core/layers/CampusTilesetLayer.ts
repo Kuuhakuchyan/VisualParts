@@ -383,6 +383,16 @@ export class CampusTilesetLayer {
       // —— 保存引用 ——
       this._tileset = tileset;
 
+      // —— 生产默认加载预算：白模接入后优先保证帧率和内存稳定 ——
+      const runtimeTileset = tileset as any;
+      runtimeTileset.maximumScreenSpaceError = Math.max(runtimeTileset.maximumScreenSpaceError ?? 16, 16);
+      runtimeTileset.dynamicScreenSpaceError = true;
+      runtimeTileset.dynamicScreenSpaceErrorDensity = 0.002;
+      runtimeTileset.dynamicScreenSpaceErrorFactor = 4.0;
+      runtimeTileset.skipLevelOfDetail = true;
+      runtimeTileset.cacheBytes = 256 * 1024 * 1024;
+      runtimeTileset.maximumCacheOverflowBytes = 64 * 1024 * 1024;
+
       // —— 应用可选配置 ——
       if (options.distanceScale !== undefined && options.distanceScale !== 1.0) {
         // 调整可见距离：降低 threshold 使远处建筑也能显示
