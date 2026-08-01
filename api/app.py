@@ -449,69 +449,309 @@ SENSOR_ADMIN_HTML = """<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>传感器管理</title>
+<title>微境探界｜传感器管理</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:#f0f2f5; color:#333; min-height:100vh; }
-.header { background: linear-gradient(135deg,#1a1a2e 0%,#16213e 100%); color:#fff; padding:14px 24px; display:flex; align-items:center; justify-content:space-between; }
-.header h1 { font-size:18px; }
-.header a { color:#94a3b8; text-decoration:none; font-size:13px; }
-.header a:hover { color:#fff; }
+body {
+  font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  background:#eef2f7; color:#0f172a; min-height:100vh;
+}
+.header {
+  background:#111827; color:#fff; min-height:64px; padding:14px 24px;
+  display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.brand { display:flex; align-items:center; gap:10px; }
+.brand img { width:32px; height:32px; border-radius:50%; }
+.brand h1 { font-size:18px; line-height:1.2; }
+.brand span { display:block; font-size:12px; color:#94a3b8; font-weight:400; margin-top:2px; }
+.nav { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.nav a {
+  color:#bfdbfe; text-decoration:none; font-size:13px; padding:7px 10px;
+  border:1px solid rgba(147,197,253,.28); border-radius:8px;
+}
+.nav a:hover { background:rgba(59,130,246,.14); color:#fff; }
+.refresh { color:#94a3b8; font-size:12px; margin-left:4px; }
 .container { max-width:1400px; margin:0 auto; padding:16px; }
-.card { background:#fff; border-radius:10px; box-shadow:0 1px 3px rgba(0,0,0,.08); padding:16px; margin-bottom:16px; }
-.card h3 { font-size:15px; margin-bottom:10px; }
-.grid-4 { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:10px; font-size:12px; }
-@media (max-width:900px) { .grid-4 { grid-template-columns:1fr 1fr; } }
-.grid-4 .item { background:#f8fafc; padding:8px 10px; border-radius:6px; }
-.grid-4 .item .label { color:#888; font-size:11px; }
-.grid-4 .item .value { font-weight:600; margin-top:2px; }
-.badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; color:#fff; }
-.badge-online { background:#10b981; }
-.badge-offline { background:#ef4444; }
-.refresh { font-size:12px; color:#999; margin-left:10px; }
-.footer { text-align:center; padding:12px; font-size:12px; color:#999; }
-.warn { color:#f59e0b; }
+.summary {
+  display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:12px; margin-bottom:16px;
+}
+.metric {
+  background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:14px 16px;
+  box-shadow:0 1px 3px rgba(15,23,42,.06);
+}
+.metric .label { color:#64748b; font-size:12px; margin-bottom:6px; }
+.metric .value { font-size:24px; font-weight:700; letter-spacing:0; }
+.layout { display:grid; grid-template-columns:320px 1fr; gap:16px; align-items:start; }
+.panel {
+  background:#fff; border:1px solid #e2e8f0; border-radius:8px;
+  box-shadow:0 1px 3px rgba(15,23,42,.06); overflow:hidden;
+}
+.panel-head {
+  padding:14px 16px; border-bottom:1px solid #e2e8f0;
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+}
+.panel-head h2 { font-size:15px; }
+.panel-head span { font-size:12px; color:#64748b; }
+.tree { padding:10px 8px 14px; max-height:calc(100vh - 230px); overflow:auto; }
+details { margin:2px 0; }
+summary {
+  list-style:none; cursor:pointer; min-height:32px; padding:7px 8px; border-radius:7px;
+  display:flex; align-items:center; gap:8px; font-size:13px; color:#334155;
+}
+summary::-webkit-details-marker { display:none; }
+summary:hover { background:#f1f5f9; }
+.twisty { width:14px; color:#94a3b8; font-size:10px; transition:transform .16s ease; }
+details[open] > summary .twisty { transform:rotate(90deg); }
+.tree-count { margin-left:auto; color:#64748b; font-size:11px; }
+.tree-children { margin-left:18px; border-left:1px solid #e2e8f0; padding-left:8px; }
+.device-node {
+  width:100%; min-height:34px; border:0; background:transparent; cursor:pointer; text-align:left;
+  display:flex; align-items:center; gap:8px; padding:7px 8px; border-radius:7px; color:#0f172a;
+}
+.device-node:hover { background:#eff6ff; }
+.device-node.active { background:#dbeafe; color:#1d4ed8; font-weight:700; }
+.dot { width:8px; height:8px; border-radius:50%; flex:0 0 auto; }
+.dot.online { background:#10b981; box-shadow:0 0 0 3px rgba(16,185,129,.15); }
+.dot.offline { background:#ef4444; box-shadow:0 0 0 3px rgba(239,68,68,.12); }
+.node-text { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.node-sub { margin-left:auto; color:#94a3b8; font-size:11px; font-weight:500; }
+.field-list { margin:3px 0 7px 28px; display:grid; gap:3px; }
+.field-node {
+  color:#64748b; font-size:12px; padding:4px 6px; border-radius:6px;
+  display:flex; justify-content:space-between; gap:8px;
+}
+.field-node:hover { background:#f8fafc; }
+.detail-body { padding:16px; }
+.empty {
+  text-align:center; color:#94a3b8; padding:64px 16px; border:1px dashed #cbd5e1; border-radius:8px;
+}
+.detail-title { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:14px; }
+.detail-title h3 { font-size:20px; margin-bottom:4px; }
+.detail-title p { color:#64748b; font-size:13px; }
+.badge {
+  display:inline-flex; align-items:center; min-height:24px; padding:3px 9px; border-radius:999px;
+  font-size:12px; font-weight:700; white-space:nowrap;
+}
+.badge.online { color:#047857; background:#ecfdf5; border:1px solid #a7f3d0; }
+.badge.offline { color:#b91c1c; background:#fef2f2; border:1px solid #fecaca; }
+.info-grid { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:10px; margin-bottom:16px; }
+.info-item { background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; min-width:0; }
+.info-item .label { color:#64748b; font-size:11px; margin-bottom:4px; }
+.info-item .value { font-size:13px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.info-item.wide { grid-column:span 2; }
+.section-title { font-size:14px; margin:18px 0 8px; display:flex; align-items:center; gap:8px; }
+.section-title::before { content:""; width:4px; height:14px; border-radius:2px; background:#2563eb; }
+.fields-table { width:100%; border-collapse:collapse; font-size:13px; border:1px solid #e2e8f0; border-radius:8px; overflow:hidden; }
+.fields-table th, .fields-table td { text-align:left; padding:10px 12px; border-bottom:1px solid #eef2f7; }
+.fields-table th { background:#f8fafc; color:#475569; font-weight:700; }
+.fields-table tr:last-child td { border-bottom:0; }
+.quick-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+.action {
+  display:inline-flex; align-items:center; min-height:32px; padding:7px 12px; border-radius:8px;
+  text-decoration:none; color:#1d4ed8; background:#eff6ff; border:1px solid #bfdbfe; font-weight:700; font-size:13px;
+}
+.action.device { color:#047857; background:#ecfdf5; border-color:#a7f3d0; }
+.action.ops { color:#6d28d9; background:#f5f3ff; border-color:#ddd6fe; }
+.footer { text-align:center; padding:16px; font-size:12px; color:#94a3b8; }
+.warn { color:#d97706; }
+@media (max-width: 980px) {
+  .summary { grid-template-columns:1fr 1fr; }
+  .layout { grid-template-columns:1fr; }
+  .tree { max-height:none; }
+}
+@media (max-width: 620px) {
+  .header { padding:12px 16px; }
+  .summary, .info-grid { grid-template-columns:1fr; }
+  .info-item.wide { grid-column:auto; }
+  .panel-head, .detail-title { flex-direction:column; align-items:flex-start; }
+}
 </style>
 </head>
 <body>
 <div class="header">
-  <h1><img src="/logo.png" style="height:28px;vertical-align:middle;margin-right:8px;">传感器管理</h1>
-  <div><a href="/">← 返回仪表盘</a> <span class="refresh" id="refreshTime"></span></div>
+  <div class="brand">
+    <img src="/logo.png" alt="">
+    <div>
+      <h1>传感器管理</h1>
+      <span>多设备树状管理 · 字段与数据状态</span>
+    </div>
+  </div>
+  <div class="nav">
+    <a href="/">实时监测</a>
+    <a href="/logs">数据日志</a>
+    <a href="/decision/">3D 决策</a>
+    <a href="/grafana/">Grafana</a>
+    <span class="refresh" id="refreshTime"></span>
+  </div>
 </div>
-<div class="container" id="content"><div style="text-align:center;padding:60px;color:#999;">加载中...</div></div>
+<div class="container" id="content"><div class="empty">加载中...</div></div>
 <div class="footer">微境探界 · 传感器管理</div>
 <script>
-async function load() {
-  const res = await fetch('/api/sensors/detail');
-  const devices = await res.json();
+let devicesState = [];
+let selectedDeviceId = null;
+
+function esc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  }[ch]));
+}
+
+function jsArg(value) {
+  return esc(JSON.stringify(value ?? ''));
+}
+
+function fmtDate(value, mode = 'datetime') {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return mode === 'date' ? date.toLocaleDateString('zh-CN') : date.toLocaleString('zh-CN');
+}
+
+function fmtNum(value, digits, suffix = '') {
+  return value == null ? '-' : `${Number(value).toFixed(digits)}${suffix}`;
+}
+
+function groupDevices(devices) {
+  return devices.reduce((groups, device) => {
+    const type = device.device_type || '未分类设备';
+    if (!groups[type]) groups[type] = [];
+    groups[type].push(device);
+    return groups;
+  }, {});
+}
+
+function renderSummary(devices) {
+  const total = devices.length;
+  const online = devices.filter(d => d.online).length;
+  const offline = total - online;
+  const fields = new Set();
+  devices.forEach(d => (d.fields || []).forEach(f => fields.add(`${d.device_type || d.device_id}:${f.field_name}`)));
+  return `<div class="summary">
+    <div class="metric"><div class="label">接入设备</div><div class="value">${total}</div></div>
+    <div class="metric"><div class="label">在线设备</div><div class="value" style="color:#047857;">${online}</div></div>
+    <div class="metric"><div class="label">离线设备</div><div class="value" style="color:#b91c1c;">${offline}</div></div>
+    <div class="metric"><div class="label">字段模板</div><div class="value">${fields.size}</div></div>
+  </div>`;
+}
+
+function renderTree(devices) {
+  const groups = groupDevices(devices);
+  const typeHtml = Object.entries(groups).map(([type, group]) => {
+    const online = group.filter(d => d.online).length;
+    const deviceHtml = group.map(d => {
+      const fields = d.fields || [];
+      const fieldHtml = fields.length
+        ? `<div class="field-list">${fields.map(f => `<div class="field-node"><span>${esc(f.display_name || f.field_name)}</span><span>${esc(f.field_unit || '-')}</span></div>`).join('')}</div>`
+        : `<div class="field-list"><div class="field-node"><span>暂无字段模板</span><span>-</span></div></div>`;
+      return `<div>
+        <button class="device-node ${d.device_id === selectedDeviceId ? 'active' : ''}" onclick="selectDevice(${jsArg(d.device_id)})">
+          <span class="dot ${d.online ? 'online' : 'offline'}"></span>
+          <span class="node-text">${esc(d.device_id)}</span>
+          <span class="node-sub">${d.online ? '在线' : '离线'}</span>
+        </button>
+        ${fieldHtml}
+      </div>`;
+    }).join('');
+    return `<details open>
+      <summary><span class="twisty">▶</span><strong>${esc(type)}</strong><span class="tree-count">${online}/${group.length}</span></summary>
+      <div class="tree-children">${deviceHtml}</div>
+    </details>`;
+  }).join('');
+
+  return `<div class="panel">
+    <div class="panel-head"><h2>设备树</h2><span>项目 / 类型 / 设备 / 字段</span></div>
+    <div class="tree">
+      <details open>
+        <summary><span class="twisty">▶</span><strong>微境探界 IoT 传感网络</strong><span class="tree-count">${devices.length}</span></summary>
+        <div class="tree-children">${typeHtml}</div>
+      </details>
+    </div>
+  </div>`;
+}
+
+function renderDetail(device) {
+  if (!device) {
+    return `<div class="panel"><div class="detail-body"><div class="empty">请选择左侧设备节点</div></div></div>`;
+  }
+  const fields = device.fields || [];
+  const coord = device.lat != null && device.lon != null
+    ? `${Number(device.lat).toFixed(5)}, ${Number(device.lon).toFixed(5)}`
+    : '无定位';
+  const range = `${fmtDate(device.first_ts, 'date')} ~ ${fmtDate(device.last_ts, 'date')}`;
+  const rows = Number(device.total_rows || 0).toLocaleString('zh-CN');
+  const fieldRows = fields.length
+    ? fields.map(f => `<tr><td>${esc(f.display_name || f.field_name)}</td><td>${esc(f.field_name)}</td><td>${esc(f.field_unit || '-')}</td></tr>`).join('')
+    : '<tr><td colspan="3" style="color:#94a3b8;">暂无字段模板</td></tr>';
+  return `<div class="panel">
+    <div class="panel-head">
+      <h2>设备详情</h2>
+      <span>${device.online ? '最近 5 分钟内有上报' : '当前未在线'}</span>
+    </div>
+    <div class="detail-body">
+      <div class="detail-title">
+        <div>
+          <h3>${esc(device.device_id)}</h3>
+          <p>${esc(device.device_type || '未知类型')} · 固件 ${esc(device.firmware || '未知')}</p>
+        </div>
+        <span class="badge ${device.online ? 'online' : 'offline'}">${device.online ? '在线' : '离线'}</span>
+      </div>
+      <div class="info-grid">
+        <div class="info-item"><div class="label">最后上报</div><div class="value ${device.online ? '' : 'warn'}">${fmtDate(device.last_seen)}</div></div>
+        <div class="info-item"><div class="label">注册时间</div><div class="value">${fmtDate(device.created_at)}</div></div>
+        <div class="info-item"><div class="label">最新坐标</div><div class="value">${esc(coord)}</div></div>
+        <div class="info-item"><div class="label">数据总量</div><div class="value">${rows} 条</div></div>
+        <div class="info-item"><div class="label">最新温度</div><div class="value">${fmtNum(device.temp_c, 1, '°C')}</div></div>
+        <div class="info-item"><div class="label">最新湿度</div><div class="value">${fmtNum(device.humidity, 1, '%')}</div></div>
+        <div class="info-item"><div class="label">电池电压</div><div class="value">${fmtNum(device.bat_v, 2, 'V')}</div></div>
+        <div class="info-item"><div class="label">平均上报间隔</div><div class="value">${device.avg_interval ? Math.round(device.avg_interval) + 's' : '-'}</div></div>
+        <div class="info-item wide"><div class="label">数据范围</div><div class="value">${esc(range)}</div></div>
+        <div class="info-item wide"><div class="label">直连入口</div><div class="value">连接设备 AP 后访问 192.168.4.1</div></div>
+      </div>
+      <div class="section-title">字段模板</div>
+      <table class="fields-table">
+        <thead><tr><th>显示名称</th><th>字段名</th><th>单位</th></tr></thead>
+        <tbody>${fieldRows}</tbody>
+      </table>
+      <div class="quick-actions">
+        <a class="action" href="/logs">查看数据日志</a>
+        <a class="action" href="/api/export/${encodeURIComponent(device.device_id)}" target="_blank">导出今日 CSV</a>
+        <a class="action device" href="http://192.168.4.1" target="_blank">设备直连</a>
+        <a class="action ops" href="/grafana/">Grafana 看板</a>
+      </div>
+    </div>
+  </div>`;
+}
+
+function render(devices) {
   if (!devices.length) {
-    document.getElementById('content').innerHTML = '<div style="text-align:center;padding:40px;color:#999;">暂无传感器</div>';
+    document.getElementById('content').innerHTML = '<div class="empty">暂无传感器</div>';
     return;
   }
-  let html = '';
-  devices.forEach(d => {
-    const fields = (d.fields || []).map(f => `${f.display_name || f.field_name}(${f.field_unit || '-'})`);
-    html += `<div class="card">
-      <h3>${d.device_id} <span class="badge ${d.online ? 'badge-online' : 'badge-offline'}">${d.online ? '在线' : '离线'}</span></h3>
-      <div class="grid-4">
-        <div class="item"><div class="label">设备类型</div><div class="value">${d.device_type || '未知'}</div></div>
-        <div class="item"><div class="label">固件版本</div><div class="value">${d.firmware || '未知'}</div></div>
-        <div class="item"><div class="label">注册时间</div><div class="value">${d.created_at ? new Date(d.created_at).toLocaleString('zh-CN') : '-'}</div></div>
-        <div class="item"><div class="label">最后上报</div><div class="value ${d.online ? '' : 'warn'}">${d.last_seen ? new Date(d.last_seen).toLocaleString('zh-CN') : '从未'}</div></div>
-        <div class="item"><div class="label">最新坐标</div><div class="value">${d.lat ? Number(d.lat).toFixed(4)+', '+Number(d.lon).toFixed(4) : '无定位'}</div></div>
-        <div class="item"><div class="label">最新温度</div><div class="value">${d.temp_c != null ? d.temp_c.toFixed(1)+'°C' : '-'}</div></div>
-        <div class="item"><div class="label">最新湿度</div><div class="value">${d.humidity != null ? d.humidity.toFixed(1)+'%' : '-'}</div></div>
-        <div class="item"><div class="label">电池电压</div><div class="value">${d.bat_v != null ? d.bat_v.toFixed(2)+'V' : '-'}</div></div>
-        <div class="item"><div class="label">数据总量</div><div class="value">${d.total_rows || 0} 条</div></div>
-        <div class="item"><div class="label">数据范围</div><div class="value">${d.first_ts ? new Date(d.first_ts).toLocaleDateString('zh-CN') : '-'} ~ ${d.last_ts ? new Date(d.last_ts).toLocaleDateString('zh-CN') : '-'}</div></div>
-        <div class="item"><div class="label">上报间隔</div><div class="value">${d.avg_interval ? Math.round(d.avg_interval)+'s' : '-'}</div></div>
-        <div class="item"><div class="label">传感器字段</div><div class="value">${fields.join(', ') || '无'}</div></div>
-      </div>
+  if (!selectedDeviceId || !devices.some(d => d.device_id === selectedDeviceId)) {
+    selectedDeviceId = devices[0].device_id;
+  }
+  const current = devices.find(d => d.device_id === selectedDeviceId);
+  document.getElementById('content').innerHTML = `
+    ${renderSummary(devices)}
+    <div class="layout">
+      ${renderTree(devices)}
+      ${renderDetail(current)}
     </div>`;
-  });
-  document.getElementById('content').innerHTML = html;
+}
+
+function selectDevice(deviceId) {
+  selectedDeviceId = deviceId;
+  render(devicesState);
+}
+
+async function load() {
+  const res = await fetch('/api/sensors/detail');
+  devicesState = await res.json();
+  render(devicesState);
   document.getElementById('refreshTime').textContent = '更新于 '+new Date().toLocaleTimeString('zh-CN');
 }
+
 load();
 setInterval(load, 30000);
 </script>
@@ -695,15 +935,16 @@ tbody tr:hover { background: #f8fafc; }
   font-size: 13px; color: #64748b;
 }
 .footer-panel {
-  background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
-  box-shadow: 0 1px 3px rgba(0,0,0,.08); padding: 12px;
-  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;
 }
 .footer-group {
-  min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
-  background: #f8fafc; border: 1px solid #eef2f7; border-radius: 8px; padding: 10px 12px;
+  min-width: 0; display: grid; align-content: start; gap: 10px;
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
 }
-.footer-title { font-size: 12px; font-weight: 700; color: #475569; white-space: nowrap; }
+.footer-title { font-size: 13px; font-weight: 700; color: #334155; white-space: nowrap; }
+.footer-desc { font-size: 12px; line-height: 1.5; color: #64748b; }
+.footer-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .footer-link {
   display: inline-flex; align-items: center; min-height: 28px; padding: 5px 10px;
   border-radius: 999px; color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe;
@@ -714,7 +955,7 @@ tbody tr:hover { background: #f8fafc; }
 .footer-link.device:hover { background: #d1fae5; }
 .footer-link.ops { color: #6d28d9; background: #f5f3ff; border-color: #ddd6fe; }
 .footer-link.ops:hover { background: #ede9fe; }
-.footer-note { flex-basis: 100%; font-size: 12px; color: #94a3b8; line-height: 1.5; }
+.footer-note { font-size: 12px; color: #94a3b8; line-height: 1.5; }
 
 @media (max-width: 900px) {
   .main { grid-template-columns: 1fr; }
@@ -821,19 +1062,28 @@ tbody tr:hover { background: #f8fafc; }
 <div class="footer">
   <div class="footer-panel">
     <div class="footer-group">
-      <span class="footer-title">管理入口</span>
-      <a class="footer-link" href="/sensors">传感器管理</a>
-      <a class="footer-link" href="/logs">数据日志</a>
+      <span class="footer-title">平台管理</span>
+      <p class="footer-desc">面向多设备接入、字段模板、数据归档和日常维护。</p>
+      <div class="footer-actions">
+        <a class="footer-link" href="/sensors">传感器树</a>
+        <a class="footer-link" href="/logs">数据日志</a>
+      </div>
     </div>
     <div class="footer-group">
-      <span class="footer-title">设备直连</span>
-      <a class="footer-link device" href="http://192.168.4.1" target="_blank">ATOM Weather</a>
-      <a class="footer-link device" href="http://192.168.4.1" target="_blank">M5Stick Weather</a>
-      <span class="footer-note">手机连接设备 WiFi 后访问，建议关闭移动数据。</span>
+      <span class="footer-title">现场接入</span>
+      <p class="footer-desc">设备 AP 调试入口，仅在连接对应设备 WiFi 后访问。</p>
+      <div class="footer-actions">
+        <a class="footer-link device" href="http://192.168.4.1" target="_blank">ATOM Weather</a>
+        <a class="footer-link device" href="http://192.168.4.1" target="_blank">M5Stick Weather</a>
+      </div>
+      <span class="footer-note">现场调试建议关闭移动数据，避免手机自动切回公网。</span>
     </div>
     <div class="footer-group">
-      <span class="footer-title">运维入口</span>
-      <a class="footer-link ops" href="/grafana/">Grafana 看板</a>
+      <span class="footer-title">运行保障</span>
+      <p class="footer-desc">查看服务指标、采集链路状态和后续备份告警配置。</p>
+      <div class="footer-actions">
+        <a class="footer-link ops" href="/grafana/">Grafana 看板</a>
+      </div>
     </div>
   </div>
 </div>
