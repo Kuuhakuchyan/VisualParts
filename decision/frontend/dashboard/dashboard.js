@@ -8,6 +8,7 @@ import { viewerManager } from "../../src/cesium_core/core/ViewerManager.js";
 import { CampusTilesetLayer } from "../../src/cesium_core/layers/CampusTilesetLayer.js";
 import { RegionalHeatmapLayer } from "../../src/cesium_core/layers/RegionalHeatmapLayer.js";
 import { BuildingBuilderLayer } from "../../src/cesium_core/layers/BuildingBuilderLayer.js";
+import { CampusWhiteModelLayer } from "../../src/cesium_core/layers/CampusWhiteModelLayer.js";
 import { ImageryLayerManager } from "../../src/cesium_core/layers/ImageryLayerManager.js";
 import { TrackingLayer } from "./tracking_layer.js";
 import { TrackingPanel } from "./tracking_panel.js";
@@ -21,6 +22,7 @@ import { EChartsTimeseries } from "./echarts_timeseries.js";
 export class MicroClimateDashboard {
   constructor() {
     this._campusLayer    = null;
+    this._whiteModelLayer = null;
     this._heatmapLayer   = null;
     this._builderLayer   = null;
     this._imageryManager = null;
@@ -92,8 +94,21 @@ export class MicroClimateDashboard {
       this._campusLayer = new CampusTilesetLayer(viewer);
       const tileset = await this._campusLayer.load();
       if (!tileset) {
-        this._baseBuildingCount = 0;
-        this._setModelStatus("真实白模未接入", 0, "warn", "待接入");
+        this._whiteModelLayer = new CampusWhiteModelLayer(viewer);
+        try {
+          this._baseBuildingCount = await this._whiteModelLayer.load("./data/zzu_osm_buildings.geojson", {
+            alpha: 0.82,
+            outlineAlpha: 0.58,
+            showLabels: false,
+          });
+          this._whiteModelLayer.focus(0.5);
+          this._setModelStatus("OSM真实白模", this._baseBuildingCount, "ok");
+          this._setModelAttribution(this._whiteModelLayer.attribution);
+        } catch (modelError) {
+          console.warn("[Dashboard] OSM 白模加载失败:", modelError);
+          this._baseBuildingCount = 0;
+          this._setModelStatus("真实白模未接入", 0, "warn", "待接入");
+        }
       } else {
         this._baseBuildingCount = 0;
         this._setModelStatus("3D Tiles", 0, "ok", "已接入");
@@ -592,6 +607,11 @@ export class MicroClimateDashboard {
     if (buildingsEl) buildingsEl.textContent = count > 0 ? count : "--";
   }
 
+  _setModelAttribution(text) {
+    const el = document.getElementById("model-attribution");
+    if (el && text) el.textContent = text;
+  }
+
   _getInitialHeatData() {
     return [
       { x: 0.50, y: 0.45, value: 0.95 },
@@ -691,6 +711,7 @@ export class MicroClimateDashboard {
     this._trackingMapWindow?.destroy();
     await this._builderLayer?.destroy();
     await this._heatmapLayer?.destroy();
+    this._whiteModelLayer?.destroy();
     await this._campusLayer?.destroy();
     await this._imageryManager?.destroy();
     await viewerManager.destroy();
