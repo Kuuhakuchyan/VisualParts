@@ -1,0 +1,1845 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>城市热岛效应数据可视化系统</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0a1628 0%, #1a2a4a 50%, #0d1a2d 100%);
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* 背景网格效果 */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                linear-gradient(rgba(0, 150, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 150, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* 顶部导航栏 */
+        .top-navbar {
+            background: linear-gradient(180deg, rgba(10, 30, 60, 0.95) 0%, rgba(10, 25, 50, 0.9) 100%);
+            border-bottom: 1px solid rgba(0, 180, 255, 0.3);
+            padding: 0 30px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 4px 20px rgba(0, 100, 255, 0.2);
+        }
+
+        .logo {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #00b4ff;
+            text-shadow: 0 0 20px rgba(0, 180, 255, 0.5);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #00b4ff 0%, #00ff88 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-modules {
+            display: flex;
+            gap: 10px;
+        }
+
+        .nav-module {
+            padding: 10px 25px;
+            background: rgba(0, 100, 200, 0.2);
+            border: 1px solid rgba(0, 180, 255, 0.3);
+            border-radius: 6px;
+            color: #b3e0ff;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .nav-module:hover, .nav-module.active {
+            background: rgba(0, 150, 255, 0.3);
+            border-color: #00b4ff;
+            color: #00ff88;
+            box-shadow: 0 0 15px rgba(0, 180, 255, 0.3);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00b4ff 0%, #00ff88 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        /* 主容器 */
+        .main-container {
+            padding: 20px;
+            display: none;
+        }
+
+        .main-container.active {
+            display: block;
+        }
+
+        /* 7.1 系统主界面 */
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: 300px 1fr 280px;
+            grid-template-rows: 1fr;
+            gap: 20px;
+            height: calc(100vh - 100px);
+            padding: 20px;
+        }
+
+        .panel {
+            background: rgba(10, 30, 60, 0.8);
+            border-radius: 12px;
+            border: 1px solid rgba(0, 180, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 100, 255, 0.15);
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 15px 20px;
+            background: linear-gradient(90deg, rgba(0, 100, 200, 0.3) 0%, transparent 100%);
+            border-bottom: 1px solid rgba(0, 180, 255, 0.2);
+            font-size: 1.1em;
+            color: #00b4ff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .panel-header::before {
+            content: "";
+            width: 4px;
+            height: 20px;
+            background: linear-gradient(180deg, #00b4ff 0%, #00ff88 100%);
+            border-radius: 2px;
+        }
+
+        /* 左侧气象面板 */
+        .weather-panel .panel-content {
+            padding: 15px;
+        }
+
+        .weather-item {
+            background: rgba(0, 60, 120, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border: 1px solid rgba(0, 180, 255, 0.2);
+        }
+
+        .weather-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .weather-label {
+            color: #b3e0ff;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+
+        .weather-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        .weather-unit {
+            font-size: 0.5em;
+            color: #b3e0ff;
+        }
+
+        .weather-trend {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 8px;
+            font-size: 0.85em;
+        }
+
+        .trend-up { color: #ff6b6b; }
+        .trend-down { color: #00ff88; }
+
+        /* 中央GIS地图 */
+        .gis-map-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .gis-map-container .panel-header {
+            flex-shrink: 0;
+        }
+
+        .gis-map {
+            flex: 1;
+            min-height: 500px;
+            width: 100%;
+            background: #0a1628;
+        }
+
+        .gis-map .leaflet-container {
+            background: #0a1628;
+        }
+
+        /* 地图控件样式覆盖 */
+        .gis-map .leaflet-control-container .leaflet-control-zoom {
+            border: none !important;
+            box-shadow: 0 2px 10px rgba(0, 100, 255, 0.3) !important;
+        }
+
+        .gis-map .leaflet-control-zoom a {
+            background: rgba(10, 30, 60, 0.9) !important;
+            color: #00b4ff !important;
+            border: 1px solid rgba(0, 180, 255, 0.3) !important;
+        }
+
+        .gis-map .leaflet-control-zoom a:hover {
+            background: rgba(0, 150, 255, 0.3) !important;
+        }
+
+        .gis-map .leaflet-control-scale {
+            background: rgba(10, 30, 60, 0.8) !important;
+            border: 1px solid rgba(0, 180, 255, 0.3) !important;
+        }
+
+        .gis-map .leaflet-control-scale line {
+            border-color: #00b4ff !important;
+        }
+
+        .gis-map .leaflet-control-scale .leaflet-control-scale-line {
+            background: rgba(10, 30, 60, 0.8) !important;
+            color: #b3e0ff !important;
+            border: 1px solid rgba(0, 180, 255, 0.3) !important;
+        }
+
+        .gis-map .leaflet-control-layers {
+            background: rgba(10, 30, 60, 0.9) !important;
+            border: 1px solid rgba(0, 180, 255, 0.3) !important;
+            border-radius: 6px !important;
+        }
+
+        .gis-map .leaflet-control-layers-toggle {
+            background-color: rgba(10, 30, 60, 0.9) !important;
+            border: 1px solid rgba(0, 180, 255, 0.3) !important;
+        }
+
+        .map-controls {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 10;
+        }
+
+        .map-control-btn {
+            width: 36px;
+            height: 36px;
+            background: rgba(10, 30, 60, 0.9);
+            border: 1px solid rgba(0, 180, 255, 0.4);
+            border-radius: 6px;
+            color: #00b4ff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.3s;
+        }
+
+        .map-control-btn:hover {
+            background: rgba(0, 150, 255, 0.3);
+        }
+
+        .map-legend {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            background: rgba(10, 30, 60, 0.9);
+            border: 1px solid rgba(0, 180, 255, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            z-index: 10;
+        }
+
+        .legend-title {
+            font-size: 0.85em;
+            color: #00b4ff;
+            margin-bottom: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+            font-size: 0.8em;
+            color: #b3e0ff;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 12px;
+            border-radius: 2px;
+        }
+
+        /* 右侧LCZ面板 */
+        .lcz-panel .panel-content {
+            padding: 15px;
+            height: calc(100% - 50px);
+            overflow-y: auto;
+        }
+
+        .lcz-chart-container {
+            height: 200px;
+            margin-bottom: 20px;
+        }
+
+        .lcz-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .lcz-stat-item {
+            background: rgba(0, 60, 120, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .lcz-stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        .lcz-stat-label {
+            font-size: 0.75em;
+            color: #b3e0ff;
+            margin-top: 5px;
+        }
+
+        /* 7.2 热异常检测界面 */
+        .detection-container {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 20px;
+            padding: 20px;
+            height: calc(100vh - 100px);
+        }
+
+        .detection-panel {
+            background: rgba(10, 30, 60, 0.8);
+            border-radius: 12px;
+            border: 1px solid rgba(0, 180, 255, 0.3);
+            padding: 20px;
+        }
+
+        .upload-zone {
+            border: 2px dashed rgba(0, 180, 255, 0.4);
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: #00b4ff;
+            background: rgba(0, 100, 200, 0.1);
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            color: #b3e0ff;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            font-size: 0.8em;
+            color: #66a3cc;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .format-tags {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+
+        .format-tag {
+            background: rgba(0, 150, 255, 0.2);
+            border: 1px solid rgba(0, 180, 255, 0.3);
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            color: #00b4ff;
+        }
+
+        .detection-results {
+            background: rgba(10, 30, 60, 0.8);
+            border-radius: 12px;
+            border: 1px solid rgba(0, 180, 255, 0.3);
+            padding: 20px;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(0, 180, 255, 0.2);
+        }
+
+        .result-title {
+            color: #00b4ff;
+            font-size: 1.1em;
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px solid rgba(0, 180, 255, 0.4);
+            background: rgba(0, 100, 200, 0.2);
+            color: #00b4ff;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9em;
+        }
+
+        .action-btn:hover {
+            background: rgba(0, 150, 255, 0.3);
+        }
+
+        .result-content {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+        }
+
+        .image-preview-container {
+            background: rgba(0, 40, 80, 0.5);
+            border-radius: 8px;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .detection-bounding-box {
+            position: absolute;
+            border: 2px solid #ff4444;
+            background: rgba(255, 68, 68, 0.1);
+            border-radius: 4px;
+            pointer-events: none;
+        }
+
+        .detection-label {
+            position: absolute;
+            top: -25px;
+            left: 0;
+            background: #ff4444;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .result-list {
+            background: rgba(0, 40, 80, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .result-item {
+            background: rgba(0, 60, 120, 0.3);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-left: 3px solid #ff4444;
+        }
+
+        .result-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .result-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .result-item-type {
+            color: #ff4444;
+            font-weight: bold;
+        }
+
+        .result-item-confidence {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+
+        .result-item-coords {
+            font-size: 0.8em;
+            color: #66a3cc;
+        }
+
+        /* 7.3 WRF数值模拟界面 */
+        .simulation-container {
+            padding: 20px;
+            height: calc(100vh - 100px);
+        }
+
+        .simulation-layout {
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            gap: 20px;
+            height: 100%;
+        }
+
+        .config-panel {
+            background: rgba(10, 30, 60, 0.8);
+            border-radius: 12px;
+            border: 1px solid rgba(0, 180, 255, 0.3);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .config-section {
+            margin-bottom: 25px;
+        }
+
+        .config-section-title {
+            color: #00b4ff;
+            font-size: 1em;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(0, 180, 255, 0.2);
+        }
+
+        .config-item {
+            margin-bottom: 15px;
+        }
+
+        .config-label {
+            display: block;
+            color: #b3e0ff;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+
+        .config-input {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(0, 40, 80, 0.5);
+            border: 1px solid rgba(0, 180, 255, 0.3);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 0.95em;
+        }
+
+        .config-input:focus {
+            outline: none;
+            border-color: #00b4ff;
+            box-shadow: 0 0 10px rgba(0, 180, 255, 0.2);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-group .config-input {
+            flex: 1;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .slider {
+            flex: 1;
+            -webkit-appearance: none;
+            height: 6px;
+            background: rgba(0, 100, 200, 0.3);
+            border-radius: 3px;
+            outline: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: linear-gradient(135deg, #00b4ff 0%, #00ff88 100%);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .slider-value {
+            min-width: 60px;
+            text-align: center;
+            color: #00ff88;
+            font-weight: bold;
+        }
+
+        .start-simulation-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, rgba(0, 180, 255, 0.3) 0%, rgba(0, 255, 136, 0.2) 100%);
+            border: 1px solid rgba(0, 180, 255, 0.5);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .start-simulation-btn:hover {
+            background: linear-gradient(135deg, rgba(0, 180, 255, 0.5) 0%, rgba(0, 255, 136, 0.3) 100%);
+            box-shadow: 0 0 20px rgba(0, 180, 255, 0.3);
+        }
+
+        .start-simulation-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .simulation-progress {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .simulation-progress.active {
+            display: block;
+        }
+
+        .progress-bar-container {
+            background: rgba(0, 40, 80, 0.5);
+            border-radius: 10px;
+            height: 20px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #00b4ff 0%, #00ff88 100%);
+            width: 0%;
+            transition: width 0.3s;
+            border-radius: 10px;
+        }
+
+        .progress-text {
+            text-align: center;
+            color: #b3e0ff;
+            font-size: 0.9em;
+        }
+
+        .simulation-visualization {
+            background: rgba(10, 30, 60, 0.8);
+            border-radius: 12px;
+            border: 1px solid rgba(0, 180, 255, 0.3);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .viz-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .viz-tab {
+            padding: 8px 20px;
+            background: rgba(0, 60, 120, 0.3);
+            border: 1px solid rgba(0, 180, 255, 0.3);
+            border-radius: 6px;
+            color: #b3e0ff;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .viz-tab.active, .viz-tab:hover {
+            background: rgba(0, 150, 255, 0.3);
+            border-color: #00b4ff;
+            color: #00ff88;
+        }
+
+        .viz-content {
+            flex: 1;
+            display: none;
+        }
+
+        .viz-content.active {
+            display: block;
+        }
+
+        .viz-chart {
+            width: 100%;
+            height: 100%;
+            min-height: 400px;
+        }
+
+        /* 7.5 时空数据统计分析界面 */
+        .stats-container {
+            padding: 20px;
+            height: calc(100vh - 100px);
+        }
+
+        .stats-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto 1fr;
+            gap: 20px;
+            height: 100%;
+        }
+
+        .stats-header {
+            grid-column: 1 / -1;
+            background: rgba(10, 30, 60, 0.8);
+            border-radius: 12px;
+            border: 1px solid rgba(0, 180, 255, 0.3);
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stats-title {
+            color: #00b4ff;
+            font-size: 1.2em;
+        }
+
+        .stats-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .stats-control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stats-control-group label {
+            color: #b3e0ff;
+            font-size: 0.9em;
+        }
+
+        .stats-select {
+            padding: 8px 12px;
+            background: rgba(0, 40, 80, 0.5);
+            border: 1px solid rgba(0, 180, 255, 0.3);
+            border-radius: 6px;
+            color: #fff;
+        }
+
+        .stats-panel {
+            background: rgba(10, 30, 60, 0.8);
+            border-radius: 12px;
+            border: 1px solid rgba(0, 180, 255, 0.3);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stats-panel-title {
+            color: #00b4ff;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        .stats-chart {
+            flex: 1;
+            min-height: 300px;
+        }
+
+        .stats-summary {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .summary-card {
+            background: rgba(0, 60, 120, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .summary-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        .summary-label {
+            font-size: 0.85em;
+            color: #b3e0ff;
+            margin-top: 5px;
+        }
+
+        .summary-unit {
+            font-size: 0.5em;
+            color: #66a3cc;
+        }
+
+        /* 动画效果 */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .loading-pulse {
+            animation: pulse 1.5s infinite;
+        }
+
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 40, 80, 0.3);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 150, 255, 0.4);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 150, 255, 0.6);
+        }
+
+        /* 章节标题 */
+        .section-title {
+            text-align: center;
+            padding: 20px;
+            font-size: 2em;
+            color: #00b4ff;
+            text-shadow: 0 0 20px rgba(0, 180, 255, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <nav class="top-navbar">
+        <div class="logo">
+            <div class="logo-icon">🌡️</div>
+            <span>城市热岛效应数据可视化系统</span>
+        </div>
+        <div class="nav-modules">
+            <div class="nav-module active" data-module="dashboard">7.1 系统主界面</div>
+            <div class="nav-module" data-module="detection">7.2 热异常检测</div>
+            <div class="nav-module" data-module="simulation">7.3 WRF数值模拟</div>
+            <div class="nav-module" data-module="stats">7.5 时空分析</div>
+        </div>
+        <div class="user-info">
+            <div class="user-avatar">管</div>
+            <span>管理员</span>
+        </div>
+    </nav>
+
+    <!-- 7.1 系统主界面 -->
+    <div class="main-container active" id="dashboard-module">
+        <h2 class="section-title">系统主控仪表盘界面</h2>
+        <div class="dashboard-container">
+            <!-- 左侧气象面板 -->
+            <div class="panel weather-panel">
+                <div class="panel-header">实时气象要素</div>
+                <div class="panel-content">
+                    <div class="weather-item">
+                        <div class="weather-label">🌡️ 地表温度</div>
+                        <div class="weather-value">32.5<span class="weather-unit">°C</span></div>
+                        <div class="weather-trend trend-up">▲ 较昨日 +2.3°C</div>
+                    </div>
+                    <div class="weather-item">
+                        <div class="weather-label">💧 相对湿度</div>
+                        <div class="weather-value">45<span class="weather-unit">%</span></div>
+                        <div class="weather-trend trend-down">▼ 较昨日 -5%</div>
+                    </div>
+                    <div class="weather-item">
+                        <div class="weather-label">💨 风速</div>
+                        <div class="weather-value">3.2<span class="weather-unit">m/s</span></div>
+                        <div class="weather-trend">→ 西北风 2级</div>
+                    </div>
+                    <div class="weather-item">
+                        <div class="weather-label">☀️ 太阳辐射</div>
+                        <div class="weather-value">856<span class="weather-unit">W/m²</span></div>
+                        <div class="weather-trend trend-up">▲ 正午峰值</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 中央GIS地图 -->
+            <div class="panel gis-map-container">
+                <div class="panel-header">交互式GIS地图 - 城市热岛分布</div>
+                <div id="gis-map" class="gis-map"></div>
+                <div class="map-controls">
+                    <button class="map-control-btn" title="放大">+</button>
+                    <button class="map-control-btn" title="缩小">-</button>
+                    <button class="map-control-btn" title="定位">📍</button>
+                    <button class="map-control-btn" title="图层">🗺️</button>
+                </div>
+                <div class="map-legend">
+                    <div class="legend-title">温度图例</div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #ff4444;"></div>
+                        <span>> 38°C 高温</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #ffaa00;"></div>
+                        <span>35-38°C 较热</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #ffff00;"></div>
+                        <span>30-35°C 适中</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #00ff88;"></div>
+                        <span>< 30°C 凉爽</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧LCZ面板 -->
+            <div class="panel lcz-panel">
+                <div class="panel-header">局部气候区(LCZ)类型占比</div>
+                <div class="panel-content">
+                    <div class="lcz-chart-container" id="lcz-pie-chart"></div>
+                    <div class="lcz-stats">
+                        <div class="lcz-stat-item">
+                            <div class="lcz-stat-value">156</div>
+                            <div class="lcz-stat-label">建筑密集区</div>
+                        </div>
+                        <div class="lcz-stat-item">
+                            <div class="lcz-stat-value">89</div>
+                            <div class="lcz-stat-label">绿地覆盖区</div>
+                        </div>
+                        <div class="lcz-stat-item">
+                            <div class="lcz-stat-value">45</div>
+                            <div class="lcz-stat-label">工业区</div>
+                        </div>
+                        <div class="lcz-stat-item">
+                            <div class="lcz-stat-value">23</div>
+                            <div class="lcz-stat-label">水域周边</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 7.2 热异常区域智能检测 -->
+    <div class="main-container" id="detection-module">
+        <h2 class="section-title">多源数据上传与检测界面</h2>
+        <div class="detection-container">
+            <div class="detection-panel">
+                <div class="panel-header">上传影像数据</div>
+                <div class="upload-zone" id="upload-zone">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">拖放文件到此处或点击选择</div>
+                    <div class="upload-hint">支持无人机热红外影像、多光谱卫星数据</div>
+                    <div class="format-tags">
+                        <span class="format-tag">TIFF</span>
+                        <span class="format-tag">JPG</span>
+                        <span class="format-tag">PNG</span>
+                    </div>
+                </div>
+                <input type="file" class="file-input" id="detection-file-input" accept=".tiff,.tif,.jpg,.jpeg,.png">
+                
+                <div style="margin-top: 20px;">
+                    <div class="panel-header" style="font-size: 0.95em;">检测模型配置</div>
+                    <div class="config-item" style="margin-top: 15px;">
+                        <label class="config-label">选择模型</label>
+                        <select class="config-input stats-select" id="model-select">
+                            <option value="detr">DETR (Transformer)</option>
+                            <option value="yolov8">YOLOv8</option>
+                            <option value="faster-rcnn">Faster R-CNN</option>
+                        </select>
+                    </div>
+                    <div class="config-item">
+                        <label class="config-label">置信度阈值</label>
+                        <div class="slider-container">
+                            <input type="range" class="slider" id="confidence-slider" min="0" max="100" value="50">
+                            <span class="slider-value" id="confidence-value">50%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="detection-results">
+                <div class="result-header">
+                    <div class="result-title">🗺️ 检测结果可视化</div>
+                    <div class="result-actions">
+                        <button class="action-btn" id="start-detection-btn">▶ 开始检测</button>
+                        <button class="action-btn" id="export-result-btn">💾 导出结果</button>
+                    </div>
+                </div>
+                <div class="result-content">
+                    <div class="image-preview-container" id="image-preview">
+                        <div style="color: #66a3cc;">请上传影像文件进行分析</div>
+                    </div>
+                    <div class="result-list" id="detection-list">
+                        <div style="color: #66a3cc; text-align: center; padding: 20px;">
+                            检测结果列表将显示在此处
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 7.3 WRF数值模拟 -->
+    <div class="main-container" id="simulation-module">
+        <h2 class="section-title">WRF模拟参数配置界面</h2>
+        <div class="simulation-container">
+            <div class="simulation-layout">
+                <div class="config-panel">
+                    <div class="config-section">
+                        <div class="config-section-title">📍 模拟区域范围</div>
+                        <div class="config-item">
+                            <label class="config-label">中心经纬度</label>
+                            <div class="input-group">
+                                <input type="text" class="config-input" id="center-lng" placeholder="经度" value="116.40">
+                                <input type="text" class="config-input" id="center-lat" placeholder="纬度" value="39.90">
+                            </div>
+                        </div>
+                        <div class="config-item">
+                            <label class="config-label">模拟区域大小 (km)</label>
+                            <div class="input-group">
+                                <input type="number" class="config-input" placeholder="东西向" value="100">
+                                <input type="number" class="config-input" placeholder="南北向" value="80">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="config-section">
+                        <div class="config-section-title">🔲 网格分辨率</div>
+                        <div class="config-item">
+                            <label class="config-label">Grid Size (km)</label>
+                            <div class="slider-container">
+                                <input type="range" class="slider" id="grid-size-slider" min="1" max="10" value="3">
+                                <span class="slider-value" id="grid-size-value">3 km</span>
+                            </div>
+                        </div>
+                        <div class="config-item">
+                            <label class="config-label">垂直层数</label>
+                            <input type="number" class="config-input" value="35" min="10" max="100">
+                        </div>
+                    </div>
+                    
+                    <div class="config-section">
+                        <div class="config-section-title">🌡️ 初始基础温度</div>
+                        <div class="config-item">
+                            <label class="config-label">基准温度 (°C)</label>
+                            <input type="number" class="config-input" id="base-temp" value="28" step="0.5">
+                        </div>
+                        <div class="config-item">
+                            <label class="config-label">模拟时长 (小时)</label>
+                            <div class="slider-container">
+                                <input type="range" class="slider" id="sim-duration-slider" min="6" max="72" value="24">
+                                <span class="slider-value" id="sim-duration-value">24 h</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="start-simulation-btn" id="start-sim-btn">
+                        <span>🚀</span> 启动模拟
+                    </button>
+                    
+                    <div class="simulation-progress" id="sim-progress">
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" id="progress-bar"></div>
+                        </div>
+                        <div class="progress-text" id="progress-text">初始化中...</div>
+                    </div>
+                </div>
+                
+                <div class="simulation-visualization">
+                    <div class="viz-tabs">
+                        <div class="viz-tab active" data-viz="temperature">温度场分布</div>
+                        <div class="viz-tab" data-viz="wind">风场矢量</div>
+                        <div class="viz-tab" data-viz="humidity">湿度场</div>
+                        <div class="viz-tab" data-viz="export">导出数据</div>
+                    </div>
+                    <div class="viz-content active" id="viz-temperature">
+                        <div id="temperature-chart" class="viz-chart"></div>
+                    </div>
+                    <div class="viz-content" id="viz-wind">
+                        <div id="wind-chart" class="viz-chart"></div>
+                    </div>
+                    <div class="viz-content" id="viz-humidity">
+                        <div id="humidity-chart" class="viz-chart"></div>
+                    </div>
+                    <div class="viz-content" id="viz-export">
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #b3e0ff;">
+                            <div style="font-size: 48px; margin-bottom: 20px;">💾</div>
+                            <h3 style="margin-bottom: 15px;">导出模拟结果</h3>
+                            <p style="margin-bottom: 30px; text-align: center; max-width: 400px;">
+                                模拟完成后，可将结果导出为标准NetCDF格式文件，供后续科研分析使用
+                            </p>
+                            <button class="action-btn" style="padding: 12px 30px;">导出NetCDF</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 7.5 时空数据统计分析 -->
+    <div class="main-container" id="stats-module">
+        <h2 class="section-title">时空数据统计分析界面</h2>
+        <div class="stats-container">
+            <div class="stats-layout">
+                <div class="stats-header">
+                    <div class="stats-title">📊 时空数据统计指标</div>
+                    <div class="stats-controls">
+                        <div class="stats-control-group">
+                            <label>区域选择：</label>
+                            <select class="stats-select" id="area-select">
+                                <option value="all">全市</option>
+                                <option value="center">中心城区</option>
+                                <option value="suburban">郊区</option>
+                                <option value="industrial">工业区</option>
+                            </select>
+                        </div>
+                        <div class="stats-control-group">
+                            <label>时间范围：</label>
+                            <select class="stats-select" id="time-range-select">
+                                <option value="24h">24小时</option>
+                                <option value="7d">7天</option>
+                                <option value="30d">30天</option>
+                            </select>
+                        </div>
+                        <button class="action-btn" id="refresh-stats-btn">🔄 刷新数据</button>
+                    </div>
+                </div>
+                
+                <div class="stats-panel">
+                    <div class="stats-panel-title">🌡️ 热岛强度指数 (UHI) 时序变化</div>
+                    <div id="uhi-chart" class="stats-chart"></div>
+                </div>
+                
+                <div class="stats-panel">
+                    <div class="stats-panel-title">📈 平均地表温度 (LST) 24小时变化</div>
+                    <div id="lst-chart" class="stats-chart"></div>
+                </div>
+                
+                <div class="stats-panel">
+                    <div class="stats-panel-title">📊 温度标准差分布</div>
+                    <div id="std-chart" class="stats-chart"></div>
+                    <div class="stats-summary">
+                        <div class="summary-card">
+                            <div class="summary-value">3.8<span class="summary-unit">°C</span></div>
+                            <div class="summary-label">平均热岛强度</div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="summary-value">35.2<span class="summary-unit">°C</span></div>
+                            <div class="summary-label">平均地表温度</div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="summary-value">2.4<span class="summary-unit">°C</span></div>
+                            <div class="summary-label">温度标准差</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 页面切换功能
+        document.querySelectorAll('.nav-module').forEach(module => {
+            module.addEventListener('click', function() {
+                const moduleName = this.dataset.module;
+                
+                // 更新导航栏状态
+                document.querySelectorAll('.nav-module').forEach(m => m.classList.remove('active'));
+                this.classList.add('active');
+                
+                // 切换主容器
+                document.querySelectorAll('.main-container').forEach(c => c.classList.remove('active'));
+                document.getElementById(moduleName + '-module').classList.add('active');
+                
+                // 初始化对应的图表
+                setTimeout(() => {
+                    if (moduleName === 'dashboard') initDashboard();
+                    if (moduleName === 'simulation') initSimulation();
+                    if (moduleName === 'stats') initStats();
+                }, 100);
+            });
+        });
+
+        // 初始化仪表盘
+        let dashboardInitialized = false;
+        let leafletMap = null;
+        let heatLayer = null;
+
+        function initDashboard() {
+            if (dashboardInitialized) return;
+
+            // ========== 使用 Leaflet + 天地图初始化地图 ==========
+            const tdtKey = '3f612f90e997ebccbf74793fdf6d9264';
+            const subdomains = ['0', '1', '2', '3', '4', '5', '6', '7'];
+
+            // 创建地图实例
+            leafletMap = L.map('gis-map', {
+                center: [39.90, 116.40], // 北京中心点
+                zoom: 10,
+                zoomControl: true,
+                preferCanvas: true
+            });
+
+            // 卫星影像底图 + 影像注记
+            const imgLayer = L.tileLayer(`https://t{s}.tianditu.gov.cn/DataServer?T=img_w&x={x}&y={y}&l={z}&tk=${tdtKey}`, {
+                subdomains: subdomains,
+                maxZoom: 18,
+                attribution: '天地图-影像'
+            });
+            const ciaLayer = L.tileLayer(`https://t{s}.tianditu.gov.cn/DataServer?T=cia_w&x={x}&y={y}&l={z}&tk=${tdtKey}`, {
+                subdomains: subdomains,
+                maxZoom: 18,
+                zIndex: 10
+            });
+            const satelliteMap = L.layerGroup([imgLayer, ciaLayer]);
+
+            // 矢量路网（作为叠加层）
+            const vecLayer = L.tileLayer(`https://t{s}.tianditu.gov.cn/DataServer?T=vec_w&x={x}&y={y}&l={z}&tk=${tdtKey}`, {
+                subdomains: subdomains,
+                maxZoom: 18,
+                attribution: '天地图-矢量'
+            });
+            const cvaLayer = L.tileLayer(`https://t{s}.tianditu.gov.cn/DataServer?T=cva_w&x={x}&y={y}&l={z}&tk=${tdtKey}`, {
+                subdomains: subdomains,
+                maxZoom: 18,
+                zIndex: 10
+            });
+            const streetMap = L.layerGroup([vecLayer, cvaLayer]);
+
+            // 默认加载卫星影像 + 矢量路网叠加
+            satelliteMap.addTo(leafletMap);
+            streetMap.addTo(leafletMap);
+
+            // 添加底图切换控件
+            const baseMaps = {
+                "卫星影像": satelliteMap,
+                "矢量地图": streetMap
+            };
+            L.control.layers(baseMaps, {}, {
+                position: 'topright'
+            }).addTo(leafletMap);
+
+            // 添加比例尺
+            L.control.scale({
+                imperial: false
+            }).addTo(leafletMap);
+
+            // 生成热力图数据点
+            const heatData = [];
+            for (let i = 0; i < 100; i++) {
+                const lat = 39.6 + Math.random() * 0.6;
+                const lng = 116.2 + Math.random() * 0.5;
+                const intensity = Math.random() * 10 + 30; // 温度 30-40°C
+                heatData.push([lat, lng, intensity]);
+                heatData.push([lat + 0.01, lng + 0.01, intensity - 2]);
+            }
+
+            // 创建自定义热力图图层
+            const heatCanvasLayer = L.canvas({ padding: 0.5 });
+
+            heatCanvasLayer.on('layeradd', function() {
+                const ctx = this._map.getCanvas().getContext('2d');
+                this._renderer._ctx = ctx;
+            });
+
+            // 使用简单的圆形渐变叠加模拟热力图效果
+            const heatOverlay = L.layerGroup().addTo(leafletMap);
+
+            heatData.forEach(point => {
+                const [lat, lng, intensity] = point;
+                // 根据温度计算颜色
+                let color;
+                if (intensity < 30) {
+                    color = 'rgba(0, 255, 136, 0.4)';
+                } else if (intensity < 35) {
+                    color = 'rgba(255, 255, 0, 0.4)';
+                } else if (intensity < 38) {
+                    color = 'rgba(255, 170, 0, 0.5)';
+                } else {
+                    color = 'rgba(255, 68, 68, 0.6)';
+                }
+
+                const circle = L.circle([lat, lng], {
+                    radius: 500,
+                    fillColor: color,
+                    fillOpacity: 0.3,
+                    color: 'transparent',
+                    weight: 0
+                }).addTo(heatOverlay);
+            });
+
+            // 添加热异常点标记
+            const markerGroup = L.featureGroup().addTo(leafletMap);
+            for (let i = 0; i < 20; i++) {
+                const lat = 39.65 + Math.random() * 0.4;
+                const lng = 116.25 + Math.random() * 0.4;
+                const temp = (30 + Math.random() * 10).toFixed(1);
+                const marker = L.circleMarker([lat, lng], {
+                    radius: 8,
+                    fillColor: '#ff4444',
+                    color: '#fff',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).bindPopup(`<strong>热异常点 ${i + 1}</strong><br>温度: ${temp}°C`);
+                markerGroup.addLayer(marker);
+            }
+
+            // ========== 初始化LCZ饼图 ==========
+            const lczChart = echarts.init(document.getElementById('lcz-pie-chart'));
+            lczChart.setOption({
+                backgroundColor: 'transparent',
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{b}: {c} ({d}%)'
+                },
+                series: [{
+                    type: 'pie',
+                    radius: ['40%', '70%'],
+                    avoidLabelOverlap: false,
+                    itemStyle: {
+                        borderRadius: 6,
+                        borderColor: 'rgba(10, 30, 60, 0.8)',
+                        borderWidth: 2
+                    },
+                    label: {
+                        color: '#b3e0ff',
+                        fontSize: 10
+                    },
+                    data: [
+                        { value: 156, name: '建筑密集', itemStyle: { color: '#ff6b6b' } },
+                        { value: 89, name: '绿地覆盖', itemStyle: { color: '#00ff88' } },
+                        { value: 45, name: '工业区', itemStyle: { color: '#ffaa00' } },
+                        { value: 23, name: '水域周边', itemStyle: { color: '#00b4ff' } },
+                        { value: 34, name: '交通干道', itemStyle: { color: '#aa66ff' } }
+                    ]
+                }]
+            });
+
+            dashboardInitialized = true;
+        }
+
+        // 上传区域交互
+        const uploadZone = document.getElementById('upload-zone');
+        const fileInput = document.getElementById('detection-file-input');
+
+        uploadZone.addEventListener('click', () => fileInput.click());
+
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) handleFile(file);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) handleFile(e.target.files[0]);
+        });
+
+        function handleFile(file) {
+            const preview = document.getElementById('image-preview');
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                preview.innerHTML = `<img src="${e.target.result}" style="max-width:100%;max-height:100%;object-fit:contain;">`;
+                preview.style.background = 'rgba(0, 40, 80, 0.3)';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 置信度滑块
+        document.getElementById('confidence-slider').addEventListener('input', function() {
+            document.getElementById('confidence-value').textContent = this.value + '%';
+        });
+
+        // 网格大小滑块
+        document.getElementById('grid-size-slider').addEventListener('input', function() {
+            document.getElementById('grid-size-value').textContent = this.value + ' km';
+        });
+
+        // 模拟时长滑块
+        document.getElementById('sim-duration-slider').addEventListener('input', function() {
+            document.getElementById('sim-duration-value').textContent = this.value + ' h';
+        });
+
+        // 启动模拟
+        document.getElementById('start-sim-btn').addEventListener('click', function() {
+            const progress = document.getElementById('sim-progress');
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+            
+            progress.classList.add('active');
+            this.disabled = true;
+            
+            let percent = 0;
+            const stages = ['初始化参数...', '加载气象数据...', '计算网格场...', '迭代求解中...', '后处理...', '完成!'];
+            let stageIndex = 0;
+            
+            const timer = setInterval(() => {
+                percent += 2;
+                progressBar.style.width = percent + '%';
+                
+                if (percent % 20 === 0 && stageIndex < stages.length - 1) {
+                    progressText.textContent = stages[stageIndex];
+                    stageIndex++;
+                }
+                
+                if (percent >= 100) {
+                    clearInterval(timer);
+                    progressText.textContent = stages[5];
+                    this.disabled = false;
+                    setTimeout(() => initSimulationCharts(), 500);
+                }
+            }, 100);
+        });
+
+        // 可视化标签页切换
+        document.querySelectorAll('.viz-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.viz-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.viz-content').forEach(c => c.classList.remove('active'));
+                
+                this.classList.add('active');
+                document.getElementById('viz-' + this.dataset.viz).classList.add('active');
+            });
+        });
+
+        // 初始化模拟图表
+        let simulationInitialized = false;
+        function initSimulation() {
+            if (simulationInitialized) return;
+            initSimulationCharts();
+            simulationInitialized = true;
+        }
+
+        function initSimulationCharts() {
+            // 温度场图表
+            const tempChart = echarts.init(document.getElementById('temperature-chart'));
+            tempChart.setOption({
+                backgroundColor: 'transparent',
+                title: { text: '温度场动态演变', textStyle: { color: '#00b4ff' }, left: 'center' },
+                tooltip: { trigger: 'axis' },
+                grid: { top: 50, right: 50, bottom: 50, left: 60 },
+                xAxis: {
+                    type: 'category',
+                    data: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '24:00'],
+                    axisLine: { lineStyle: { color: '#00b4ff' } },
+                    axisLabel: { color: '#b3e0ff' }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '温度(°C)',
+                    axisLine: { lineStyle: { color: '#00b4ff' } },
+                    axisLabel: { color: '#b3e0ff' },
+                    splitLine: { lineStyle: { color: 'rgba(0, 180, 255, 0.1)' } }
+                },
+                series: [{
+                    name: '模拟温度',
+                    type: 'line',
+                    data: [28, 26, 29, 35, 38, 36, 31],
+                    smooth: true,
+                    lineStyle: { color: '#ff6b6b', width: 3 },
+                    areaStyle: {
+                        color: {
+                            type: 'linear',
+                            x: 0, y: 0, x2: 0, y2: 1,
+                            colorStops: [
+                                { offset: 0, color: 'rgba(255, 107, 107, 0.5)' },
+                                { offset: 1, color: 'rgba(255, 107, 107, 0)' }
+                            ]
+                        }
+                    },
+                    symbol: 'circle',
+                    symbolSize: 8,
+                    itemStyle: { color: '#ff6b6b' }
+                }]
+            });
+
+            // 风场图表
+            const windChart = echarts.init(document.getElementById('wind-chart'));
+            windChart.setOption({
+                backgroundColor: 'transparent',
+                title: { text: '风速风向分布', textStyle: { color: '#00b4ff' }, left: 'center' },
+                polar: {},
+                angleAxis: {
+                    type: 'category',
+                    data: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'],
+                    axisLine: { lineStyle: { color: '#00b4ff' } },
+                    axisLabel: { color: '#b3e0ff' }
+                },
+                radiusAxis: { axisLine: { lineStyle: { color: '#00b4ff' } } },
+                series: [{
+                    type: 'bar',
+                    data: [2.5, 3.2, 2.8, 1.5, 1.2, 2.0, 3.5, 2.8],
+                    coordinateSystem: 'polar',
+                    itemStyle: { color: '#00b4ff' }
+                }]
+            });
+
+            // 湿度图表
+            const humidityChart = echarts.init(document.getElementById('humidity-chart'));
+            humidityChart.setOption({
+                backgroundColor: 'transparent',
+                title: { text: '相对湿度变化', textStyle: { color: '#00b4ff' }, left: 'center' },
+                tooltip: { trigger: 'axis' },
+                grid: { top: 50, right: 50, bottom: 50, left: 60 },
+                xAxis: {
+                    type: 'category',
+                    data: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '24:00'],
+                    axisLine: { lineStyle: { color: '#00b4ff' } },
+                    axisLabel: { color: '#b3e0ff' }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '湿度(%)',
+                    min: 20,
+                    max: 80,
+                    axisLine: { lineStyle: { color: '#00b4ff' } },
+                    axisLabel: { color: '#b3e0ff' },
+                    splitLine: { lineStyle: { color: 'rgba(0, 180, 255, 0.1)' } }
+                },
+                series: [{
+                    name: '相对湿度',
+                    type: 'line',
+                    data: [65, 72, 55, 40, 35, 45, 58],
+                    smooth: true,
+                    lineStyle: { color: '#00b4ff', width: 3 },
+                    areaStyle: {
+                        color: {
+                            type: 'linear',
+                            x: 0, y: 0, x2: 0, y2: 1,
+                            colorStops: [
+                                { offset: 0, color: 'rgba(0, 180, 255, 0.5)' },
+                                { offset: 1, color: 'rgba(0, 180, 255, 0)' }
+                            ]
+                        }
+                    },
+                    symbol: 'circle',
+                    symbolSize: 8,
+                    itemStyle: { color: '#00b4ff' }
+                }]
+            });
+
+            // 响应窗口大小变化
+            window.addEventListener('resize', () => {
+                tempChart.resize();
+                windChart.resize();
+                humidityChart.resize();
+            });
+        }
+
+        // 初始化统计分析
+        let statsInitialized = false;
+        function initStats() {
+            if (statsInitialized) return;
+            
+            // UHI图表
+            const uhiChart = echarts.init(document.getElementById('uhi-chart'));
+            uhiChart.setOption({
+                backgroundColor: 'transparent',
+                tooltip: { trigger: 'axis' },
+                grid: { top: 30, right: 30, bottom: 30, left: 50 },
+                xAxis: {
+                    type: 'category',
+                    data: ['00:00', '02:00', '04:00', '06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'],
+                    axisLine: { lineStyle: { color: '#00b4ff' } },
+                    axisLabel: { color: '#b3e0ff' }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: 'UHI指数',
+                    axisLine: { lineStyle: { color: '#00b4ff' } },
+                    axisLabel: { color: '#b3e0ff' },
+                    splitLine: { lineStyle: { color: 'rgba(0, 180, 255, 0.1)' } }
+                },
+                series: [{
+                    name: 'UHI',
+                    type: 'line',
+                    data: [2.5, 3.2, 3.8, 3.5, 2.8, 2.1, 1.5, 1.2, 1.8, 2.5, 3.0, 2.8],
+                    smooth: true,
+                    lineStyle: { color: '#ffaa00', width: 3 },
+                    itemStyle: { color: '#ffaa00' },
+                    areaStyle: {
+                        color: {
+                            type: 'linear',
+                            x: 0, y: 0, x2: 0, y2: 1,
+                            colorStops: [
+                                { offset: 0, color: 'rgba(255, 170, 0, 0.4)' },
+                                { offset: 1, color: 'rgba(255, 170, 0, 0)' }
+                            ]
+                        }
+                    }
+                }]
+            });
+
+            // LST图表
+            const lstChart = echarts.init(document.getElementById('lst-chart'));
+            lstChart.setOption({
+                backgroundColor: 'transparent',
+                tooltip: { trigger: 'axis' },
+                legend: { textStyle: { color: '#b3e0ff' }, top: 5 },
+                grid: { top: 50, right: 30, bottom: 30, left: 50 },
+                xAxis: {
+                    type: 'category',
+                    data: ['00:00', '02:00', '04:00', '06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'],
+                    axisLine: { lineStyle: { color: '#00b4ff' } },
+                    axisLabel: { color: '#b3e0ff' }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '温度(°C)',
+                    axisLine: { lineStyle: { color: '#00b4ff' } },
+                    axisLabel: { color: '#b3e0ff' },
+                    splitLine: { lineStyle: { color: 'rgba(0, 180, 255, 0.1)' } }
+                },
+                series: [
+                    {
+                        name: '最高温度',
+                        type: 'line',
+                        data: [32, 30, 29, 28, 30, 35, 40, 42, 41, 38, 35, 33],
+                        smooth: true,
+                        lineStyle: { color: '#ff4444', width: 2 },
+                        itemStyle: { color: '#ff4444' }
+                    },
+                    {
+                        name: '平均温度',
+                        type: 'line',
+                        data: [30, 28, 27, 26, 28, 32, 37, 39, 38, 35, 32, 31],
+                        smooth: true,
+                        lineStyle: { color: '#ffaa00', width: 2 },
+                        itemStyle: { color: '#ffaa00' }
+                    },
+                    {
+                        name: '最低温度',
+                        type: 'line',
+                        data: [28, 26, 25, 24, 26, 29, 34, 36, 35, 32, 29, 28],
+                        smooth: true,
+                        lineStyle: { color: '#00ff88', width: 2 },
+                        itemStyle: { color: '#00ff88' }
+                    }
+                ]
+            });
+
+            // 标准差图表
+            const stdChart = echarts.init(document.getElementById('std-chart'));
+            stdChart.setOption({
+                backgroundColor: 'transparent',
+                tooltip: { trigger: 'axis' },
+                grid: { top: 30, right: 30, bottom: 30, left: 50 },
+                xAxis: {
+                    type: 'category',
+                    data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    axisLine: { lineStyle: { color: '#00b4ff' } },
+                    axisLabel: { color: '#b3e0ff' }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '标准差(°C)',
+                    axisLine: { lineStyle: { color: '#00b4ff' } },
+                    axisLabel: { color: '#b3e0ff' },
+                    splitLine: { lineStyle: { color: 'rgba(0, 180, 255, 0.1)' } }
+                },
+                series: [{
+                    type: 'bar',
+                    data: [2.1, 2.4, 2.8, 3.2, 2.9, 2.5, 2.2],
+                    itemStyle: {
+                        color: {
+                            type: 'linear',
+                            x: 0, y: 0, x2: 0, y2: 1,
+                            colorStops: [
+                                { offset: 0, color: '#00b4ff' },
+                                { offset: 1, color: '#00ff88' }
+                            ]
+                        },
+                        borderRadius: [4, 4, 0, 0]
+                    }
+                }]
+            });
+
+            statsInitialized = true;
+        }
+
+        // 开始检测按钮
+        document.getElementById('start-detection-btn').addEventListener('click', function() {
+            const list = document.getElementById('detection-list');
+            list.innerHTML = `
+                <div style="text-align:center;padding:20px;" class="loading-pulse">
+                    <div style="color:#00b4ff;">正在调用深度学习模型检测...</div>
+                </div>
+            `;
+            
+            setTimeout(() => {
+                const results = [
+                    { type: 'Heat Source', confidence: 95.2, coords: 'x: 120, y: 85' },
+                    { type: 'High Density Building', confidence: 88.7, coords: 'x: 245, y: 160' },
+                    { type: 'Heat Source', confidence: 82.3, coords: 'x: 380, y: 220' },
+                    { type: 'Industrial Zone', confidence: 76.5, coords: 'x: 95, y: 310' }
+                ];
+                
+                list.innerHTML = results.map((r, i) => `
+                    <div class="result-item" style="animation: fadeIn 0.3s ease-out ${i * 0.1}s both;">
+                        <div class="result-item-header">
+                            <span class="result-item-type">${r.type}</span>
+                            <span class="result-item-confidence">${r.confidence}%</span>
+                        </div>
+                        <div class="result-item-coords">坐标: ${r.coords}</div>
+                    </div>
+                `).join('');
+                
+                // 在图片上显示检测框
+                const preview = document.getElementById('image-preview');
+                const boxes = [
+                    { left: '20%', top: '15%', width: '15%', height: '12%', label: 'Heat Source 95%' },
+                    { left: '40%', top: '28%', width: '18%', height: '15%', label: 'Building 89%' },
+                    { left: '60%', top: '38%', width: '12%', height: '10%', label: 'Heat Source 82%' }
+                ];
+                
+                boxes.forEach(box => {
+                    const div = document.createElement('div');
+                    div.className = 'detection-bounding-box';
+                    div.style.left = box.left;
+                    div.style.top = box.top;
+                    div.style.width = box.width;
+                    div.style.height = box.height;
+                    div.innerHTML = `<div class="detection-label">${box.label}</div>`;
+                    preview.appendChild(div);
+                });
+            }, 2000);
+        });
+
+        // 窗口大小改变时调整图表
+        window.addEventListener('resize', function() {
+            if (dashboardInitialized && leafletMap) {
+                leafletMap.invalidateSize();
+            }
+            if (statsInitialized) {
+                echarts.getInstanceByDom(document.getElementById('uhi-chart'))?.resize();
+                echarts.getInstanceByDom(document.getElementById('lst-chart'))?.resize();
+                echarts.getInstanceByDom(document.getElementById('std-chart'))?.resize();
+            }
+        });
+
+        // 初始化仪表盘
+        setTimeout(initDashboard, 500);
+    </script>
+</body>
+</html>
+

@@ -6,4 +6,5 @@ mosquitto/config/passwd
 pg_data/
 **/__pycache__/
 *.pyc
-
+decision/identification/result/
+decision/identification/test/

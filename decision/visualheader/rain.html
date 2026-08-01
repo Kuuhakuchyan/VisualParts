@@ -1,0 +1,155 @@
+<!-- 
+空天地一体化智能监测平台 - 主页面
+功能：展示空天地一体化监测数据的可视化平台
+包含模块：
+- 降水量监测展示
+- 其他数据可视化模块
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>空天地一体化智能监测平台</title>
+<!-- 主页面样式定义 -->
+<style>
+    /* 基础页面样式 - 深色科技感主题 */
+    body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Arial', sans-serif;
+        background: #0a1625;
+        color: #fff;
+        min-height: 100vh;
+        position: relative;
+        overflow-x: hidden;
+    }
+    body::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: 
+            linear-gradient(rgba(0, 120, 255, 0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 120, 255, 0.1) 1px, transparent 1px);
+        background-size: 40px 40px;
+        z-index: -1;
+    }
+    h1 {
+        text-align: center;
+        padding: 25px;
+        font-size: 2.8em;
+        text-shadow: 0 0 15px rgba(0, 180, 255, 0.7);
+        margin: 0;
+        background: rgba(0, 40, 80, 0.5);
+        border-bottom: 1px solid rgba(0, 180, 255, 0.3);
+    }
+    /* 仪表盘布局样式 - 网格布局 */
+    .dashboard {
+        display: flex;
+        flex-direction: column;
+        height: 80vh;
+        padding: 30px;
+        margin: 0 auto;
+        width: 90%; /* 改为百分比宽度 */
+        min-width: 800px; /* 设置最小宽度 */
+        max-width: 1300px;
+    }
+    /* 数据模块样式 - 半透明卡片效果 */
+    .module {
+        background: rgba(10, 30, 60, 0.8);
+        border-radius: 8px;
+        padding: 25px;
+        box-shadow: 0 8px 32px rgba(0, 100, 255, 0.2);
+        backdrop-filter: blur(6px);
+        border: 1px solid rgba(0, 180, 255, 0.3);
+        transition: all 0.3s ease;
+    }
+    .module:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 40px rgba(0, 120, 255, 0.3);
+    }
+    .module h2 {
+        margin-top: 0;
+        color: #00b4ff;
+        padding-bottom: 15px;
+        font-size: 1.6em;
+        border-bottom: 1px solid rgba(0, 180, 255, 0.3);
+        display: flex;
+        align-items: center;
+    }
+    .module h2::before {
+        content: "";
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        background: #00b4ff;
+        border-radius: 50%;
+        margin-right: 10px;
+        box-shadow: 0 0 8px #00b4ff;
+    }
+    .module p {
+        color: #b3e0ff;
+        line-height: 1.7;
+        margin-bottom: 20px;
+    }
+    /* 图表容器样式 - 用于展示各类数据图表 */
+    .chart-container {
+        height: 500px;
+        background: rgba(0, 80, 160, 0.2);
+        border-radius: 6px;
+        border: 1px dashed rgba(0, 180, 255, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #66c2ff;
+        font-size: 1.1em;
+    }
+    /* 状态指示器 - 显示系统或数据状态 */
+    .status-indicator {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #00ff88;
+        box-shadow: 0 0 8px #00ff88;
+        margin-right: 8px;
+    }
+    /* 目标识别区域样式 - 用于特殊数据展示 */
+    .target-recognition {
+        margin-top: 20px;
+        padding: 15px;
+        background: rgba(0, 80, 160, 0.3);
+        border-radius: 6px;
+        border: 2px dashed rgba(0, 180, 255, 0.5);
+    }
+    .target-recognition h3 {
+        color: #00ffaa;
+        margin-top: 0;
+        font-size: 1.2em;
+    }
+    .recognition-box {
+        height: 120px;
+        background: rgba(0, 60, 120, 0.2);
+        border: 1px solid rgba(0, 180, 255, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #66ffcc;
+    }
+</style>
+</head>
+<body>
+<!-- 页面主要内容区域 -->
+<h1>空天地一体化智能监测平台</h1>
+<div class="dashboard">
+    <!-- 降水量监测模块 -->
+    <div class="module">
+        <h2><span class="status-indicator"></span>降水量</h2>
+        <p>目标分布降水量展示</p>
+        <div class="chart-container">降水量展示</div>
+    </div>
+</div>
+</body>
+</html>

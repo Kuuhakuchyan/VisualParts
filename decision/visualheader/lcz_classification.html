@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>LCZ城市分类热岛效应分析图</title>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            background-color: #0f1621;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+        #province-map {
+            width: 100%;
+            height: 75vh;
+        }
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 8px 16px;
+            background: #1a2b5a;
+            color: #fff;
+            border: 1px solid #0a2dae;
+            border-radius: 4px;
+            cursor: pointer;
+            z-index: 100;
+        }
+        .province-info {
+            padding: 20px;
+            background: rgba(10,30,60,0.8);
+            margin: 20px;
+            border-radius: 8px;
+        }
+        .lcz-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .lcz-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+        }
+        .lcz-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <button class="back-button" onclick="window.location.href='tech_map.html'">← 返回全国热岛监测</button>
+    <div id="province-map"></div>
+    <div class="province-info">
+        <h2>LCZ城市分类与热岛效应分析</h2>
+        <p>LCZ (Local Climate Zone) 局地气候区分类标准</p>
+        <div class="lcz-legend">
+            <div class="lcz-item">
+                <div class="lcz-color" style="background: #8B0000;"></div>
+                <span>LCZ 1: 紧凑高层建筑</span>
+            </div>
+            <div class="lcz-item">
+                <div class="lcz-color" style="background: #FF4500;"></div>
+                <span>LCZ 2: 紧凑中层建筑</span>
+            </div>
+            <div class="lcz-item">
+                <div class="lcz-color" style="background: #FF8C00;"></div>
+                <span>LCZ 3: 紧凑低层建筑</span>
+            </div>
+            <div class="lcz-item">
+                <div class="lcz-color" style="background: #FFD700;"></div>
+                <span>LCZ 4: 开放高层建筑</span>
+            </div>
+            <div class="lcz-item">
+                <div class="lcz-color" style="background: #ADFF2F;"></div>
+                <span>LCZ 5: 开放中层建筑</span>
+            </div>
+            <div class="lcz-item">
+                <div class="lcz-color" style="background: #32CD32;"></div>
+                <span>LCZ 6: 开放低层建筑</span>
+            </div>
+            <div class="lcz-item">
+                <div class="lcz-color" style="background: #006400;"></div>
+                <span>LCZ A: 茂密植被</span>
+            </div>
+            <div class="lcz-item">
+                <div class="lcz-color" style="background: #228B22;"></div>
+                <span>LCZ B: 稀疏植被</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const mapChart = echarts.init(document.getElementById('province-map'));
+        const provinceName = '山东省';
+        
+        // LCZ颜色映射
+        const lczColors = {
+            'LCZ1': '#8B0000',
+            'LCZ2': '#FF4500',
+            'LCZ3': '#FF8C00',
+            'LCZ4': '#FFD700',
+            'LCZ5': '#ADFF2F',
+            'LCZ6': '#32CD32',
+            'LCZA': '#006400',
+            'LCZB': '#228B22'
+        };
+        
+        // 模拟LCZ分类数据
+        const lczData = [
+            {name: '济南市', value: [116.98, 36.65], lcz: 'LCZ1', temperature: 35.2},
+            {name: '青岛市', value: [120.33, 36.07], lcz: 'LCZ2', temperature: 33.8},
+            {name: '烟台市', value: [121.39, 37.53], lcz: 'LCZ4', temperature: 31.5},
+            {name: '潍坊市', value: [119.16, 36.70], lcz: 'LCZ3', temperature: 34.1},
+            {name: '临沂市', value: [118.35, 35.26], lcz: 'LCZ5', temperature: 33.2},
+            {name: '济宁市', value: [116.58, 35.41], lcz: 'LCZ6', temperature: 32.8},
+            {name: '泰安市', value: [117.08, 36.19], lcz: 'LCZB', temperature: 30.5},
+            {name: '淄博市', value: [118.05, 36.86], lcz: 'LCZ2', temperature: 34.5},
+            {name: '德州市', value: [116.30, 37.43], lcz: 'LCZ5', temperature: 32.1},
+            {name: '聊城市', value: [115.98, 36.45], lcz: 'LCZ6', temperature: 31.8},
+            {name: '滨州市', value: [117.96, 37.38], lcz: 'LCZ5', temperature: 32.4},
+            {name: '菏泽市', value: [115.44, 35.23], lcz: 'LCZ6', temperature: 33.0},
+            {name: '枣庄市', value: [117.32, 34.81], lcz: 'LCZ4', temperature: 33.5},
+            {name: '日照市', value: [119.52, 35.41], lcz: 'LCZ4', temperature: 31.2},
+            {name: '威海市', value: [122.12, 37.50], lcz: 'LCZ4', temperature: 30.8}
+        ];
+        
+        // 加载状态提示
+        const loadingEl = document.createElement('div');
+        loadingEl.style.position = 'fixed';
+        loadingEl.style.top = '50%';
+        loadingEl.style.left = '50%';
+        loadingEl.style.transform = 'translate(-50%, -50%)';
+        loadingEl.style.color = '#fff';
+        loadingEl.textContent = '正在加载LCZ分类数据...';
+        document.body.appendChild(loadingEl);
+        
+        // 加载省份地图数据
+        $.get(`https://geo.datav.aliyun.com/areas_v3/bound/370000_full.json`)
+            .done(function(geoJson) {
+                echarts.registerMap(provinceName, geoJson);
+                document.body.removeChild(loadingEl);
+                
+                mapChart.setOption({
+                    backgroundColor: '#0f1621',
+                    title: {
+                        text: '山东省LCZ城市分类与热岛效应分析',
+                        left: 'center',
+                        textStyle: {
+                            color: '#fff',
+                            fontSize: 18
+                        }
+                    },
+                    tooltip: {
+                        trigger: 'item',
+                        formatter: function(params) {
+                            if (params.data) {
+                                return `<b>${params.data.name}</b><br/>
+                                        LCZ类型: ${params.data.lcz}<br/>
+                                        地表温度: ${params.data.temperature}°C<br/>
+                                        热岛强度: ${(params.data.temperature - 30).toFixed(1)}°C`;
+                            }
+                            return params.name;
+                        }
+                    },
+                    visualMap: {
+                        min: 28,
+                        max: 38,
+                        text: ['高温', '低温'],
+                        realtime: false,
+                        calculable: true,
+                        inRange: {
+                            color: ['#228B22', '#ADFF2F', '#FFD700', '#FF8C00', '#FF4500', '#8B0000']
+                        },
+                        textStyle: {
+                            color: '#fff'
+                        },
+                        left: 'right',
+                        bottom: '20%'
+                    },
+                    geo: {
+                        map: provinceName,
+                        roam: true,
+                        itemStyle: {
+                            areaColor: '#1a2b5a',
+                            borderColor: '#0a2dae'
+                        },
+                        emphasis: {
+                            itemStyle: {
+                                areaColor: '#2a91d8'
+                            }
+                        }
+                    },
+                    series: [
+                        {
+                            name: 'LCZ分类',
+                            type: 'effectScatter',
+                            coordinateSystem: 'geo',
+                            data: lczData,
+                            symbolSize: function(val) {
+                                return 15 + (val[2].temperature - 30) * 2;
+                            },
+                            encode: {
+                                value: 2
+                            },
+                            showEffectOn: 'render',
+                            rippleEffect: {
+                                brushType: 'stroke'
+                            },
+                            label: {
+                                formatter: '{b}',
+                                position: 'right',
+                                show: true,
+                                color: '#fff',
+                                fontSize: 12
+                            },
+                            itemStyle: {
+                                color: function(params) {
+                                    return lczColors[params.data.lcz] || '#FF4500';
+                                },
+                                shadowBlur: 10,
+                                shadowColor: '#333'
+                            },
+                            emphasis: {
+                                scale: true
+                            }
+                        },
+                        {
+                            name: '热岛强度',
+                            type: 'heatmap',
+                            coordinateSystem: 'geo',
+                            data: lczData.map(item => {
+                                return {
+                                    name: item.name,
+                                    value: [...item.value, item.temperature]
+                                };
+                            }),
+                            pointSize: 30,
+                            blurSize: 20,
+                            progressive: 1000,
+                            animation: false
+                        }
+                    ]
+                });
+            })
+            .fail(function() {
+                document.body.removeChild(loadingEl);
+                alert('地图数据加载失败，请检查网络连接');
+            });
+    </script>
+</body>
+</html>
+

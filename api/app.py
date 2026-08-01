@@ -62,6 +62,11 @@ async def logo():
     return FileResponse("logo.png")
 
 
+@app.get("/favicon.ico")
+async def favicon():
+    return FileResponse(BASE_DIR / "logo.png", media_type="image/png")
+
+
 @app.on_event("shutdown")
 async def shutdown():
     if hasattr(app.state, "pool"):
@@ -420,7 +425,7 @@ body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-seri
   <div><a href="/">← 返回仪表盘</a> <span class="refresh" id="refreshTime"></span></div>
 </div>
 <div class="container" id="content"><div style="text-align:center;padding:60px;color:#999;">加载中...</div></div>
-<div class="footer">微气候决策系统 · 传感器管理</div>
+<div class="footer">微境探界 · 传感器管理</div>
 <script>
 async function load() {
   const res = await fetch('/api/sensors/detail');
@@ -497,7 +502,7 @@ body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-seri
   <div class="device-tabs" id="deviceTabs"></div>
   <div id="dateContent"><div style="text-align:center;padding:40px;color:#999;">请选择设备</div></div>
 </div>
-<div class="footer">微气候决策系统 · 数据日志</div>
+<div class="footer">微境探界 · 数据日志</div>
 <script>
 let currentDevice = null;
 async function loadDevices() {
@@ -533,7 +538,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>微气候决策系统</title>
+<title>微境探界｜实时微气候监测</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -637,10 +642,11 @@ tbody tr:hover { background: #f8fafc; }
 <body>
 
 <div class="header">
-  <h1><img src="/logo.png" style="height:32px;vertical-align:middle;margin-right:8px;">微气候决策系统</h1>
+  <h1><img src="/logo.png" style="height:32px;vertical-align:middle;margin-right:8px;">微境探界</h1>
   <div class="header-right">
     <select id="deviceSelect" onchange="onDeviceChange()"></select>
     <select id="dateSelect" onchange="onDateChange()"><option value="">今日</option></select>
+    <button onclick="location.href='/decision/'" style="background:#0f766e;">3D决策平台</button>
     <button id="downloadBtn" class="download" onclick="downloadCSV()">下载 CSV</button>
     <button id="viewToggle" class="download" onclick="toggleView()" style="background:#6366f1;">分设备视图</button>
     <span class="last-update" id="lastUpdate"></span>
@@ -686,6 +692,7 @@ tbody tr:hover { background: #f8fafc; }
   <div class="footer-panel">
     <div class="footer-group">
       <span class="footer-title">平台操作</span>
+      <a class="footer-link" href="/decision/">3D决策平台</a>
       <a class="footer-link" href="/logs">数据日志</a>
       <a class="footer-link" href="/sensors">传感器管理</a>
       <a class="footer-link" href="/author/">作者主页</a>

@@ -1,0 +1,26 @@
+{
+  "name": "@city-microclimate/visual-parts",
+  "version": "1.0.0",
+  "description": "城市微环境决策支持系统 — Cesium 3D 可视化前端",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "cesium": "^1.140.0",
+    "cors": "^2.8.5",
+    "echarts": "^6.0.0",
+    "express": "^5.2.1",
+    "http-proxy-middleware": "^3.0.5",
+    "serve-static": "^2.2.0",
+    "tslib": "^2.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.8",
+    "vite-plugin-cesium": "^1.2.23"
+  }
+}

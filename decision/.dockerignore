@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.git/
+__pycache__/
+*.pyc
+*.pyo
+.env
+.env.*
+docs/
+identification/result/
+*.zip
+*.log
