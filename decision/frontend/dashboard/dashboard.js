@@ -8,7 +8,6 @@ import { viewerManager } from "../../src/cesium_core/core/ViewerManager.js";
 import { CampusTilesetLayer } from "../../src/cesium_core/layers/CampusTilesetLayer.js";
 import { RegionalHeatmapLayer } from "../../src/cesium_core/layers/RegionalHeatmapLayer.js";
 import { BuildingBuilderLayer } from "../../src/cesium_core/layers/BuildingBuilderLayer.js";
-import { SchematicCampusLayer } from "../../src/cesium_core/layers/SchematicCampusLayer.js";
 import { ImageryLayerManager } from "../../src/cesium_core/layers/ImageryLayerManager.js";
 import { TrackingLayer } from "./tracking_layer.js";
 import { TrackingPanel } from "./tracking_panel.js";
@@ -22,7 +21,6 @@ import { EChartsTimeseries } from "./echarts_timeseries.js";
 export class MicroClimateDashboard {
   constructor() {
     this._campusLayer    = null;
-    this._schematicCampusLayer = null;
     this._heatmapLayer   = null;
     this._builderLayer   = null;
     this._imageryManager = null;
@@ -93,23 +91,19 @@ export class MicroClimateDashboard {
 
       this._campusLayer = new CampusTilesetLayer(viewer);
       const tileset = await this._campusLayer.load();
-      this._schematicCampusLayer = new SchematicCampusLayer(viewer);
       if (!tileset) {
-        this._baseBuildingCount = this._schematicCampusLayer.load({
-          alpha: 0.88,
-          showLabels: false,
-        });
-        this._schematicCampusLayer.focus(0.6);
-        this._setModelStatus("示意白模", this._baseBuildingCount, "warn");
+        this._baseBuildingCount = 0;
+        this._setModelStatus("真实白模未接入", 0, "warn", "待接入");
       } else {
         this._baseBuildingCount = 0;
-        this._setModelStatus("3D Tiles", 0, "ok");
+        this._setModelStatus("3D Tiles", 0, "ok", "已接入");
       }
 
       this._heatmapLayer = new RegionalHeatmapLayer(viewer);
       await this._heatmapLayer.init(this._bound, this._initialHeatData, {
         canvasSize: 512,
-        opacity: 0.55,
+        radius: 0.075,
+        opacity: 0.28,
         coverBuildings: false,
         heightOffset: 0,
         showLabels: true,
@@ -585,17 +579,17 @@ export class MicroClimateDashboard {
     }
   }
 
-  _setModelStatus(label, count, tone = "ok") {
+  _setModelStatus(label, count, tone = "ok", countText = null) {
     const status = document.getElementById("model-status");
     const labelEl = document.getElementById("model-status-label");
     const countEl = document.getElementById("model-status-count");
 
     if (status) status.className = `map-layer-status ${tone}`;
     if (labelEl) labelEl.textContent = label;
-    if (countEl) countEl.textContent = count > 0 ? `${count}栋` : "已接入";
+    if (countEl) countEl.textContent = countText ?? (count > 0 ? `${count}栋` : "已接入");
 
     const buildingsEl = document.getElementById("stat-buildings");
-    if (buildingsEl && count > 0) buildingsEl.textContent = count;
+    if (buildingsEl) buildingsEl.textContent = count > 0 ? count : "--";
   }
 
   _getInitialHeatData() {
@@ -697,7 +691,6 @@ export class MicroClimateDashboard {
     this._trackingMapWindow?.destroy();
     await this._builderLayer?.destroy();
     await this._heatmapLayer?.destroy();
-    this._schematicCampusLayer?.destroy();
     await this._campusLayer?.destroy();
     await this._imageryManager?.destroy();
     await viewerManager.destroy();

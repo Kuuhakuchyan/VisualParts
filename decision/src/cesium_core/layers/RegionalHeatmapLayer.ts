@@ -524,6 +524,7 @@ export class RegionalHeatmapLayer {
     if (this._heatmapEntity && this._heatmapEntity.polygon) {
       (this._heatmapEntity.polygon as any).material = new Cesium.ImageMaterialProperty({
         image: this._canvas as HTMLCanvasElement,
+        color: Cesium.Color.WHITE.withAlpha(this._opacity),
         transparent: true,
       });
     }
@@ -580,7 +581,7 @@ export class RegionalHeatmapLayer {
     if (!this._isInitialized || !this._heatmapEntity) return;
 
     // 更新 polygon 的 height 属性
-    (this._heatmapEntity.polygon as any).height = height;
+    (this._heatmapEntity.polygon as any).height = height + 1.2;
 
     console.debug(
       `[RegionalHeatmapLayer] 高度偏移已更新为：${height} 米`
@@ -764,18 +765,12 @@ export class RegionalHeatmapLayer {
 
     const { west, east, south, north } = this._bounds;
 
-    // —— 确定 classificationType ——
-    // BOTH：同时贴合 Terrain/Imagery 和 3D Tiles（建筑立面）
-    // TERRAIN：仅贴合地表（若用户不需要贴合建筑）
-    const classType = this._coverBuildings
-      ? Cesium.ClassificationType.BOTH
-      : Cesium.ClassificationType.TERRAIN;
-
     // —— 创建 ImageMaterialProperty ——
     // transparent: true → 启用 Alpha 混合，使热力图半透明
     // 即使热力值为 1.0（红色）也保持半透明，不完全遮挡底图
     const material = new Cesium.ImageMaterialProperty({
       image: this._canvas as HTMLCanvasElement,
+      color: Cesium.Color.WHITE.withAlpha(this._opacity),
       transparent: true,
     });
 
@@ -796,14 +791,10 @@ export class RegionalHeatmapLayer {
       // 垂直高度（相对于 WGS84 椭球面）
       // 设为正值使热力图悬浮于地表上方，
       // 但 ClassificationType.BOTH 仍会将其贴合到建筑立面上
-      height: this._heightOffset,
+      height: this._heightOffset + 1.2,
 
       // 材质
       material,
-
-      // 【核心配置】分类类型：同时贴合地表和建筑立面
-      // 注意：Cesium 1.140 中 Entity.polygon.classificationType 可能需要通过动态赋值设置
-      classificationType: classType,
 
       // 抗锯齿：Cesium 会自动处理多边形边缘
       closeTop: true,
@@ -820,8 +811,7 @@ export class RegionalHeatmapLayer {
     } as any);
 
     console.debug(
-      `[RegionalHeatmapLayer] Entity 已添加至 viewer.entities，` +
-        `classificationType: ${classType === Cesium.ClassificationType.BOTH ? 'BOTH（地表+建筑立面）' : 'TERRAIN（仅地表）'}`
+      `[RegionalHeatmapLayer] Entity 已添加至 viewer.entities，普通半透明贴地图层模式`
     );
 
     // 创建数值标注（仅当 _showLabels 为 true 时才创建并显示）
