@@ -8,6 +8,7 @@ import { viewerManager } from "../../src/cesium_core/core/ViewerManager.js";
 import { CampusTilesetLayer } from "../../src/cesium_core/layers/CampusTilesetLayer.js";
 import { RegionalHeatmapLayer } from "../../src/cesium_core/layers/RegionalHeatmapLayer.js";
 import { BuildingBuilderLayer } from "../../src/cesium_core/layers/BuildingBuilderLayer.js";
+import { SchematicCampusLayer } from "../../src/cesium_core/layers/SchematicCampusLayer.js";
 import { ImageryLayerManager } from "../../src/cesium_core/layers/ImageryLayerManager.js";
 import { TrackingLayer } from "./tracking_layer.js";
 import { TrackingPanel } from "./tracking_panel.js";
@@ -21,6 +22,7 @@ import { EChartsTimeseries } from "./echarts_timeseries.js";
 export class MicroClimateDashboard {
   constructor() {
     this._campusLayer    = null;
+    this._schematicCampusLayer = null;
     this._heatmapLayer   = null;
     this._builderLayer   = null;
     this._imageryManager = null;
@@ -34,6 +36,7 @@ export class MicroClimateDashboard {
     this._pollTimer      = null;
     this._trackingTimer  = null;
     this._lastScenarioId = null;
+    this._baseBuildingCount = 0;
 
     this._initialHeatData = this._getInitialHeatData();
     this._influenceCircleId = "influence-circle";
@@ -78,6 +81,8 @@ export class MicroClimateDashboard {
 
   async _initCesium() {
     try {
+      await this._waitForMapContainer();
+
       const viewer = await viewerManager.init("cesiumContainer", {
         enableFXAA: true,
         autoFlyTo: false,
@@ -87,7 +92,19 @@ export class MicroClimateDashboard {
       this._imageryManager = new ImageryLayerManager(viewer);
 
       this._campusLayer = new CampusTilesetLayer(viewer);
-      await this._campusLayer.load();
+      const tileset = await this._campusLayer.load();
+      this._schematicCampusLayer = new SchematicCampusLayer(viewer);
+      if (!tileset) {
+        this._baseBuildingCount = this._schematicCampusLayer.load({
+          alpha: 0.88,
+          showLabels: false,
+        });
+        this._schematicCampusLayer.focus(0.6);
+        this._setModelStatus("示意白模", this._baseBuildingCount, "warn");
+      } else {
+        this._baseBuildingCount = 0;
+        this._setModelStatus("3D Tiles", 0, "ok");
+      }
 
       this._heatmapLayer = new RegionalHeatmapLayer(viewer);
       await this._heatmapLayer.init(this._bound, this._initialHeatData, {
@@ -173,8 +190,10 @@ export class MicroClimateDashboard {
       const res = await apiGetStats();
       if (res.success) {
         const buildingsEl = document.getElementById("stat-buildings");
+        const addedBuildingsEl = document.getElementById("stat-added-buildings");
         const scenariosEl = document.getElementById("stat-scenarios");
-        if (buildingsEl) buildingsEl.textContent = res.data.buildingsCount ?? 0;
+        if (buildingsEl) buildingsEl.textContent = this._baseBuildingCount || "--";
+        if (addedBuildingsEl) addedBuildingsEl.textContent = res.data.buildingsCount ?? 0;
         if (scenariosEl) scenariosEl.textContent = res.data.scenariosCount ?? 0;
       }
     } catch (e) {
@@ -242,6 +261,7 @@ export class MicroClimateDashboard {
         this._showInfluenceCircle(lon, lat);
         this._reasoningPanel.setResult(averageTempDelta, confidence, reasoningSteps ?? []);
         this._refreshScenarioList();
+        this._updateStats();
 
         this._showToast(`ADD 推演完成：${averageTempDelta >= 0 ? "+" : ""}${averageTempDelta.toFixed(2)}°C`);
       } else {
@@ -291,6 +311,7 @@ export class MicroClimateDashboard {
         this._hideInfluenceCircle();
         this._reasoningPanel.setResult(averageTempDelta, confidence, reasoningSteps ?? []);
         this._refreshScenarioList();
+        this._updateStats();
 
         this._showToast(`REMOVE 推演完成：${averageTempDelta >= 0 ? "+" : ""}${averageTempDelta.toFixed(2)}°C`);
       } else {
@@ -442,6 +463,7 @@ export class MicroClimateDashboard {
         this._hideInfluenceCircle();
         this._reasoningPanel?.clear();
         this._refreshScenarioList();
+        this._updateStats();
         this._showToast("场景已重置");
         btnAdd.classList.remove("active");
         btnRemove.classList.remove("active");
@@ -552,6 +574,30 @@ export class MicroClimateDashboard {
     return slider ? parseInt(slider.value) : 100;
   }
 
+  async _waitForMapContainer() {
+    const container = document.getElementById("cesiumContainer");
+    if (!container) return;
+
+    for (let i = 0; i < 60; i++) {
+      const rect = container.getBoundingClientRect();
+      if (rect.width > 1 && rect.height > 1) return;
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    }
+  }
+
+  _setModelStatus(label, count, tone = "ok") {
+    const status = document.getElementById("model-status");
+    const labelEl = document.getElementById("model-status-label");
+    const countEl = document.getElementById("model-status-count");
+
+    if (status) status.className = `map-layer-status ${tone}`;
+    if (labelEl) labelEl.textContent = label;
+    if (countEl) countEl.textContent = count > 0 ? `${count}栋` : "已接入";
+
+    const buildingsEl = document.getElementById("stat-buildings");
+    if (buildingsEl && count > 0) buildingsEl.textContent = count;
+  }
+
   _getInitialHeatData() {
     return [
       { x: 0.50, y: 0.45, value: 0.95 },
@@ -651,6 +697,7 @@ export class MicroClimateDashboard {
     this._trackingMapWindow?.destroy();
     await this._builderLayer?.destroy();
     await this._heatmapLayer?.destroy();
+    this._schematicCampusLayer?.destroy();
     await this._campusLayer?.destroy();
     await this._imageryManager?.destroy();
     await viewerManager.destroy();

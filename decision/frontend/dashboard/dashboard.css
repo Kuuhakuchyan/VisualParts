@@ -3,17 +3,17 @@
    ============================================================================ */
 
 :root {
-  --color-primary:    #00b4ff;
-  --color-success:     #00ff88;
-  --color-warning:     #ffcc00;
-  --color-danger:      #ff4444;
-  --color-bg-panel:    rgba(10, 30, 60, 0.85);
-  --color-bg-dark:     rgba(5, 15, 35, 0.95);
-  --color-border:      rgba(0, 180, 255, 0.25);
-  --color-border-glow: rgba(0, 180, 255, 0.5);
-  --color-text:        #b3e0ff;
-  --color-text-dim:    #5a8aaa;
-  --color-text-bright: #e0f4ff;
+  --color-primary:    #36c6b4;
+  --color-success:     #7ad66d;
+  --color-warning:     #f2b84b;
+  --color-danger:      #e65f5c;
+  --color-bg-panel:    rgba(12, 18, 24, 0.84);
+  --color-bg-dark:     rgba(7, 11, 17, 0.96);
+  --color-border:      rgba(95, 190, 178, 0.24);
+  --color-border-glow: rgba(83, 214, 194, 0.46);
+  --color-text:        #d5e7e5;
+  --color-text-dim:    #87a3a0;
+  --color-text-bright: #f2fbfa;
   --font-mono:         "Cascadia Code", "JetBrains Mono", "Fira Code", "Consolas", monospace;
   --radius:            8px;
   --shadow-panel:      0 4px 30px rgba(0, 100, 200, 0.15), inset 0 1px 0 rgba(255,255,255,0.05);
@@ -174,7 +174,7 @@ html, body {
   color: var(--color-warning);
 }
 
-.status-badge.dot {
+.status-badge .dot {
   width: 8px; height: 8px;
   border-radius: 50%;
   background: currentColor;
@@ -237,8 +237,8 @@ html, body {
   position: absolute;
   top: 64px;
   left: 12px;
-  bottom: 44px;
-  width: clamp(220px, 18vw, 250px);
+  bottom: 56px;
+  width: clamp(280px, 20vw, 320px);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   overflow-y: auto;
@@ -261,6 +261,7 @@ html, body {
 #cesiumContainer {
   width: 100%;
   height: 100%;
+  min-height: 100%;
   position: absolute;
   inset: 0;
 }
@@ -272,7 +273,7 @@ html, body {
 /* 决策控制栏 */
 #control-bar {
   position: absolute;
-  bottom: 22px;
+  bottom: 18px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -285,7 +286,7 @@ html, body {
   backdrop-filter: blur(16px);
   z-index: 50;
   box-shadow: var(--shadow-panel);
-  max-width: min(760px, calc(100vw - 560px));
+  max-width: min(780px, calc(100vw - 660px));
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -353,12 +354,12 @@ html, body {
 /* 横向时序图 */
 #timeseries-bar {
   position: absolute;
-  bottom: 88px;
+  bottom: 80px;
   left: 50%;
   transform: translateX(-50%);
-  width: min(760px, calc(100vw - 560px));
-  min-width: 520px;
-  height: 118px;
+  width: min(780px, calc(100vw - 660px));
+  min-width: 420px;
+  height: 96px;
   background: var(--color-bg-panel);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
@@ -366,6 +367,49 @@ html, body {
   z-index: 50;
   overflow: hidden;
   box-shadow: var(--shadow-panel);
+}
+
+.map-layer-status {
+  position: absolute;
+  top: 72px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  min-height: 32px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: rgba(12, 18, 24, 0.78);
+  color: var(--color-text);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-panel);
+  font-size: 12px;
+}
+
+.map-layer-status strong {
+  color: var(--color-text-bright);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.layer-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-text-dim);
+}
+
+.map-layer-status.ok .layer-dot {
+  background: var(--color-success);
+  box-shadow: 0 0 8px rgba(122, 214, 109, 0.55);
+}
+
+.map-layer-status.warn .layer-dot {
+  background: var(--color-warning);
+  box-shadow: 0 0 8px rgba(242, 184, 75, 0.55);
 }
 
 #timeseries-bar .panel-title {
@@ -383,8 +427,8 @@ html, body {
   position: absolute;
   top: 64px;
   right: 12px;
-  bottom: 44px;
-  width: clamp(240px, 19vw, 280px);
+  bottom: 56px;
+  width: clamp(280px, 20vw, 320px);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   overflow-y: auto;
@@ -926,20 +970,20 @@ html, body {
 
 @media (max-width: 1180px) {
   #left-panel {
-    width: 220px;
+    width: 250px;
   }
 
   #right-panel {
-    width: 240px;
+    width: 250px;
   }
 
   #timeseries-bar {
-    width: min(620px, calc(100vw - 500px));
-    min-width: 420px;
+    width: min(520px, calc(100vw - 560px));
+    min-width: 360px;
   }
 
   #control-bar {
-    max-width: min(620px, calc(100vw - 500px));
+    max-width: min(520px, calc(100vw - 560px));
   }
 }
 
@@ -987,6 +1031,8 @@ html, body {
   #center {
     order: 2;
     min-height: 720px;
+    height: 720px;
+    flex: 0 0 720px;
   }
 
   #footer {
@@ -997,6 +1043,11 @@ html, body {
     width: calc(100% - 24px);
     min-width: 0;
     bottom: 96px;
+  }
+
+  .map-layer-status {
+    top: 12px;
+    max-width: calc(100% - 24px);
   }
 
   #control-bar {

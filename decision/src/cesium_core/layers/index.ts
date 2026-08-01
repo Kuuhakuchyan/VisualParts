@@ -13,3 +13,4 @@
 export * from "./CampusTilesetLayer";
 export * from "./BuildingBuilderLayer";
 export * from "./ImageryLayerManager";
+export * from "./SchematicCampusLayer";
