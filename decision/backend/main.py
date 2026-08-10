@@ -3,18 +3,26 @@
 端口 3000
 """
 
+import json
+import logging
 import os
 import uuid
 import random
 import math
+import sqlite3
+import tempfile
+import threading
 import time
+from collections import defaultdict, deque
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 try:
     from backend.agi import AGIReasoner
@@ -22,13 +30,42 @@ try:
 except ImportError:
     HAS_AGI = False
 
+logging.basicConfig(
+    level=os.getenv("LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
+logger = logging.getLogger("decision-api")
+
+
+def _env_int(name: str, default: int) -> int:
+    try:
+        return int(os.getenv(name, str(default)))
+    except ValueError:
+        logger.warning("invalid integer env %s=%r, using %s", name, os.getenv(name), default)
+        return default
+
+
+def _env_float(name: str, default: float) -> float:
+    try:
+        return float(os.getenv(name, str(default)))
+    except ValueError:
+        logger.warning("invalid float env %s=%r, using %s", name, os.getenv(name), default)
+        return default
+
+
+APP_VERSION = os.getenv("APP_VERSION", "0.1.0-DEMO")
+RATE_LIMIT_PER_MINUTE = _env_int("DECISION_RATE_LIMIT_PER_MINUTE", 240)
+WRITE_RATE_LIMIT_PER_MINUTE = _env_int("DECISION_WRITE_RATE_LIMIT_PER_MINUTE", 60)
+WEATHER_CACHE_SECONDS = _env_float("DECISION_WEATHER_CACHE_SECONDS", 3.0)
+TRACKING_CACHE_SECONDS = _env_float("DECISION_TRACKING_CACHE_SECONDS", 0.8)
+
 # =============================================================================
 # FastAPI 应用初始化
 # =============================================================================
 
 app = FastAPI(
     title="微境探界 — 城市微气候决策支持系统",
-    version="0.1.0-DEMO",
+    version=APP_VERSION,
     description="Mock 数据版后端，供 Demo 前端调用 What-If 推演接口",
 )
 
@@ -49,17 +86,132 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.getenv(
+        "ALLOWED_HOSTS",
+        "weather.nogamenolife.cn,localhost,127.0.0.1",
+    ).split(",")
+    if host.strip()
+]
+if ALLOWED_HOSTS:
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=ALLOWED_HOSTS)
+
+_rate_windows: dict[str, deque[float]] = defaultdict(deque)
+_rate_lock = threading.Lock()
+_ttl_cache: dict[str, tuple[float, object]] = {}
+_cache_lock = threading.Lock()
+
+
+def _client_ip(request: Request) -> str:
+    forwarded_for = request.headers.get("x-forwarded-for", "")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _rate_limit_retry_after(request: Request) -> Optional[float]:
+    path = request.url.path
+    if path in {"/health", "/api/simulation/health"} or path.startswith(("/docs", "/redoc", "/openapi.json")):
+        return None
+
+    is_write = request.method.upper() not in {"GET", "HEAD", "OPTIONS"}
+    limit = WRITE_RATE_LIMIT_PER_MINUTE if is_write else RATE_LIMIT_PER_MINUTE
+    if limit <= 0:
+        return None
+
+    now = time.monotonic()
+    window_start = now - 60.0
+    bucket = "write" if is_write else "read"
+    key = f"{_client_ip(request)}:{bucket}"
+
+    with _rate_lock:
+        q = _rate_windows[key]
+        while q and q[0] < window_start:
+            q.popleft()
+        if len(q) >= limit:
+            return max(0.0, 60.0 - (now - q[0]))
+        q.append(now)
+    return None
+
+
+def _cache_get(key: str, ttl_seconds: float):
+    if ttl_seconds <= 0:
+        return None
+    now = time.monotonic()
+    with _cache_lock:
+        item = _ttl_cache.get(key)
+        if not item:
+            return None
+        expires_at, value = item
+        if expires_at <= now:
+            _ttl_cache.pop(key, None)
+            return None
+        return value
+
+
+def _cache_set(key: str, value: object, ttl_seconds: float) -> None:
+    if ttl_seconds <= 0:
+        return
+    with _cache_lock:
+        _ttl_cache[key] = (time.monotonic() + ttl_seconds, value)
+
+
+@app.middleware("http")
+async def request_guard_middleware(request: Request, call_next):
+    request_id = request.headers.get("x-request-id") or uuid.uuid4().hex[:16]
+    start = time.perf_counter()
+
+    retry_after = _rate_limit_retry_after(request)
+    try:
+        if retry_after is not None:
+            response = JSONResponse(
+                status_code=429,
+                content={
+                    "success": False,
+                    "message": "请求过于频繁，请稍后再试",
+                    "requestId": request_id,
+                },
+            )
+            response.headers["Retry-After"] = str(max(1, math.ceil(retry_after)))
+        else:
+            response = await call_next(request)
+    except Exception:
+        elapsed_ms = (time.perf_counter() - start) * 1000
+        logger.exception(
+            "request_failed id=%s method=%s path=%s elapsed_ms=%.1f",
+            request_id,
+            request.method,
+            request.url.path,
+            elapsed_ms,
+        )
+        raise
+
+    elapsed_ms = (time.perf_counter() - start) * 1000
+    response.headers["X-Request-ID"] = request_id
+    response.headers["X-Process-Time-Ms"] = f"{elapsed_ms:.1f}"
+    response.headers["X-Decision-API-Version"] = APP_VERSION
+    logger.info(
+        "request id=%s method=%s path=%s status=%s elapsed_ms=%.1f",
+        request_id,
+        request.method,
+        request.url.path,
+        response.status_code,
+        elapsed_ms,
+    )
+    return response
+
 # =============================================================================
 # Pydantic 请求/响应模型
 # =============================================================================
 
 class BuildingCreate(BaseModel):
-    name: Optional[str] = None
-    height: float
-    albedo: float = 0.3
-    baseTemp: float = 30.0
-    lon: float
-    lat: float
+    name: Optional[str] = Field(default=None, max_length=80)
+    height: float = Field(gt=0, le=300)
+    albedo: float = Field(default=0.3, ge=0, le=1)
+    baseTemp: float = Field(default=30.0, ge=-30, le=80)
+    lon: float = Field(ge=-180, le=180)
+    lat: float = Field(ge=-90, le=90)
     building_type: Optional[str] = "commercial"
 
 
@@ -70,9 +222,9 @@ class BuildingResponse(BaseModel):
 
 
 class WhatIfRequest(BaseModel):
-    targetBuildingId: str
+    targetBuildingId: str = Field(min_length=1, max_length=120)
     action: str  # "ADD" | "REMOVE"
-    radiusMeters: float = 100.0
+    radiusMeters: float = Field(default=100.0, ge=10, le=1000)
     buildingInfo: Optional[dict] = None
     sourceScenarioId: Optional[str] = None
 
@@ -109,11 +261,108 @@ class WeatherResponse(BaseModel):
 
 
 # =============================================================================
-# 内存状态（Demo 阶段，不使用数据库）
+# 轻量状态存储（Demo 阶段使用 SQLite，便于多 worker 共享）
 # =============================================================================
 
-buildings_store: dict[str, dict] = {}
-scenarios_store: dict[str, dict] = {}
+STATE_DB_PATH = Path(
+    os.getenv(
+        "DECISION_STATE_DB",
+        str(Path(tempfile.gettempdir()) / "microclimate_decision.sqlite3"),
+    )
+)
+_state_lock = threading.Lock()
+_state_tables = {"buildings", "scenarios"}
+
+
+def _connect_state_db() -> sqlite3.Connection:
+    STATE_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(STATE_DB_PATH, timeout=5)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA busy_timeout=5000")
+    conn.execute("PRAGMA journal_mode=WAL")
+    return conn
+
+
+def _init_state_store() -> None:
+    with _state_lock:
+        with _connect_state_db() as conn:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS buildings (
+                    id TEXT PRIMARY KEY,
+                    payload TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                )
+                """
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS scenarios (
+                    id TEXT PRIMARY KEY,
+                    payload TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                )
+                """
+            )
+
+
+def _assert_state_table(table: str) -> str:
+    if table not in _state_tables:
+        raise ValueError(f"unsupported state table: {table}")
+    return table
+
+
+def _state_save(table: str, record_id: str, record: dict) -> None:
+    table = _assert_state_table(table)
+    payload = json.dumps(record, ensure_ascii=False)
+    created_at = record.get("createdAt") or datetime.now().isoformat()
+    with _state_lock:
+        with _connect_state_db() as conn:
+            conn.execute(
+                f"""
+                INSERT INTO {table} (id, payload, created_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    payload = excluded.payload,
+                    created_at = excluded.created_at
+                """,
+                (record_id, payload, created_at),
+            )
+
+
+def _state_get(table: str, record_id: str) -> Optional[dict]:
+    table = _assert_state_table(table)
+    with _connect_state_db() as conn:
+        row = conn.execute(f"SELECT payload FROM {table} WHERE id = ?", (record_id,)).fetchone()
+    return json.loads(row["payload"]) if row else None
+
+
+def _state_delete(table: str, record_id: str) -> Optional[dict]:
+    table = _assert_state_table(table)
+    with _state_lock:
+        with _connect_state_db() as conn:
+            row = conn.execute(f"SELECT payload FROM {table} WHERE id = ?", (record_id,)).fetchone()
+            if not row:
+                return None
+            conn.execute(f"DELETE FROM {table} WHERE id = ?", (record_id,))
+    return json.loads(row["payload"])
+
+
+def _state_list(table: str) -> list[dict]:
+    table = _assert_state_table(table)
+    with _connect_state_db() as conn:
+        rows = conn.execute(f"SELECT payload FROM {table} ORDER BY created_at DESC").fetchall()
+    return [json.loads(row["payload"]) for row in rows]
+
+
+def _state_count(table: str) -> int:
+    table = _assert_state_table(table)
+    with _connect_state_db() as conn:
+        row = conn.execute(f"SELECT COUNT(*) AS count FROM {table}").fetchone()
+    return int(row["count"]) if row else 0
+
+
+_init_state_store()
 
 # 郑大主校区中心坐标
 CAMPUS_LNG = 113.531
@@ -124,6 +373,7 @@ CAMPUS_LAT = 34.815
 # =============================================================================
 
 _tracking_entities: dict[str, dict] = {}
+_tracking_lock = threading.Lock()
 
 # ─── 预设巡航路径 ──────────────────────────────────────────────────────
 # 每个实体沿预设航点循环移动，模拟真实任务路线
@@ -361,20 +611,41 @@ async def health_check():
     """健康检查"""
     return HealthResponse(
         status="ok",
-        version="0.1.0-DEMO",
+        version=APP_VERSION,
         timestamp=datetime.now().isoformat(),
     )
 
 
+@app.get("/health", tags=["ops"])
+async def operational_health():
+    """容器健康检查与运维探针"""
+    return {
+        "status": "ok",
+        "version": APP_VERSION,
+        "timestamp": datetime.now().isoformat(),
+        "stateBackend": "sqlite",
+        "buildingsCount": _state_count("buildings"),
+        "scenariosCount": _state_count("scenarios"),
+    }
+
+
 @app.get("/api/weather/current", response_model=WeatherResponse, tags=["weather"])
-async def get_current_weather():
+async def get_current_weather(response: Response):
     """当前气象数据（每分钟微小波动）"""
+    cached = _cache_get("weather.current", WEATHER_CACHE_SECONDS)
+    if cached:
+        response.headers["Cache-Control"] = f"public, max-age={max(1, int(WEATHER_CACHE_SECONDS))}"
+        return cached
+
     data = get_mock_weather(BASE_WEATHER)
-    return WeatherResponse(
+    payload = WeatherResponse(
         success=True,
         data=data,
         source="Mock-API",
     )
+    _cache_set("weather.current", payload, WEATHER_CACHE_SECONDS)
+    response.headers["Cache-Control"] = f"public, max-age={max(1, int(WEATHER_CACHE_SECONDS))}"
+    return payload
 
 
 @app.post("/api/simulation/buildings", response_model=BuildingResponse, tags=["simulation"])
@@ -391,7 +662,7 @@ async def create_building(body: BuildingCreate):
         "lat": body.lat,
         "createdAt": datetime.now().isoformat(),
     }
-    buildings_store[building_id] = record
+    _state_save("buildings", building_id, record)
     return BuildingResponse(
         success=True,
         message="建筑已创建（Mock）",
@@ -472,7 +743,7 @@ async def what_if_simulation(body: WhatIfRequest):
         "totalGrids": len(updated_grids),
         "createdAt": datetime.now().isoformat(),
     }
-    scenarios_store[scenario_id] = scenario_record
+    _state_save("scenarios", scenario_id, scenario_record)
 
     elapsed = round((time.time() - start) * 1000, 1)
 
@@ -495,7 +766,7 @@ async def what_if_simulation(body: WhatIfRequest):
 @app.get("/api/simulation/scenarios/{scenario_id}", tags=["simulation"])
 async def get_scenario(scenario_id: str):
     """获取场景详情"""
-    record = scenarios_store.get(scenario_id)
+    record = _state_get("scenarios", scenario_id)
     if not record:
         return {"success": False, "message": f"场景 {scenario_id} 不存在"}
     return {"success": True, "data": record}
@@ -504,7 +775,7 @@ async def get_scenario(scenario_id: str):
 @app.get("/api/simulation/scenarios/{scenario_id}/undo", tags=["simulation"])
 async def undo_scenario(scenario_id: str):
     """撤销场景（Mock：删除记录，返回原热力场）"""
-    record = scenarios_store.pop(scenario_id, None)
+    record = _state_delete("scenarios", scenario_id)
     if not record:
         return {"success": False, "message": f"场景 {scenario_id} 不存在或已被撤销"}
     return {
@@ -523,8 +794,8 @@ async def get_stats():
     return {
         "success": True,
         "data": {
-            "buildingsCount": len(buildings_store),
-            "scenariosCount": len(scenarios_store),
+            "buildingsCount": _state_count("buildings"),
+            "scenariosCount": _state_count("scenarios"),
             "mockMode": True,
         },
     }
@@ -539,14 +810,14 @@ async def list_scenarios():
     """获取所有场景列表"""
     records = [
         {
-            "id": sid,
+            "id": rec.get("id"),
             "action": rec.get("action"),
             "targetBuildingId": rec.get("targetBuildingId"),
             "tempDelta": rec.get("tempDelta"),
             "radiusMeters": rec.get("radiusMeters"),
             "createdAt": rec.get("createdAt"),
         }
-        for sid, rec in scenarios_store.items()
+        for rec in _state_list("scenarios")
     ]
     return {"success": True, "data": records, "total": len(records)}
 
@@ -566,10 +837,12 @@ async def export_report():
         "",
     ]
 
-    if scenarios_store:
+    scenarios = _state_list("scenarios")
+    if scenarios:
         md_lines.append("| 场景ID | 操作 | 建筑 | 温度变化 | 半径 | 时间 |")
         md_lines.append("|--------|------|------|----------|------|------|")
-        for sid, rec in scenarios_store.items():
+        for rec in scenarios:
+            sid = rec.get("id", "")
             short_id = sid[:8]
             action = rec.get("action", "-")
             bname = rec.get("buildingInfo", {}).get("name", "-")
@@ -630,17 +903,26 @@ class TrackingResponse(BaseModel):
 
 
 @app.get("/api/tracking/positions", response_model=TrackingResponse, tags=["tracking"])
-async def get_tracking_positions():
+async def get_tracking_positions(response: Response):
     """
     获取所有追踪实体的实时位置（无人机 + 小车）
     每次请求自动推进模拟步进
     """
-    entities = [_step_entity(id_) for id_ in _tracking_entities]
-    return TrackingResponse(
+    cached = _cache_get("tracking.positions", TRACKING_CACHE_SECONDS)
+    if cached:
+        response.headers["Cache-Control"] = f"public, max-age={max(1, int(math.ceil(TRACKING_CACHE_SECONDS)))}"
+        return cached
+
+    with _tracking_lock:
+        entities = [_step_entity(id_) for id_ in _tracking_entities]
+    payload = TrackingResponse(
         success=True,
         entities=entities,
         timestamp=datetime.now().isoformat(),
     )
+    _cache_set("tracking.positions", payload, TRACKING_CACHE_SECONDS)
+    response.headers["Cache-Control"] = f"public, max-age={max(1, int(math.ceil(TRACKING_CACHE_SECONDS)))}"
+    return payload
 
 
 @app.get("/api/tracking/positions/{entity_id}", tags=["tracking"])
@@ -648,7 +930,8 @@ async def get_single_tracking_position(entity_id: str):
     """获取指定实体的实时位置"""
     if entity_id not in _tracking_entities:
         return {"success": False, "message": f"实体 {entity_id} 不存在"}
-    data = _step_entity(entity_id)
+    with _tracking_lock:
+        data = _step_entity(entity_id)
     return {"success": True, "data": data}
 
 

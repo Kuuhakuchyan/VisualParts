@@ -298,6 +298,7 @@ class ViewerManager {
 
         // 3D 视觉优化
         logDepthBuffer: useLogDepthBuffer,
+        showRenderLoopErrors: false,
       } as any) as Viewer;
 
       // —— 隐藏指定控件（精细化控制） ——
@@ -531,6 +532,11 @@ class ViewerManager {
 
     const scene = this._viewer.scene;
     if (!scene) return;
+
+    (scene as any).rethrowRenderErrors = false;
+    scene.renderError.addEventListener((_scene: any, error: unknown) => {
+      console.warn("[ViewerManager] Cesium 渲染异常已降级处理:", error);
+    });
 
     // 设置场景模式
     scene.mode = sceneMode ?? Cesium.SceneMode.SCENE3D;

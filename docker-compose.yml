@@ -118,3 +118,32 @@
       retries: 5
     restart: unless-stopped
 
+  # ========== 微境探界决策推演 API ==========
+  decision-api:
+    build:
+      context: ./decision
+      dockerfile: backend/Dockerfile
+    container_name: microclimate_decision_api
+    ports:
+      - "127.0.0.1:3100:3100"
+    environment:
+      APP_VERSION: ${APP_VERSION:-0.1.0-DEMO}
+      USE_MOCK_AGI: ${USE_MOCK_AGI:-1}
+      WEB_CONCURRENCY: ${DECISION_WEB_CONCURRENCY:-2}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-weather.nogamenolife.cn,localhost,127.0.0.1}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://weather.nogamenolife.cn,http://localhost:5173,http://127.0.0.1:5173}
+      DECISION_STATE_DB: /app/state/microclimate_decision.sqlite3
+      DECISION_RATE_LIMIT_PER_MINUTE: ${DECISION_RATE_LIMIT_PER_MINUTE:-240}
+      DECISION_WRITE_RATE_LIMIT_PER_MINUTE: ${DECISION_WRITE_RATE_LIMIT_PER_MINUTE:-60}
+      DECISION_WEATHER_CACHE_SECONDS: ${DECISION_WEATHER_CACHE_SECONDS:-3}
+      DECISION_TRACKING_CACHE_SECONDS: ${DECISION_TRACKING_CACHE_SECONDS:-0.8}
+    volumes:
+      - ./decision_state:/app/state
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:3100/health', timeout=5)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+

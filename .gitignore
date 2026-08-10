@@ -4,7 +4,10 @@ grafana_data/
 mosquitto/data/
 mosquitto/config/passwd
 pg_data/
+decision_state/
 **/__pycache__/
 *.pyc
 decision/identification/result/
 decision/identification/test/
+.playwright-cli/
+output/

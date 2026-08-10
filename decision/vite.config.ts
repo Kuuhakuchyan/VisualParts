@@ -13,7 +13,9 @@ export default defineConfig(({ mode }) => {
       },
     },
     plugins: [
-      cesium(),
+      cesium({
+        rebuildCesium: true,
+      }),
     ],
     build: {
       target: "esnext",

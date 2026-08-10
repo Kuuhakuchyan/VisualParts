@@ -1057,3 +1057,582 @@ html, body {
     bottom: 30px;
   }
 }
+
+/* ── MapLibre 轻量 GIS 主模式 ───────────────────────────────────────── */
+.mode-gis .maplibregl-map {
+  background: #071016;
+  font-family: inherit;
+}
+
+.mode-gis .maplibregl-canvas {
+  outline: none;
+}
+
+.mode-gis .maplibregl-ctrl-top-left {
+  top: 8px;
+  left: 332px;
+}
+
+.mode-gis .maplibregl-ctrl-bottom-left {
+  left: 330px;
+  bottom: 4px;
+}
+
+.mode-gis .maplibregl-ctrl-attrib {
+  background: rgba(6, 12, 18, 0.72);
+  color: var(--color-text-dim);
+  border: 1px solid rgba(95, 190, 178, 0.16);
+  border-radius: 6px;
+  font-size: 10px;
+}
+
+.mode-gis .maplibregl-ctrl-attrib a {
+  color: var(--color-primary);
+}
+
+.gis-mode-panel {
+  position: absolute;
+  top: 112px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 54;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 300px;
+  padding: 9px 10px 9px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: rgba(9, 16, 22, 0.82);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(14px);
+}
+
+.gis-mode-title {
+  color: var(--color-text-bright);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.gis-mode-meta {
+  margin-top: 2px;
+  color: var(--color-text-dim);
+  font-size: 11px;
+}
+
+.gis-layer-panel {
+  position: absolute;
+  top: 112px;
+  right: 344px;
+  z-index: 54;
+  display: grid;
+  gap: 6px;
+  padding: 9px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: rgba(9, 16, 22, 0.82);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(14px);
+}
+
+.gis-layer-panel label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 88px;
+  color: var(--color-text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.gis-layer-panel input {
+  accent-color: var(--color-primary);
+}
+
+.mode-gis #heatmap-legend {
+  right: 344px !important;
+  bottom: 174px !important;
+}
+
+.sensor-tree {
+  padding: 8px;
+}
+
+.sensor-tree details {
+  border: 1px solid rgba(95, 190, 178, 0.14);
+  border-radius: 6px;
+  background: rgba(0, 30, 60, 0.24);
+  margin-bottom: 7px;
+  overflow: hidden;
+}
+
+.sensor-tree summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 6px 8px;
+  color: var(--color-text-bright);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.sensor-tree summary b {
+  margin-left: auto;
+  color: var(--color-text-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.sensor-gateway {
+  margin: 0 7px 7px;
+  background: rgba(0, 180, 255, 0.04) !important;
+}
+
+.sensor-node {
+  display: grid;
+  grid-template-columns: 8px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  width: calc(100% - 12px);
+  min-height: 30px;
+  margin: 0 6px 6px;
+  padding: 5px 7px;
+  border: 1px solid rgba(95, 190, 178, 0.12);
+  border-radius: 5px;
+  background: rgba(5, 12, 18, 0.44);
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.sensor-node:hover {
+  border-color: rgba(83, 214, 194, 0.44);
+  background: rgba(54, 198, 180, 0.08);
+}
+
+.sensor-node em {
+  color: var(--color-text-dim);
+  font-style: normal;
+  font-size: 10px;
+}
+
+.sensor-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-text-dim);
+  flex: 0 0 auto;
+}
+
+.sensor-status.online {
+  background: var(--color-success);
+  box-shadow: 0 0 6px rgba(122, 214, 109, 0.72);
+}
+
+.sensor-status.warning {
+  background: var(--color-warning);
+  box-shadow: 0 0 6px rgba(242, 184, 75, 0.62);
+}
+
+.sensor-status.offline {
+  background: var(--color-danger);
+}
+
+.map-popup {
+  display: grid;
+  gap: 4px;
+  color: #102026;
+  font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+  font-size: 12px;
+}
+
+.map-popup strong {
+  color: #061014;
+  font-size: 13px;
+}
+
+.map-popup span,
+.map-popup small {
+  color: #39525a;
+}
+
+@media (max-width: 1180px) {
+  .mode-gis .maplibregl-ctrl-top-left {
+    left: 262px;
+  }
+
+  .mode-gis .maplibregl-ctrl-bottom-left {
+    left: 260px;
+  }
+
+  .gis-layer-panel,
+  .mode-gis #heatmap-legend {
+    right: 274px !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .mode-gis .maplibregl-ctrl-top-left {
+    top: 8px;
+    left: 8px;
+  }
+
+  .mode-gis .maplibregl-ctrl-bottom-left {
+    left: 8px;
+    bottom: 8px;
+  }
+
+  .gis-mode-panel {
+    top: 52px;
+    left: 12px;
+    right: 12px;
+    transform: none;
+    min-width: 0;
+    justify-content: space-between;
+  }
+
+  .gis-layer-panel {
+    top: 120px;
+    right: 12px !important;
+    left: 12px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .gis-layer-panel label {
+    min-width: 0;
+    justify-content: center;
+  }
+
+  .mode-gis #heatmap-legend {
+    right: 12px !important;
+    bottom: 148px !important;
+  }
+}
+
+/* ── 视觉重整：运维监测 + GIS 指挥风格 ───────────────────────────────── */
+:root {
+  --color-primary: #33c7b2;
+  --color-success: #7ad66d;
+  --color-warning: #f1b44b;
+  --color-danger: #ef6b63;
+  --color-bg-panel: rgba(14, 17, 19, 0.92);
+  --color-bg-dark: rgba(8, 10, 12, 0.98);
+  --color-border: rgba(120, 155, 153, 0.22);
+  --color-border-glow: rgba(51, 199, 178, 0.35);
+  --color-text: #dce8e6;
+  --color-text-dim: #8ca4a1;
+  --color-text-bright: #f7fbfa;
+  --shadow-panel: 0 16px 42px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+
+html, body {
+  background:
+    radial-gradient(circle at top, rgba(51, 199, 178, 0.08), transparent 34%),
+    linear-gradient(180deg, #080a0b 0%, #050607 100%);
+  letter-spacing: 0;
+}
+
+#header {
+  min-height: 60px;
+  padding: 0 18px;
+  background: linear-gradient(180deg, rgba(8, 10, 12, 0.98), rgba(12, 14, 16, 0.9));
+}
+
+#header .brand,
+#header .header-center,
+#header .header-right,
+#header .status-badge,
+.panel-title,
+.ctrl-btn,
+.ctrl-radius,
+.map-layer-status,
+.gis-mode-title,
+.gis-mode-meta,
+.gis-layer-panel label,
+.sensor-tree summary,
+.sensor-node,
+.health-card-name,
+.health-card-value,
+.reasoning-card,
+.tracking-card,
+.tmw-title,
+.tmw-header,
+.footer,
+.metric-label {
+  letter-spacing: 0;
+}
+
+#header .brand {
+  color: var(--color-text-bright);
+  text-shadow: none;
+}
+
+#header .brand-icon {
+  background: linear-gradient(135deg, #33c7b2, #1f7d74);
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 8px 24px rgba(51, 199, 178, 0.22);
+}
+
+.header-stat .val {
+  color: var(--color-text-bright);
+}
+
+.status-badge {
+  border-radius: 6px;
+  background: rgba(51, 199, 178, 0.08);
+}
+
+#left-panel,
+#right-panel {
+  top: 72px;
+  bottom: 70px;
+  width: clamp(276px, 18.6vw, 324px);
+  background: rgba(10, 12, 14, 0.9);
+  border-radius: 8px;
+  box-shadow: var(--shadow-panel);
+}
+
+.panel-title {
+  background: rgba(255,255,255,0.02);
+  color: #8edfd2;
+  border-bottom-color: rgba(120, 155, 153, 0.18);
+}
+
+.gauge-wrap,
+.health-card,
+.reasoning-card,
+.tracking-card,
+.tmw-window,
+.tmw-ec-item,
+.tmw-entity-card,
+.gis-mode-panel,
+.gis-layer-panel,
+.map-layer-status,
+#control-bar,
+#timeseries-bar,
+.metric-tile {
+  border-radius: 8px;
+}
+
+.gauge-wrap {
+  background: rgba(255,255,255,0.02);
+  border-color: rgba(120, 155, 153, 0.1);
+}
+
+.gauge-wrap:hover {
+  background: rgba(51, 199, 178, 0.06);
+}
+
+#control-bar {
+  bottom: 16px;
+  max-width: min(880px, calc(100vw - 640px));
+  background: rgba(8, 10, 12, 0.88);
+  border-color: rgba(51, 199, 178, 0.28);
+}
+
+.ctrl-btn,
+#control-bar select {
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04) !important;
+  border-color: rgba(120, 155, 153, 0.22) !important;
+}
+
+.ctrl-btn.primary {
+  background: rgba(51, 199, 178, 0.12) !important;
+}
+
+.ctrl-btn:hover {
+  background: rgba(51, 199, 178, 0.16) !important;
+  color: var(--color-text-bright);
+}
+
+#timeseries-bar {
+  bottom: 84px;
+  height: 106px;
+  background: rgba(10, 12, 14, 0.88);
+  border-color: rgba(120, 155, 153, 0.18);
+}
+
+.map-layer-status {
+  top: 80px;
+  background: rgba(10, 12, 14, 0.88);
+  border-color: rgba(120, 155, 153, 0.18);
+}
+
+.gis-mode-panel {
+  top: 82px;
+  left: 344px;
+  transform: none;
+  background: rgba(10, 12, 14, 0.88);
+  border-color: rgba(120, 155, 153, 0.18);
+}
+
+.gis-layer-panel {
+  top: 82px;
+  right: 344px;
+  background: rgba(10, 12, 14, 0.88);
+  border-color: rgba(120, 155, 153, 0.18);
+}
+
+.sensor-tree {
+  padding: 10px 8px 12px;
+}
+
+.sensor-tree details,
+.sensor-node {
+  background: rgba(255,255,255,0.03);
+  border-color: rgba(120, 155, 153, 0.14);
+}
+
+.sensor-node:hover {
+  background: rgba(51, 199, 178, 0.08);
+}
+
+.metric-strip {
+  padding: 10px 12px 4px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.metric-tile {
+  padding: 10px 8px 9px;
+  text-align: center;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(120, 155, 153, 0.14);
+}
+
+.metric-value {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-primary);
+  line-height: 1.05;
+}
+
+.metric-value.success { color: var(--color-success); }
+.metric-value.warning { color: var(--color-warning); }
+.metric-label {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--color-text-dim);
+}
+
+.health-card {
+  margin: 8px;
+  background: rgba(255,255,255,0.03);
+  border-color: rgba(120, 155, 153, 0.14);
+}
+
+.health-card-bar {
+  height: 5px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.health-card-fill {
+  height: 100%;
+  border-radius: inherit;
+}
+
+.reasoning-card {
+  margin: 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(120, 155, 153, 0.14);
+  overflow: hidden;
+}
+
+.reasoning-result,
+.tracking-panel,
+#bird-indicators,
+#scenario-list {
+  background: transparent;
+}
+
+.reasoning-step,
+.tracking-card,
+.tmw-ec-item,
+.tmw-entity-card {
+  border-color: rgba(120, 155, 153, 0.14);
+}
+
+#heatmap-legend {
+  background: rgba(10, 12, 14, 0.9) !important;
+  border-color: rgba(120, 155, 153, 0.18) !important;
+  border-radius: 8px !important;
+  box-shadow: var(--shadow-panel);
+}
+
+.mode-gis #heatmap-legend {
+  right: 344px !important;
+  bottom: 164px !important;
+}
+
+.map-popup {
+  color: #0f1e1d;
+}
+
+.map-popup strong {
+  color: #071111;
+}
+
+.map-popup span,
+.map-popup small {
+  color: #49615f;
+}
+
+@media (max-width: 1180px) {
+  #left-panel,
+  #right-panel {
+    width: 250px;
+  }
+
+  #control-bar {
+    max-width: min(560px, calc(100vw - 560px));
+  }
+
+  #timeseries-bar {
+    width: min(560px, calc(100vw - 560px));
+    min-width: 360px;
+  }
+
+  .gis-mode-panel,
+  .gis-layer-panel,
+  .mode-gis #heatmap-legend {
+    left: auto;
+    right: 274px !important;
+  }
+}
+
+@media (max-width: 900px) {
+  #left-panel,
+  #right-panel {
+    width: auto;
+    margin: 12px;
+  }
+
+  #timeseries-bar {
+    width: calc(100% - 24px);
+  }
+
+  #control-bar {
+    width: calc(100% - 24px);
+  }
+
+  .metric-strip,
+  .footer-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .gis-mode-panel,
+  .gis-layer-panel {
+    left: 12px;
+    right: 12px !important;
+    transform: none;
+  }
+}

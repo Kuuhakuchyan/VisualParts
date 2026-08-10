@@ -979,6 +979,123 @@ tbody tr:hover { background: #f8fafc; }
   margin: 40px auto;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* 视觉重整：统一入口的深色运维风格 */
+body {
+  background:
+    radial-gradient(circle at top, rgba(51, 199, 178, 0.08), transparent 34%),
+    linear-gradient(180deg, #080a0b 0%, #060708 100%);
+  color: #dce8e6;
+}
+
+.header {
+  background: linear-gradient(180deg, rgba(8, 10, 12, 0.98), rgba(12, 14, 16, 0.9));
+  border-bottom: 1px solid rgba(120, 155, 153, 0.2);
+}
+
+.platform-bar,
+.card,
+.footer-group {
+  background: rgba(12, 15, 17, 0.92);
+  border-color: rgba(120, 155, 153, 0.18);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.2);
+}
+
+.platform-bar {
+  border-bottom: 1px solid rgba(120, 155, 153, 0.18);
+}
+
+.platform-summary strong,
+.card h3,
+.footer-title {
+  color: #f5fbfa;
+}
+
+.platform-summary span,
+.last-update,
+.footer-desc,
+.footer-note,
+tbody td,
+tbody tr:hover,
+thead th {
+  color: #8ca4a1;
+}
+
+.platform-link,
+.footer-link,
+.header select,
+.header button,
+.header button.download {
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(120, 155, 153, 0.18);
+  color: #dce8e6;
+}
+
+.header .decision-btn {
+  background: rgba(51, 199, 178, 0.12);
+  border-color: rgba(51, 199, 178, 0.28);
+}
+
+.header .view-btn {
+  background: rgba(96, 165, 250, 0.12);
+  border-color: rgba(96, 165, 250, 0.28);
+}
+
+.platform-link.active,
+.header button,
+.header button.download,
+.footer-link.device {
+  background: rgba(51, 199, 178, 0.12);
+  border-color: rgba(51, 199, 178, 0.3);
+  color: #e7fffb;
+}
+
+.platform-link.ops,
+.footer-link.ops {
+  background: rgba(241, 180, 75, 0.12);
+  border-color: rgba(241, 180, 75, 0.25);
+  color: #fff1c9;
+}
+
+.platform-link.author,
+.footer-link {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.platform-link:hover,
+.footer-link:hover,
+.header button:hover,
+.header button.download:hover {
+  background: rgba(51, 199, 178, 0.18);
+}
+
+.main {
+  gap: 14px;
+}
+
+.chart-wrap,
+#amap,
+.table-wrap {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+thead th {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+tbody tr:hover {
+  background: rgba(51, 199, 178, 0.06);
+}
+
+.no-data {
+  color: #8ca4a1;
+}
+
+.footer {
+  color: #8ca4a1;
+}
 </style>
 </head>
 <body>
@@ -988,9 +1105,9 @@ tbody tr:hover { background: #f8fafc; }
   <div class="header-right">
     <select id="deviceSelect" onchange="onDeviceChange()"></select>
     <select id="dateSelect" onchange="onDateChange()"><option value="">今日</option></select>
-    <button onclick="location.href='/decision/'" style="background:#0f766e;">3D决策平台</button>
+    <button class="decision-btn" onclick="location.href='/decision/'">三维决策</button>
     <button id="downloadBtn" class="download" onclick="downloadCSV()">下载 CSV</button>
-    <button id="viewToggle" class="download" onclick="toggleView()" style="background:#6366f1;">分设备视图</button>
+    <button id="viewToggle" class="view-btn" onclick="toggleView()">分设备视图</button>
     <span class="last-update" id="lastUpdate"></span>
   </div>
 </div>
@@ -1298,13 +1415,13 @@ async function refreshStatus() {
     const p = posMap[d.device_id] || {};
     const coord = (p.lat && p.lon) ? `(${Number(p.lat).toFixed(4)}, ${Number(p.lon).toFixed(4)})` : '无定位';
     const lastSeen = d.last_seen ? new Date(d.last_seen).toLocaleTimeString('zh-CN') : '从未';
-    const bg = d.online ? '#dcfce7' : '#fee2e2';
-    const border = d.online ? '#10b981' : '#ef4444';
-    const dot = d.online ? '🟢' : '🔴';
-    return `<div style="background:${bg};border:1px solid ${border};border-radius:8px;padding:10px 14px;min-width:200px;flex:1;">
-      <div style="font-weight:600;font-size:14px;">${dot} ${d.device_id}</div>
-      <div style="font-size:11px;color:#666;margin-top:2px;">坐标: ${coord}</div>
-      <div style="font-size:11px;color:#666;">最后上报: ${lastSeen}</div>
+    const accent = d.online ? '#10b981' : '#ef4444';
+    const border = d.online ? 'rgba(16,185,129,.35)' : 'rgba(239,68,68,.35)';
+    const label = d.online ? '在线' : '离线';
+    return `<div style="background:rgba(255,255,255,.04);border:1px solid ${border};border-radius:8px;padding:10px 14px;min-width:200px;flex:1;box-shadow:0 10px 24px rgba(0,0,0,.12);">
+      <div style="font-weight:600;font-size:14px;color:#e7fffb;">${d.device_id} <span style="font-size:11px;color:${accent};margin-left:6px;">${label}</span></div>
+      <div style="font-size:11px;color:#8ca4a1;margin-top:2px;">坐标: ${coord}</div>
+      <div style="font-size:11px;color:#8ca4a1;">最后上报: ${lastSeen}</div>
     </div>`;
   }).join('');
   document.getElementById('statusUpdated').textContent =
@@ -1316,7 +1433,10 @@ function renderTableTags() {
   const tags = document.getElementById('tableDeviceTags');
   tags.innerHTML = devices.map(d => {
     const active = d.device_id === currentDevice;
-    return `<span onclick="switchTableDevice('${d.device_id}')" style="cursor:pointer;display:inline-block;padding:2px 10px;margin-left:4px;border-radius:12px;font-size:12px;color:#fff;background:${active ? '#6366f1' : '#94a3b8'};${d.online ? '' : 'opacity:0.6;'}">${d.device_id}</span>`;
+    const bg = active ? 'rgba(51,199,178,.15)' : 'rgba(255,255,255,.07)';
+    const border = active ? 'rgba(51,199,178,.35)' : 'rgba(120,155,153,.18)';
+    const color = active ? '#e7fffb' : '#dce8e6';
+    return `<span onclick="switchTableDevice('${d.device_id}')" style="cursor:pointer;display:inline-flex;align-items:center;padding:2px 10px;margin-left:4px;border-radius:8px;font-size:12px;color:${color};background:${bg};border:1px solid ${border};${d.online ? '' : 'opacity:0.7;'}">${d.device_id}</span>`;
   }).join('');
 }
 

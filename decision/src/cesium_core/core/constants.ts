@@ -129,6 +129,11 @@ export const DEFAULT_SHOW_FRAMERATE = false;
  */
 export const DEFAULT_TERRAIN_PROVIDER: any = undefined;
 
+const isLocalPreviewHost = (): boolean => {
+  const host = globalThis.location?.hostname ?? "";
+  return host === "localhost" || host === "127.0.0.1" || host === "";
+};
+
 /**
  * 默认街道/地形底图配置（ArcGIS World Topographic Map）
  *
@@ -136,7 +141,9 @@ export const DEFAULT_TERRAIN_PROVIDER: any = undefined;
  * 这里通过站点同源瓦片代理转发 ArcGIS 公共瓦片，保证上线演示时无需 Ion token 也能稳定显示。
  */
 export const DEFAULT_STREET_IMAGERY_CONFIG = {
-  url: "/tiles/world-topo/{z}/{y}/{x}",
+  url: isLocalPreviewHost()
+    ? "https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
+    : "/tiles/world-topo/{z}/{y}/{x}",
   credit: "Esri World Topographic Map",
   minimumLevel: 0,
   maximumLevel: 19,
@@ -144,7 +151,9 @@ export const DEFAULT_STREET_IMAGERY_CONFIG = {
 
 /** 默认卫星影像配置（ArcGIS World Imagery） */
 export const DEFAULT_SATELLITE_IMAGERY_CONFIG = {
-  url: "/tiles/world-imagery/{z}/{y}/{x}",
+  url: isLocalPreviewHost()
+    ? "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+    : "/tiles/world-imagery/{z}/{y}/{x}",
   credit: "Esri World Imagery",
   minimumLevel: 0,
   maximumLevel: 19,

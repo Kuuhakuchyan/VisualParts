@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>微境探界 — 城市微气候决策支持系统</title>
-  <link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.120/Build/Cesium/Widgets/widgets.css" />
   <link rel="stylesheet" href="./frontend/dashboard/dashboard.css" />
 </head>
 <body>
@@ -87,25 +86,25 @@
     </div>
 
     <div class="panel-title" style="margin-top:8px;">建筑统计</div>
-    <div style="padding:8px 12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-      <div style="text-align:center;">
-        <div style="font-family:monospace;font-size:22px;font-weight:700;color:#36c6b4;" id="stat-buildings">--</div>
-        <div style="font-size:11px;color:#5a8aaa;">真实白模</div>
+    <div class="metric-strip">
+      <div class="metric-tile">
+        <div class="metric-value" id="stat-buildings">--</div>
+        <div class="metric-label">真实白模</div>
       </div>
-      <div style="text-align:center;">
-        <div style="font-family:monospace;font-size:22px;font-weight:700;color:#7ad66d;" id="stat-added-buildings">0</div>
-        <div style="font-size:11px;color:#5a8aaa;">新增</div>
+      <div class="metric-tile">
+        <div class="metric-value success" id="stat-added-buildings">0</div>
+        <div class="metric-label">新增</div>
       </div>
-      <div style="text-align:center;">
-        <div style="font-family:monospace;font-size:22px;font-weight:700;color:#f2b84b;" id="stat-scenarios">0</div>
-        <div style="font-size:11px;color:#5a8aaa;">推演</div>
+      <div class="metric-tile">
+        <div class="metric-value warning" id="stat-scenarios">0</div>
+        <div class="metric-label">推演</div>
       </div>
     </div>
   </aside>
 
   <!-- ════════════════ CENTER ════════════════ -->
   <main id="center">
-    <!-- Cesium 容器 -->
+    <!-- 地图容器：默认轻量 GIS，参数 mode=3d 时加载 Cesium 高级模式 -->
     <div id="cesiumContainer"></div>
     <div id="model-status" class="map-layer-status loading">
       <span class="layer-dot"></span>
