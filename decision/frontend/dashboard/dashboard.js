@@ -1,7 +1,7 @@
 /**
  * 微境探界 — 轻量 GIS 主入口
  *
- * 默认使用 MapLibre 承载校园白模、热场、传感器与追踪图层。
+ * 默认使用 MapLibre 承载校园白模、热风险、气象站点与移动巡测图层。
  * Cesium 高级三维模式保留在 dashboard_cesium.js，通过 ?mode=3d 按需加载。
  */
 
@@ -67,7 +67,7 @@ export class MicroClimateDashboard {
     }
 
     document.documentElement.classList.add("mode-gis");
-    this._setLoadingText("微境探界 · 轻量 GIS 决策底座初始化中...");
+    this._setLoadingText("微境探界 · 微气象空间决策底座初始化中...");
     this._prepareLightUi();
     this._bindHeaderTime();
     this._initUIComponents();
@@ -75,11 +75,11 @@ export class MicroClimateDashboard {
 
     try {
       await this._initMap();
-      this._setModelStatus("OSM真实白模", this._baseBuildingCount, "ok");
+      this._setModelStatus("校园建筑白模", this._baseBuildingCount, "ok");
     } catch (error) {
       console.error("[GIS] 地图初始化失败:", error);
-      this._setModelStatus("轻量地图未就绪", 0, "warn", "检查网络");
-      this._showToast("轻量地图初始化失败，请检查底图网络或改用高级三维模式");
+      this._setModelStatus("气象底图未就绪", 0, "warn", "检查网络");
+      this._showToast("气象底图初始化失败，请检查底图网络或切换高级三维模式");
     } finally {
       this._hideLoading();
     }
@@ -101,15 +101,15 @@ export class MicroClimateDashboard {
     app?.setAttribute("data-mode", "gis");
 
     const brandSub = document.querySelector("#header .brand span");
-    if (brandSub) brandSub.textContent = "轻量 GIS 主底座 / 城市微气候决策";
+    if (brandSub) brandSub.textContent = "校园热胁迫监测 / 空间推演";
 
     const sourceEl = document.querySelector(".header-center .header-stat:nth-child(3) .val");
     if (sourceEl) sourceEl.textContent = "IoT/API";
 
     const btnStreet = document.getElementById("ctrl-street");
     const btnSat = document.getElementById("ctrl-satellite");
-    if (btnStreet) btnStreet.textContent = "平面视图";
-    if (btnSat) btnSat.textContent = "2.5D白模";
+    if (btnStreet) btnStreet.textContent = "平面气象底图";
+    if (btnSat) btnSat.textContent = "2.5D 白模";
 
     this._injectModePanel();
     this._injectLayerPanel();
@@ -126,10 +126,10 @@ export class MicroClimateDashboard {
     center.insertAdjacentHTML("beforeend", `
       <div id="gis-mode-panel" class="gis-mode-panel">
         <div>
-          <div class="gis-mode-title">MapLibre 轻量底座</div>
-          <div class="gis-mode-meta">白模 / 热场 / 传感器 / 追踪</div>
+          <div class="gis-mode-title">气象空间推演模式</div>
+          <div class="gis-mode-meta">热风险 / 白模 / 站点 / 巡测</div>
         </div>
-        <button id="ctrl-advanced-3d" class="ctrl-btn primary" type="button">高级三维</button>
+        <button id="ctrl-advanced-3d" class="ctrl-btn primary" type="button">高级 3D</button>
       </div>
     `);
 
@@ -145,10 +145,10 @@ export class MicroClimateDashboard {
 
     center.insertAdjacentHTML("beforeend", `
       <div id="gis-layer-panel" class="gis-layer-panel">
-        <label><input type="checkbox" data-layer-toggle="buildings" checked /> 白模</label>
-        <label><input type="checkbox" data-layer-toggle="heat" checked /> 热场</label>
-        <label><input type="checkbox" data-layer-toggle="sensors" checked /> 传感器</label>
-        <label><input type="checkbox" data-layer-toggle="tracking" checked /> 追踪</label>
+        <label><input type="checkbox" data-layer-toggle="buildings" checked /> 建筑白模</label>
+        <label><input type="checkbox" data-layer-toggle="heat" checked /> 热风险</label>
+        <label><input type="checkbox" data-layer-toggle="sensors" checked /> 气象站点</label>
+        <label><input type="checkbox" data-layer-toggle="tracking" checked /> 移动巡测</label>
       </div>
     `);
   }
@@ -159,7 +159,7 @@ export class MicroClimateDashboard {
 
     leftPanel.insertAdjacentHTML("beforeend", `
       <div id="sensor-tree-panel">
-        <div class="panel-title" style="margin-top:8px;">传感器管理</div>
+        <div class="panel-title" style="margin-top:8px;">气象站点树</div>
         <div id="sensor-tree" class="sensor-tree"></div>
       </div>
     `);
@@ -1228,6 +1228,12 @@ export class MicroClimateDashboard {
         },
       },
       layers: [{
+        id: "weather-fallback-background",
+        type: "background",
+        paint: {
+          "background-color": "#071722",
+        },
+      }, {
         id: "imagery-raster",
         type: "raster",
         source: "imagery",

@@ -258,6 +258,22 @@ html, body {
   overflow: hidden;
 }
 
+#center::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 62% 42%, rgba(47, 183, 255, 0.08), transparent 34%),
+    radial-gradient(ellipse at 48% 58%, rgba(55, 208, 186, 0.055), transparent 42%),
+    linear-gradient(90deg, rgba(125, 192, 219, 0.045) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(125, 192, 219, 0.035) 1px, transparent 1px);
+  background-size: auto, auto, 46px 46px, 46px 46px;
+  mix-blend-mode: screen;
+  opacity: 0.62;
+}
+
 #cesiumContainer {
   width: 100%;
   height: 100%;
@@ -1634,5 +1650,433 @@ html, body {
     left: 12px;
     right: 12px !important;
     transform: none;
+  }
+}
+
+/* ── 主题二次优化：气象监测平台 / 热胁迫空间推演 ───────────────────── */
+:root {
+  --color-primary: #2fb7ff;
+  --color-success: #37d0ba;
+  --color-warning: #f2b84b;
+  --color-danger: #ef6b63;
+  --color-bg-panel: rgba(7, 18, 28, 0.88);
+  --color-bg-dark: rgba(5, 13, 21, 0.98);
+  --color-border: rgba(125, 192, 219, 0.22);
+  --color-border-glow: rgba(47, 183, 255, 0.36);
+  --color-text: #d9edf5;
+  --color-text-dim: #91adbb;
+  --color-text-bright: #f6fbff;
+  --shadow-panel: 0 18px 44px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255,255,255,0.045);
+}
+
+html,
+body {
+  background:
+    linear-gradient(90deg, rgba(47, 183, 255, 0.055) 1px, transparent 1px),
+    linear-gradient(180deg, #06131f 0%, #07111a 54%, #081016 100%);
+  background-size: 30px 30px, auto;
+}
+
+#header {
+  min-height: 64px;
+  padding: 0 18px;
+  background: linear-gradient(180deg, rgba(5, 13, 21, 0.98), rgba(8, 20, 30, 0.94));
+  border-bottom-color: rgba(125, 192, 219, 0.24);
+}
+
+#header .brand {
+  min-width: 250px;
+  gap: 11px;
+  color: var(--color-text-bright);
+  text-shadow: none;
+  letter-spacing: 0;
+}
+
+#header .brand-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #2fb7ff 0%, #37d0ba 100%);
+  color: #031018;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .6px;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 10px 28px rgba(47,183,255,.22);
+}
+
+#header img.brand-icon {
+  border-radius: 50%;
+  object-fit: contain;
+  background: transparent;
+  padding: 0;
+  box-shadow: 0 0 0 1px rgba(154, 225, 255, 0.26), 0 10px 28px rgba(47, 183, 255, 0.22);
+}
+
+#header .brand span {
+  color: #9db8c4;
+}
+
+.header-center {
+  gap: 12px;
+}
+
+.header-stat {
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid rgba(125, 192, 219, 0.16);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.035);
+}
+
+.header-stat .val {
+  color: #f7fbff;
+}
+
+.header-right {
+  gap: 8px;
+}
+
+.header-module-menu {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgba(125, 192, 219, 0.18);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.035);
+}
+
+.header-module-menu a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 10px;
+  border-radius: 7px;
+  color: var(--color-text);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.header-module-menu a:hover {
+  background: rgba(47, 183, 255, 0.14);
+  color: var(--color-text-bright);
+}
+
+.header-action {
+  min-height: 36px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.status-badge {
+  min-height: 32px;
+  border-radius: 8px;
+  background: rgba(55, 208, 186, 0.1);
+  border-color: rgba(55, 208, 186, 0.28);
+}
+
+#left-panel,
+#right-panel {
+  top: 78px;
+  bottom: 72px;
+  width: clamp(286px, 19vw, 336px);
+  background: var(--color-bg-panel);
+  border-color: rgba(125, 192, 219, 0.2);
+}
+
+.panel::before {
+  background: linear-gradient(90deg, transparent, rgba(47,183,255,.75), rgba(55,208,186,.55), transparent);
+}
+
+.panel-title {
+  min-height: 34px;
+  padding: 9px 13px 7px;
+  color: #a8e4ff;
+  background: rgba(47, 183, 255, 0.055);
+  border-bottom-color: rgba(125, 192, 219, 0.17);
+  text-transform: none;
+  font-size: 12px;
+}
+
+.panel-title::before {
+  width: 3px;
+  height: 14px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #2fb7ff, #37d0ba);
+  box-shadow: none;
+}
+
+.gauge-wrap,
+.health-card,
+.reasoning-card,
+.tracking-card,
+.metric-tile,
+.gis-mode-panel,
+.gis-layer-panel,
+.map-layer-status,
+#control-bar,
+#timeseries-bar {
+  background: rgba(255,255,255,0.035);
+  border-color: rgba(125, 192, 219, 0.16);
+}
+
+.gauge-wrap:hover,
+.sensor-node:hover,
+.tracking-card:hover {
+  background: rgba(47, 183, 255, 0.08);
+  border-color: rgba(47, 183, 255, 0.28);
+}
+
+.gauge-grid {
+  gap: 6px;
+  padding: 8px;
+}
+
+.gauge-wrap {
+  min-height: 116px;
+  padding: 4px 3px 3px;
+}
+
+.gauge-wrap.span-2 {
+  min-height: 142px;
+}
+
+.gauge-wrap canvas,
+.gauge-wrap svg {
+  max-width: 100%;
+}
+
+.metric-value {
+  color: #a8e4ff;
+}
+
+.metric-value.success { color: #37d0ba; }
+.metric-value.warning { color: #f2b84b; }
+
+.weather-ribbon {
+  position: absolute;
+  top: 86px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 53;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  gap: 8px;
+  width: min(520px, calc(100vw - 720px));
+  pointer-events: none;
+}
+
+.ribbon-item {
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid rgba(125, 192, 219, 0.18);
+  border-radius: 8px;
+  background: rgba(7, 18, 28, 0.78);
+  box-shadow: 0 10px 28px rgba(0,0,0,.22);
+  backdrop-filter: blur(12px);
+}
+
+.ribbon-item span {
+  display: block;
+  color: var(--color-text-dim);
+  font-size: 10px;
+  margin-bottom: 3px;
+}
+
+.ribbon-item strong {
+  display: block;
+  color: var(--color-text-bright);
+  font-size: 12px;
+}
+
+.map-layer-status {
+  top: 142px;
+}
+
+.gis-mode-panel {
+  top: 94px;
+  left: 354px;
+  min-width: 264px;
+  padding: 8px 9px 8px 12px;
+}
+
+.gis-mode-title {
+  color: #f6fbff;
+}
+
+.gis-mode-meta {
+  color: #91adbb;
+}
+
+.gis-layer-panel {
+  top: 94px;
+  right: 354px;
+  grid-template-columns: 1fr;
+}
+
+.gis-layer-panel label {
+  min-width: 104px;
+}
+
+#timeseries-bar {
+  bottom: 92px;
+  width: min(820px, calc(100vw - 700px));
+  height: 112px;
+}
+
+#control-bar {
+  bottom: 20px;
+  max-width: min(900px, calc(100vw - 700px));
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+
+.ctrl-btn,
+#control-bar select {
+  border-radius: 8px !important;
+  background: rgba(255,255,255,0.04) !important;
+  border-color: rgba(125, 192, 219, 0.2) !important;
+}
+
+.ctrl-btn.primary {
+  background: rgba(47, 183, 255, 0.13) !important;
+  color: #dff6ff;
+}
+
+.ctrl-btn.danger {
+  color: #ffd6cf;
+}
+
+.ctrl-btn:hover {
+  background: rgba(47, 183, 255, 0.16) !important;
+  border-color: rgba(47, 183, 255, 0.38) !important;
+}
+
+.health-card-fill[style*="#ffcc00"] {
+  background: linear-gradient(90deg, #f2b84b, #ef6b63) !important;
+}
+
+.health-card-fill[style*="#00b4ff"],
+.health-card-fill[style*="#4488ff"] {
+  background: linear-gradient(90deg, #2fb7ff, #37d0ba) !important;
+}
+
+#footer {
+  min-height: 36px;
+  background: rgba(5, 13, 21, 0.98);
+  border-top-color: rgba(125, 192, 219, 0.2);
+}
+
+#footer .footer-left,
+#footer .footer-right {
+  gap: 12px;
+}
+
+@media (max-width: 1280px) {
+  .weather-ribbon {
+    width: min(420px, calc(100vw - 620px));
+    grid-template-columns: 1fr;
+  }
+
+  .gis-mode-panel,
+  .gis-layer-panel,
+  .mode-gis #heatmap-legend {
+    right: 292px !important;
+  }
+
+  .gis-mode-panel {
+    left: 292px;
+    right: auto !important;
+  }
+}
+
+@media (max-height: 860px) and (min-width: 901px) {
+  .gauge-wrap {
+    min-height: 104px;
+  }
+
+  .gauge-wrap.span-2 {
+    min-height: 128px;
+  }
+
+  .health-card {
+    margin: 6px 8px;
+    padding: 8px 10px;
+  }
+}
+
+@media (max-width: 980px) {
+  #header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 14px;
+  }
+
+  .header-center,
+  .header-right {
+    flex-wrap: wrap;
+  }
+
+  .header-module-menu {
+    order: 8;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .header-module-menu a {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 900px) {
+  .weather-ribbon {
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    transform: none;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .map-layer-status {
+    top: 70px;
+  }
+
+  .gis-mode-panel {
+    top: 112px;
+    left: 12px;
+    right: 12px !important;
+  }
+
+  .gis-layer-panel {
+    top: 176px;
+    right: 12px !important;
+    left: 12px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  #timeseries-bar {
+    width: calc(100% - 24px);
+    bottom: 104px;
+  }
+
+  #control-bar {
+    width: calc(100% - 24px);
+    bottom: 30px;
+  }
+}
+
+@media (max-width: 560px) {
+  .weather-ribbon {
+    grid-template-columns: 1fr;
+  }
+
+  .gis-layer-panel {
+    grid-template-columns: 1fr 1fr;
   }
 }

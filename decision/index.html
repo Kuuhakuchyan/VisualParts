@@ -20,9 +20,9 @@
   <!-- ════════════════ HEADER ════════════════ -->
   <header id="header">
     <div class="brand">
-      <div class="brand-icon">&#9728;</div>
+      <img class="brand-icon" src="./logo.png" alt="微境探界 logo" />
       微境探界
-      <span>城市微气候决策支持系统</span>
+      <span>校园微气象热风险决策平台</span>
     </div>
 
     <div class="header-center">
@@ -30,27 +30,25 @@
         气温 <span class="val" id="header-temp">--.-</span>
       </div>
       <div class="header-stat">
-        热岛强度 <span class="val" id="header-uhi">--.-</span>
+        热胁迫 <span class="val" id="header-uhi">--.-</span>
       </div>
       <div class="header-stat">
-        数据源 <span class="val">Mock</span>
+        数据源 <span class="val">IoT/API</span>
       </div>
     </div>
 
     <div class="header-right">
-      <button class="ctrl-btn" style="font-size:12px;padding:4px 10px;" onclick="location.href='/'">
-        实时监测
-      </button>
-      <button class="ctrl-btn" style="font-size:12px;padding:4px 10px;" onclick="location.href='/grafana/'">
-        Grafana
-      </button>
-      <button id="ctrl-export" class="ctrl-btn" style="font-size:12px;padding:4px 10px;">
+      <nav class="header-module-menu" aria-label="平台模块切换">
+        <a href="/">监测工作台</a>
+        <a href="/grafana/">运维看板</a>
+      </nav>
+      <button id="ctrl-export" class="ctrl-btn header-action">
         <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 5l3 3 3-3M2 10h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        导出报告
+        报告
       </button>
-      <button id="ctrl-tracking" class="ctrl-btn" style="font-size:12px;padding:4px 10px;">
+      <button id="ctrl-tracking" class="ctrl-btn header-action">
         <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.5"/><line x1="6" y1="2" x2="6" y2="10" stroke="currentColor" stroke-width="1.5"/><line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" stroke-width="1.5"/></svg>
-        目标追踪
+        巡测
       </button>
       <div class="status-badge ok" id="backend-status">
         <span class="dot"></span>
@@ -62,7 +60,7 @@
 
   <!-- ════════════════ LEFT PANEL ════════════════ -->
   <aside id="left-panel" class="panel">
-    <div class="panel-title">实时气象监测</div>
+    <div class="panel-title">微气象实时态势</div>
 
     <!-- 10个仪表盘（按规范排列：2列grid） -->
     <div class="gauge-grid" id="weather-gauges">
@@ -85,7 +83,7 @@
       <div class="gauge-wrap" id="g-comfort"></div>
     </div>
 
-    <div class="panel-title" style="margin-top:8px;">建筑统计</div>
+    <div class="panel-title" style="margin-top:8px;">空间推演统计</div>
     <div class="metric-strip">
       <div class="metric-tile">
         <div class="metric-value" id="stat-buildings">--</div>
@@ -112,6 +110,12 @@
       <strong id="model-status-count">--</strong>
     </div>
 
+    <div id="weather-ribbon" class="weather-ribbon" aria-label="气象决策提示">
+      <div class="ribbon-item"><span>主视图</span><strong>热场诊断</strong></div>
+      <div class="ribbon-item"><span>观测链路</span><strong>IoT 站点</strong></div>
+      <div class="ribbon-item"><span>推演目标</span><strong>降温 / 通风</strong></div>
+    </div>
+
     <!-- 横向时序图 -->
     <div id="timeseries-bar" class="panel">
       <div class="panel-title">24h 时序监测</div>
@@ -121,19 +125,19 @@
     <!-- 决策控制栏 -->
     <div id="control-bar">
       <select id="ctrl-type" style="background:rgba(0,100,200,0.1);border:1px solid var(--color-border);border-radius:14px;color:var(--color-text);font-size:12px;padding:4px 8px;outline:none;">
-        <option value="residential">住宅 30m</option>
-        <option value="commercial" selected>商业 60m</option>
-        <option value="office">办公 80m</option>
-        <option value="industrial">工业 40m</option>
-        <option value="public">公共 50m</option>
+        <option value="residential">住宅体块 30m</option>
+        <option value="commercial" selected>综合建筑 60m</option>
+        <option value="office">办公体块 80m</option>
+        <option value="industrial">实验设施 40m</option>
+        <option value="public">公共服务 50m</option>
       </select>
       <button class="ctrl-btn primary" id="ctrl-add">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        ADD
+        新增体块
       </button>
       <button class="ctrl-btn danger" id="ctrl-remove">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 6h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        REMOVE
+        移除影响
       </button>
       <div class="ctrl-sep"></div>
       <div class="ctrl-radius">
@@ -145,8 +149,8 @@
         重置
       </button>
       <div class="ctrl-sep"></div>
-      <button class="ctrl-btn" id="ctrl-street">地形图</button>
-      <button class="ctrl-btn" id="ctrl-satellite">卫星图</button>
+      <button class="ctrl-btn" id="ctrl-street">平面气象底图</button>
+      <button class="ctrl-btn" id="ctrl-satellite">2.5D 白模</button>
     </div>
 
     <!-- 热力图色带图例 -->
@@ -161,11 +165,11 @@
 
   <!-- ════════════════ RIGHT PANEL ════════════════ -->
   <aside id="right-panel" class="panel">
-    <div class="panel-title">健康风险指标</div>
+    <div class="panel-title">热胁迫与健康风险</div>
 
     <!-- 追踪面板 -->
     <div id="tracking-panel" style="padding:8px;">
-      <div class="panel-title" style="padding:0 0 6px 0;border:none;">目标追踪</div>
+      <div class="panel-title" style="padding:0 0 6px 0;border:none;">移动巡测目标</div>
       <div id="tracking-entities"></div>
     </div>
 
@@ -234,7 +238,7 @@
       </div>
       <div class="reasoning-steps" id="reasoning-steps">
         <div class="reasoning-step" style="padding:12px 0;">
-          <span style="font-size:12px;color:#5a8aaa;">点击「ADD」或「REMOVE」开始推演</span>
+          <span style="font-size:12px;color:#5a8aaa;">选择建筑体块并点击「新增体块」或「移除影响」开始推演</span>
         </div>
       </div>
       <div class="reasoning-result" id="reasoning-result">
@@ -244,11 +248,11 @@
       </div>
     </div>
 
-    <div class="panel-title" style="margin-top:8px;">生物多样性监测</div>
+    <div class="panel-title" style="margin-top:8px;">巡测影像识别</div>
     <div id="bird-indicators">
       <div class="health-card">
         <div style="display:flex;align-items:center;justify-content:center;height:80px;color:#5a8aaa;font-size:12px;">
-          暂无检测数据，请上传图片
+          暂无巡测影像，请接入移动端采集数据
         </div>
       </div>
     </div>
@@ -282,11 +286,11 @@
   <!-- ════════════════ FOOTER ════════════════ -->
   <footer id="footer">
     <div class="footer-left">
-      <span>数据源: <strong style="color:#00b4ff;">Mock API</strong></span>
+      <span>数据源: <strong style="color:#00b4ff;">IoT/API + 空间推演</strong></span>
       <span>|</span>
       <span>更新: <span id="footer-updated">--:--:--</span></span>
       <span>|</span>
-      <span>推理引擎: <strong style="color:#00ff88;">Mock物理方程</strong></span>
+      <span>推理引擎: <strong style="color:#00ff88;">演示物理模型</strong></span>
       <span>|</span>
       <span>白模: <strong id="model-attribution" style="color:#36c6b4;">检测中</strong></span>
     </div>

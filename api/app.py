@@ -857,42 +857,62 @@ body {
 .header button.download:hover { background: #047857; }
 .last-update { font-size: 12px; color: #94a3b8; }
 
-.platform-bar {
+.meteo-overview {
   background: #f8fafc; border-bottom: 1px solid #e5e7eb;
 }
-.platform-panel {
-  max-width: 1400px; margin: 0 auto; padding: 12px 16px;
-  display: grid; grid-template-columns: 1.4fr repeat(5, minmax(118px, 1fr));
-  gap: 10px; align-items: stretch;
+.meteo-overview-inner {
+  max-width: 1400px; margin: 0 auto; padding: 16px;
+  display: grid; grid-template-columns: minmax(320px, 1.25fr) minmax(360px, 1fr) 210px;
+  gap: 14px; align-items: stretch;
 }
-.platform-summary {
-  padding: 8px 0; min-width: 0;
+.meteo-title-block {
+  min-width: 0; padding: 2px 0;
 }
-.platform-summary strong {
-  display: block; font-size: 13px; color: #0f172a; margin-bottom: 4px;
+.meteo-eyebrow {
+  display: inline-flex; align-items: center; min-height: 22px; padding: 3px 9px;
+  border-radius: 999px; background: #e0f2fe; color: #075985;
+  font-size: 12px; font-weight: 700; margin-bottom: 8px;
 }
-.platform-summary span {
-  display: block; font-size: 12px; color: #64748b; line-height: 1.45;
+.meteo-title-block h2 {
+  font-size: 24px; line-height: 1.18; color: #0f172a; margin-bottom: 6px;
 }
-.platform-link {
-  display: flex; flex-direction: column; justify-content: center; gap: 4px;
-  min-height: 64px; padding: 10px 12px; border-radius: 8px;
-  border: 1px solid #dbeafe; background: #eff6ff; color: #1d4ed8;
-  text-decoration: none; font-weight: 700;
+.meteo-title-block p {
+  max-width: 720px; font-size: 13px; color: #64748b; line-height: 1.6;
 }
-.platform-link:hover { background: #dbeafe; }
-.platform-link.active {
-  color: #0f766e; background: #ecfdf5; border-color: #99f6e4;
+.weather-kpi-strip {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;
 }
-.platform-link.ops {
-  color: #6d28d9; background: #f5f3ff; border-color: #ddd6fe;
+.weather-kpi {
+  min-width: 0; padding: 12px 14px; border-radius: 10px;
+  border: 1px solid #dbeafe; background: #fff;
+  box-shadow: 0 1px 3px rgba(15,23,42,.06);
 }
-.platform-link.author {
-  color: #9a3412; background: #fff7ed; border-color: #fed7aa;
+.weather-kpi span { display:block; font-size:11px; color:#64748b; margin-bottom:6px; }
+.weather-kpi strong { display:block; font-size:20px; color:#0f172a; line-height:1; }
+.weather-kpi small { display:block; margin-top:5px; font-size:11px; color:#64748b; }
+.module-switch {
+  align-self: start; position: relative;
 }
-.platform-link small {
-  font-size: 11px; color: #64748b; font-weight: 500; line-height: 1.3;
+.module-switch summary {
+  list-style: none; cursor: pointer; min-height: 42px; padding: 10px 12px;
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  border-radius: 10px; border: 1px solid #bae6fd; background: #eff6ff;
+  color:#075985; font-weight:700; font-size:13px;
 }
+.module-switch summary::-webkit-details-marker { display:none; }
+.module-switch summary::after { content:"+"; font-size:16px; color:#0284c7; }
+.module-switch[open] summary::after { content:"-"; }
+.module-menu {
+  position:absolute; top:48px; right:0; z-index:20; min-width:230px;
+  display:grid; gap:6px; padding:8px; border-radius:10px;
+  border:1px solid #bae6fd; background:#fff; box-shadow:0 18px 42px rgba(15,23,42,.16);
+}
+.module-menu a {
+  display:grid; gap:2px; padding:9px 10px; border-radius:8px;
+  color:#0f172a; text-decoration:none; font-weight:700; font-size:13px;
+}
+.module-menu a:hover, .module-menu a.active { background:#ecfeff; color:#0f766e; }
+.module-menu small { color:#64748b; font-size:11px; font-weight:500; }
 
 .main { max-width: 1400px; margin: 0 auto; padding: 16px; display: grid;
   grid-template-columns: 1fr 1fr;
@@ -960,8 +980,9 @@ tbody tr:hover { background: #f8fafc; }
 @media (max-width: 900px) {
   .main { grid-template-columns: 1fr; }
   .map-card { grid-column: 1; }
-  .platform-panel { grid-template-columns: 1fr 1fr; }
-  .platform-summary { grid-column: 1 / -1; }
+  .meteo-overview-inner { grid-template-columns: 1fr; }
+  .weather-kpi-strip { grid-template-columns: 1fr 1fr; }
+  .module-menu { left:0; right:auto; }
   .footer-panel { grid-template-columns: 1fr; }
 }
 
@@ -970,7 +991,7 @@ tbody tr:hover { background: #f8fafc; }
   .header h1 { width: 100%; }
   .header-right { width: 100%; }
   .header select, .header button { flex: 1 1 140px; }
-  .platform-panel { grid-template-columns: 1fr; }
+  .weather-kpi-strip { grid-template-columns: 1fr; }
 }
 
 /* Loading spinner */
@@ -980,61 +1001,103 @@ tbody tr:hover { background: #f8fafc; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* 视觉重整：统一入口的深色运维风格 */
+/* 视觉重整：微气象监测工作台 */
 body {
   background:
-    radial-gradient(circle at top, rgba(51, 199, 178, 0.08), transparent 34%),
-    linear-gradient(180deg, #080a0b 0%, #060708 100%);
+    linear-gradient(90deg, rgba(80, 155, 215, 0.07) 1px, transparent 1px),
+    linear-gradient(180deg, #07131f 0%, #081018 46%, #0b1115 100%);
+  background-size: 28px 28px, auto;
   color: #dce8e6;
 }
 
 .header {
-  background: linear-gradient(180deg, rgba(8, 10, 12, 0.98), rgba(12, 14, 16, 0.9));
-  border-bottom: 1px solid rgba(120, 155, 153, 0.2);
+  background: linear-gradient(180deg, rgba(7, 19, 31, 0.98), rgba(10, 24, 32, 0.92));
+  border-bottom: 1px solid rgba(84, 177, 216, 0.22);
 }
 
-.platform-bar,
+.meteo-overview,
 .card,
 .footer-group {
-  background: rgba(12, 15, 17, 0.92);
-  border-color: rgba(120, 155, 153, 0.18);
+  background: rgba(10, 20, 28, 0.9);
+  border-color: rgba(104, 173, 196, 0.22);
   box-shadow: 0 16px 42px rgba(0, 0, 0, 0.2);
 }
 
-.platform-bar {
-  border-bottom: 1px solid rgba(120, 155, 153, 0.18);
+.meteo-overview {
+  border-bottom: 1px solid rgba(104, 173, 196, 0.22);
 }
 
-.platform-summary strong,
+.meteo-title-block h2,
 .card h3,
 .footer-title {
   color: #f5fbfa;
 }
 
-.platform-summary span,
+.meteo-title-block p,
 .last-update,
 .footer-desc,
 .footer-note,
 tbody td,
 tbody tr:hover,
 thead th {
-  color: #8ca4a1;
+  color: #9db8c4;
 }
 
-.platform-link,
+.meteo-eyebrow,
+.weather-kpi,
+.module-switch summary,
+.module-menu,
+.module-menu a,
 .footer-link,
 .header select,
 .header button,
 .header button.download {
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(120, 155, 153, 0.18);
-  color: #dce8e6;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(104, 173, 196, 0.22);
+  color: #dcecf2;
+}
+
+.meteo-eyebrow {
+  background: rgba(47, 183, 255, 0.12);
+  color: #9edcff;
+  border-color: rgba(47, 183, 255, 0.24);
+}
+
+.weather-kpi {
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.weather-kpi span,
+.weather-kpi small,
+.module-menu small {
+  color: #9db8c4;
+}
+
+.weather-kpi strong {
+  color: #f7fbff;
+}
+
+.module-switch summary {
+  background: rgba(47, 183, 255, 0.11);
+  color: #eaf8ff;
+  border-color: rgba(47, 183, 255, 0.3);
+}
+
+.module-menu {
+  background: rgba(8, 20, 30, 0.98);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.34);
+}
+
+.module-menu a:hover,
+.module-menu a.active {
+  background: rgba(55, 208, 186, 0.12);
+  color: #e8fffb;
 }
 
 .header .decision-btn {
-  background: rgba(51, 199, 178, 0.12);
-  border-color: rgba(51, 199, 178, 0.28);
+  background: rgba(47, 183, 255, 0.13);
+  border-color: rgba(47, 183, 255, 0.32);
 }
 
 .header .view-btn {
@@ -1042,32 +1105,72 @@ thead th {
   border-color: rgba(96, 165, 250, 0.28);
 }
 
-.platform-link.active,
+.module-menu a.active,
 .header button,
 .header button.download,
 .footer-link.device {
-  background: rgba(51, 199, 178, 0.12);
-  border-color: rgba(51, 199, 178, 0.3);
+  background: rgba(55, 208, 186, 0.12);
+  border-color: rgba(55, 208, 186, 0.3);
   color: #e7fffb;
 }
 
-.platform-link.ops,
+.module-menu a.ops,
 .footer-link.ops {
   background: rgba(241, 180, 75, 0.12);
   border-color: rgba(241, 180, 75, 0.25);
   color: #fff1c9;
 }
 
-.platform-link.author,
+.module-menu a.author,
 .footer-link {
   background: rgba(255, 255, 255, 0.04);
 }
 
-.platform-link:hover,
+.module-menu a:hover,
 .footer-link:hover,
 .header button:hover,
 .header button.download:hover {
-  background: rgba(51, 199, 178, 0.18);
+  background: rgba(47, 183, 255, 0.16);
+}
+
+.station-card {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(104, 173, 196, .2);
+  border-radius: 8px;
+  padding: 10px 14px;
+  min-width: 210px;
+  flex: 1;
+  box-shadow: 0 10px 24px rgba(0,0,0,.12);
+}
+
+.station-card.online {
+  border-color: rgba(55, 208, 186, .34);
+}
+
+.station-card.offline {
+  border-color: rgba(239, 107, 99, .34);
+}
+
+.station-card-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: #effcff;
+}
+
+.station-state {
+  font-size: 11px;
+  margin-left: 6px;
+  color: #37d0ba;
+}
+
+.station-card.offline .station-state {
+  color: #ef6b63;
+}
+
+.station-meta {
+  font-size: 11px;
+  color: #9db8c4;
+  margin-top: 3px;
 }
 
 .main {
@@ -1101,61 +1204,56 @@ tbody tr:hover {
 <body>
 
 <div class="header">
-  <h1><img src="/logo.png" style="height:32px;vertical-align:middle;margin-right:8px;">微境探界</h1>
+  <h1><img src="/logo.png" alt="微境探界 logo" style="width:36px;height:36px;object-fit:contain;border-radius:50%;vertical-align:middle;margin-right:9px;box-shadow:0 0 0 1px rgba(154,225,255,.26),0 10px 28px rgba(47,183,255,.18);">微境探界 <span style="display:inline-block;font-size:12px;color:#9db8c4;font-weight:500;margin-left:8px;vertical-align:middle;">校园微气象监测平台</span></h1>
   <div class="header-right">
     <select id="deviceSelect" onchange="onDeviceChange()"></select>
     <select id="dateSelect" onchange="onDateChange()"><option value="">今日</option></select>
-    <button class="decision-btn" onclick="location.href='/decision/'">三维决策</button>
     <button id="downloadBtn" class="download" onclick="downloadCSV()">下载 CSV</button>
     <button id="viewToggle" class="view-btn" onclick="toggleView()">分设备视图</button>
     <span class="last-update" id="lastUpdate"></span>
   </div>
 </div>
 
-<nav class="platform-bar" aria-label="微境探界平台入口">
-  <div class="platform-panel">
-    <div class="platform-summary">
-      <strong>统一入口</strong>
-      <span>实时监测、三维决策、运维看板和作者主页分区管理；当前页面为 IoT 数据采集与监测视图。</span>
+<section class="meteo-overview" aria-label="微气象态势总览">
+  <div class="meteo-overview-inner">
+    <div class="meteo-title-block">
+      <span class="meteo-eyebrow">实时气象站网 / Heat Stress Monitoring</span>
+      <h2>热胁迫实时观测工作台</h2>
+      <p>面向校园微尺度环境，汇聚温湿度、定位、移动巡测和历史曲线，用于识别热风险、追踪采集链路，并向空间决策看板提供实时气象底座。</p>
     </div>
-    <a class="platform-link active" href="/">
-      实时监测
-      <small>传感器、趋势、定位</small>
-    </a>
-    <a class="platform-link" href="/decision/">
-      3D 决策
-      <small>Cesium 场景与推演</small>
-    </a>
-    <a class="platform-link ops" href="/grafana/">
-      Grafana
-      <small>运维指标与看板</small>
-    </a>
-    <a class="platform-link" href="/logs">
-      数据日志
-      <small>历史数据与调试</small>
-    </a>
-    <a class="platform-link author" href="/author/">
-      Kuuhakuchyan
-      <small>个人主页与项目记录</small>
-    </a>
+    <div class="weather-kpi-strip" aria-label="监测能力摘要">
+      <div class="weather-kpi"><span>观测要素</span><strong>10+</strong><small>温度 / 湿度 / 电量 / 位置</small></div>
+      <div class="weather-kpi"><span>更新节奏</span><strong>10s</strong><small>站点状态与曲线自动刷新</small></div>
+      <div class="weather-kpi"><span>决策联动</span><strong>3D</strong><small>热场、白模与 What-If 推演</small></div>
+    </div>
+    <details class="module-switch">
+      <summary>平台模块</summary>
+      <div class="module-menu">
+        <a class="active" href="/">实时监测<small>传感器、趋势、定位</small></a>
+        <a href="/decision/">空间决策看板<small>热场、白模与规划推演</small></a>
+        <a class="ops" href="/grafana/">运行运维看板<small>服务指标与链路监控</small></a>
+        <a href="/logs">数据日志<small>采集记录与调试排查</small></a>
+        <a class="author" href="/author/">项目主页<small>团队与阶段成果</small></a>
+      </div>
+    </details>
   </div>
-</nav>
+</section>
 
 <div style="max-width:1400px; margin:0 auto; padding:0 16px 8px;">
   <div class="card" style="margin-bottom:8px;">
-    <h3>传感器状态 <span id="statusUpdated" style="font-size:12px;color:#999;font-weight:400;"></span></h3>
+    <h3>站点运行状态 <span id="statusUpdated" style="font-size:12px;color:#9db8c4;font-weight:400;"></span></h3>
     <div id="statusPanel" style="display:flex;flex-wrap:wrap;gap:10px;"></div>
   </div>
 </div>
 
 <div class="main" id="mainGrid">
   <div class="card">
-    <h3>温度趋势 (°C)</h3>
+    <h3>近 24 小时气温趋势 (°C)</h3>
     <div class="chart-legend" id="tempLegend"></div>
     <div class="chart-wrap"><canvas id="tempChart"></canvas></div>
   </div>
   <div class="card">
-    <h3>湿度趋势 (%)</h3>
+    <h3>近 24 小时相对湿度趋势 (%)</h3>
     <div class="chart-legend" id="humidLegend"></div>
     <div class="chart-wrap"><canvas id="humidChart"></canvas></div>
   </div>
@@ -1165,11 +1263,11 @@ tbody tr:hover {
 
 <div style="max-width:1400px; margin:0 auto; padding:0 16px 16px;">
   <div class="card map-card" style="margin-bottom:16px;">
-    <h3>传感器定位 (高德地图)</h3>
+    <h3>站点空间分布与移动巡测轨迹</h3>
     <div id="amap"></div>
   </div>
   <div class="card table-section" style="margin-bottom:16px;">
-    <h3>数据明细 <span id="tableDeviceTags" style="font-size:13px;font-weight:400;"></span></h3>
+    <h3>观测数据明细 <span id="tableDeviceTags" style="font-size:13px;font-weight:400;"></span></h3>
     <div class="table-wrap" id="tableWrap">
       <div class="no-data">加载中...</div>
     </div>
@@ -1415,13 +1513,12 @@ async function refreshStatus() {
     const p = posMap[d.device_id] || {};
     const coord = (p.lat && p.lon) ? `(${Number(p.lat).toFixed(4)}, ${Number(p.lon).toFixed(4)})` : '无定位';
     const lastSeen = d.last_seen ? new Date(d.last_seen).toLocaleTimeString('zh-CN') : '从未';
-    const accent = d.online ? '#10b981' : '#ef4444';
-    const border = d.online ? 'rgba(16,185,129,.35)' : 'rgba(239,68,68,.35)';
+    const stateClass = d.online ? 'online' : 'offline';
     const label = d.online ? '在线' : '离线';
-    return `<div style="background:rgba(255,255,255,.04);border:1px solid ${border};border-radius:8px;padding:10px 14px;min-width:200px;flex:1;box-shadow:0 10px 24px rgba(0,0,0,.12);">
-      <div style="font-weight:600;font-size:14px;color:#e7fffb;">${d.device_id} <span style="font-size:11px;color:${accent};margin-left:6px;">${label}</span></div>
-      <div style="font-size:11px;color:#8ca4a1;margin-top:2px;">坐标: ${coord}</div>
-      <div style="font-size:11px;color:#8ca4a1;">最后上报: ${lastSeen}</div>
+    return `<div class="station-card ${stateClass}">
+      <div class="station-card-title">${d.device_id} <span class="station-state">${label}</span></div>
+      <div class="station-meta">坐标: ${coord}</div>
+      <div class="station-meta">最后上报: ${lastSeen}</div>
     </div>`;
   }).join('');
   document.getElementById('statusUpdated').textContent =
