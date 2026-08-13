@@ -890,9 +890,13 @@ body {
 .weather-kpi span { display:block; font-size:11px; color:#64748b; margin-bottom:6px; }
 .weather-kpi strong { display:block; font-size:20px; color:#0f172a; line-height:1; }
 .weather-kpi small { display:block; margin-top:5px; font-size:11px; color:#64748b; }
-.module-switch {
-  align-self: start; position: relative;
+.meteo-control-stack {
+  align-self: start; display: grid; gap: 10px;
 }
+.module-switch {
+  position: relative;
+}
+.module-switch[open] { z-index: 30; }
 .module-switch summary {
   list-style: none; cursor: pointer; min-height: 42px; padding: 10px 12px;
   display:flex; align-items:center; justify-content:space-between; gap:10px;
@@ -913,6 +917,24 @@ body {
 }
 .module-menu a:hover, .module-menu a.active { background:#ecfeff; color:#0f766e; }
 .module-menu small { color:#64748b; font-size:11px; font-weight:500; }
+.module-menu.ops-menu {
+  min-width: 330px; gap: 8px;
+}
+.ops-menu-group {
+  display: grid; gap: 7px; padding: 9px;
+  border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc;
+}
+.ops-menu-heading { font-size: 12px; font-weight: 800; color: #075985; }
+.ops-menu-group p { font-size: 11px; line-height: 1.45; color: #64748b; }
+.ops-menu-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.ops-menu-actions a {
+  display: inline-flex; align-items: center; min-height: 30px; padding: 6px 9px;
+  border-radius: 8px; border: 1px solid #bfdbfe; background: #eff6ff;
+  color: #1d4ed8; font-weight: 700; font-size: 12px; text-decoration: none;
+}
+.ops-menu-actions a.device { color: #047857; background: #ecfdf5; border-color: #a7f3d0; }
+.ops-menu-actions a.ops { color: #6d28d9; background: #f5f3ff; border-color: #ddd6fe; }
+.ops-menu-note { font-size: 11px; color: #94a3b8; line-height: 1.45; }
 
 .main { max-width: 1400px; margin: 0 auto; padding: 16px; display: grid;
   grid-template-columns: 1fr 1fr;
@@ -950,37 +972,6 @@ tbody td { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; white-space: now
 tbody tr:hover { background: #f8fafc; }
 .no-data { text-align: center; padding: 40px; color: #999; }
 
-.ops-hub {
-  max-width: 1400px; margin: 0 auto; padding: 0 16px 8px;
-}
-.ops-hub-panel {
-  display: grid; grid-template-columns: 1.1fr repeat(3, minmax(0, 1fr)); gap: 12px;
-  align-items: stretch;
-}
-.ops-hub-lead,
-.ops-hub-group {
-  min-width: 0; display: grid; align-content: start; gap: 10px;
-  background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 16px;
-  box-shadow: 0 1px 3px rgba(0,0,0,.06);
-}
-.ops-hub-kicker { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #0284c7; font-weight: 700; }
-.ops-hub-lead strong { color: #334155; font-size: 16px; }
-.ops-hub-lead p { font-size: 12px; line-height: 1.55; color: #64748b; }
-.ops-title { font-size: 13px; font-weight: 700; color: #334155; white-space: nowrap; }
-.ops-desc { font-size: 12px; line-height: 1.5; color: #64748b; }
-.ops-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.ops-link {
-  display: inline-flex; align-items: center; min-height: 28px; padding: 5px 10px;
-  border-radius: 999px; color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe;
-  text-decoration: none; font-weight: 600; white-space: nowrap;
-}
-.ops-link:hover { background: #dbeafe; }
-.ops-link.device { color: #047857; background: #ecfdf5; border-color: #a7f3d0; }
-.ops-link.device:hover { background: #d1fae5; }
-.ops-link.ops { color: #6d28d9; background: #f5f3ff; border-color: #ddd6fe; }
-.ops-link.ops:hover { background: #ede9fe; }
-.ops-note { font-size: 12px; color: #94a3b8; line-height: 1.5; }
-
 .footer {
   max-width: 1400px; margin: 0 auto 24px; padding: 0 16px;
   font-size: 12px; color: #64748b; text-align: center;
@@ -995,8 +986,7 @@ tbody tr:hover { background: #f8fafc; }
   .meteo-overview-inner { grid-template-columns: 1fr; }
   .weather-kpi-strip { grid-template-columns: 1fr 1fr; }
   .module-menu { left:0; right:auto; }
-  .ops-hub-panel { grid-template-columns: 1fr 1fr; }
-  .ops-hub-lead { grid-column: 1 / -1; }
+  .meteo-control-stack { grid-template-columns: 1fr 1fr; }
 }
 
 @media (max-width: 560px) {
@@ -1005,7 +995,8 @@ tbody tr:hover { background: #f8fafc; }
   .header-right { width: 100%; }
   .header select, .header button { flex: 1 1 140px; }
   .weather-kpi-strip { grid-template-columns: 1fr; }
-  .ops-hub-panel { grid-template-columns: 1fr; }
+  .meteo-control-stack { grid-template-columns: 1fr; }
+  .module-menu.ops-menu { min-width: min(330px, calc(100vw - 32px)); }
 }
 
 /* Loading spinner */
@@ -1031,8 +1022,7 @@ body {
 
 .meteo-overview,
 .card,
-.ops-hub-lead,
-.ops-hub-group {
+.ops-menu-group {
   background: rgba(10, 20, 28, 0.9);
   border-color: rgba(104, 173, 196, 0.22);
   box-shadow: 0 16px 42px rgba(0, 0, 0, 0.2);
@@ -1044,16 +1034,14 @@ body {
 
 .meteo-title-block h2,
 .card h3,
-.ops-hub-lead strong,
-.ops-title {
+.ops-menu-heading {
   color: #f5fbfa;
 }
 
 .meteo-title-block p,
 .last-update,
-.ops-hub-lead p,
-.ops-desc,
-.ops-note,
+.ops-menu-group p,
+.ops-menu-note,
 tbody td,
 tbody tr:hover,
 thead th {
@@ -1065,7 +1053,7 @@ thead th {
 .module-switch summary,
 .module-menu,
 .module-menu a,
-.ops-link,
+.ops-menu-actions a,
 .header select,
 .header button,
 .header button.download {
@@ -1087,7 +1075,8 @@ thead th {
 
 .weather-kpi span,
 .weather-kpi small,
-.module-menu small {
+.module-menu small,
+.ops-menu-note {
   color: #9db8c4;
 }
 
@@ -1125,26 +1114,26 @@ thead th {
 .module-menu a.active,
 .header button,
 .header button.download,
-.ops-link.device {
+.ops-menu-actions a.device {
   background: rgba(55, 208, 186, 0.12);
   border-color: rgba(55, 208, 186, 0.3);
   color: #e7fffb;
 }
 
 .module-menu a.ops,
-.ops-link.ops {
+.ops-menu-actions a.ops {
   background: rgba(241, 180, 75, 0.12);
   border-color: rgba(241, 180, 75, 0.25);
   color: #fff1c9;
 }
 
 .module-menu a.author,
-.ops-link {
+.ops-menu-actions a {
   background: rgba(255, 255, 255, 0.04);
 }
 
 .module-menu a:hover,
-.ops-link:hover,
+.ops-menu-actions a:hover,
 .header button:hover,
 .header button.download:hover {
   background: rgba(47, 183, 255, 0.16);
@@ -1243,49 +1232,46 @@ tbody tr:hover {
       <div class="weather-kpi"><span>更新节奏</span><strong>10s</strong><small>站点状态与曲线自动刷新</small></div>
       <div class="weather-kpi"><span>决策联动</span><strong>3D</strong><small>热场、白模与 What-If 推演</small></div>
     </div>
-    <details class="module-switch">
-      <summary>平台模块</summary>
-      <div class="module-menu">
-        <a class="active" href="/">实时监测<small>传感器、趋势、定位</small></a>
-        <a href="/decision/">空间决策看板<small>热场、白模与规划推演</small></a>
-        <a class="ops" href="/grafana/">运行运维看板<small>服务指标与链路监控</small></a>
-        <a href="/logs">数据日志<small>采集记录与调试排查</small></a>
-        <a class="author" href="/author/">项目主页<small>团队与阶段成果</small></a>
-      </div>
-    </details>
-  </div>
-</section>
-
-<section class="ops-hub" aria-label="监测运维入口">
-  <div class="ops-hub-panel">
-    <div class="ops-hub-lead">
-      <span class="ops-hub-kicker">Workbench Access</span>
-      <strong>监测、接入、运维集中入口</strong>
-      <p>把日常管理和现场调试前置到实时监测区旁边，方便从站点状态直接进入维护、归档、服务指标或设备 AP 调试。</p>
-    </div>
-    <div class="ops-hub-group">
-      <span class="ops-title">平台管理</span>
-      <p class="ops-desc">面向多设备接入、字段模板、数据归档和日常维护。</p>
-      <div class="ops-actions">
-        <a class="ops-link" href="/sensors">传感器树</a>
-        <a class="ops-link" href="/logs">数据日志</a>
-      </div>
-    </div>
-    <div class="ops-hub-group">
-      <span class="ops-title">现场接入</span>
-      <p class="ops-desc">设备 AP 调试入口，仅在连接对应设备 WiFi 后访问。</p>
-      <div class="ops-actions">
-        <a class="ops-link device" href="http://192.168.4.1" target="_blank">ATOM Weather</a>
-        <a class="ops-link device" href="http://192.168.4.1" target="_blank">M5Stick Weather</a>
-      </div>
-      <span class="ops-note">现场调试建议关闭移动数据，避免手机自动切回公网。</span>
-    </div>
-    <div class="ops-hub-group">
-      <span class="ops-title">运行保障</span>
-      <p class="ops-desc">查看服务指标、采集链路状态和后续备份告警配置。</p>
-      <div class="ops-actions">
-        <a class="ops-link ops" href="/grafana/">Grafana 看板</a>
-      </div>
+    <div class="meteo-control-stack" aria-label="平台入口">
+      <details class="module-switch">
+        <summary>平台模块</summary>
+        <div class="module-menu">
+          <a class="active" href="/">实时监测<small>传感器、趋势、定位</small></a>
+          <a href="/decision/">空间决策看板<small>热场、白模与规划推演</small></a>
+          <a class="ops" href="/grafana/">运行运维看板<small>服务指标与链路监控</small></a>
+          <a href="/logs">数据日志<small>采集记录与调试排查</small></a>
+          <a class="author" href="/author/">项目主页<small>团队与阶段成果</small></a>
+        </div>
+      </details>
+      <details class="module-switch">
+        <summary>运维入口</summary>
+        <div class="module-menu ops-menu">
+          <div class="ops-menu-group">
+            <span class="ops-menu-heading">平台管理</span>
+            <p>面向多设备接入、字段模板、数据归档和日常维护。</p>
+            <div class="ops-menu-actions">
+              <a href="/sensors">传感器树</a>
+              <a href="/logs">数据日志</a>
+            </div>
+          </div>
+          <div class="ops-menu-group">
+            <span class="ops-menu-heading">现场接入</span>
+            <p>设备 AP 调试入口，仅在连接对应设备 WiFi 后访问。</p>
+            <div class="ops-menu-actions">
+              <a class="device" href="http://192.168.4.1" target="_blank">ATOM Weather</a>
+              <a class="device" href="http://192.168.4.1" target="_blank">M5Stick Weather</a>
+            </div>
+            <span class="ops-menu-note">现场调试建议关闭移动数据，避免手机自动切回公网。</span>
+          </div>
+          <div class="ops-menu-group">
+            <span class="ops-menu-heading">运行保障</span>
+            <p>查看服务指标、采集链路状态和后续备份告警配置。</p>
+            <div class="ops-menu-actions">
+              <a class="ops" href="/grafana/">Grafana 看板</a>
+            </div>
+          </div>
+        </div>
+      </details>
     </div>
   </div>
 </section>
