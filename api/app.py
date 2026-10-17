@@ -368,9 +368,16 @@ async def author_homepage():
     return FileResponse(BASE_DIR / "templates" / "author.html", media_type="text/html")
 
 
+@app.get("/home-assets/{asset_name}")
+async def home_asset(asset_name: str):
+    if asset_name not in {"hero-campus.jpg", "campus-map.png"}:
+        raise HTTPException(status_code=404, detail="asset not found")
+    return FileResponse(BASE_DIR / "static" / "home" / asset_name)
+
+
 @app.get("/monitor")
 async def monitor_alias():
-    return RedirectResponse("/", status_code=301)
+    return RedirectResponse("/?view=monitor", status_code=307)
 
 
 @app.get("/portal")
@@ -440,8 +447,10 @@ async def dashboard_head():
 
 
 @app.get("/", response_class=HTMLResponse)
-async def dashboard():
-    return DASHBOARD_HTML
+async def dashboard(request: Request):
+    if request.query_params.get("view") == "monitor":
+        return DASHBOARD_HTML
+    return FileResponse(BASE_DIR / "templates" / "home.html", media_type="text/html")
 
 
 SENSOR_ADMIN_HTML = """<!DOCTYPE html>
@@ -578,7 +587,8 @@ details[open] > summary .twisty { transform:rotate(90deg); }
     </div>
   </div>
   <div class="nav">
-    <a href="/">实时监测</a>
+    <a href="/">项目主页</a>
+    <a href="/monitor">实时监测</a>
     <a href="/logs">数据日志</a>
     <a href="/decision/">3D 决策</a>
     <a href="/grafana/">Grafana</a>
@@ -790,7 +800,7 @@ body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-seri
 <body>
 <div class="header">
   <h1><img src="/logo.png" style="height:28px;vertical-align:middle;margin-right:8px;">数据日志</h1>
-  <div><a href="/">← 仪表盘</a> | <a href="/sensors">传感器管理</a></div>
+  <div><a href="/">项目主页</a> | <a href="/monitor">实时监测</a> | <a href="/sensors">传感器管理</a></div>
 </div>
 <div class="container">
   <div class="device-tabs" id="deviceTabs"></div>
@@ -847,6 +857,12 @@ body {
 }
 .header h1 { font-size: 20px; font-weight: 600; white-space: nowrap; }
 .header-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.header-right .home-link {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 36px;
+  padding: 0 12px; border: 1px solid rgba(104, 173, 196, .3); border-radius: 6px;
+  color: #c9dedc; font-size: 12px; font-weight: 650; text-decoration: none;
+}
+.header-right .home-link:hover { color: #fff; border-color: rgba(55, 208, 186, .55); background: rgba(55, 208, 186, .1); }
 .header select, .header button {
   padding: 8px 14px; border-radius: 6px; border: none; font-size: 14px; cursor: pointer;
 }
@@ -993,6 +1009,7 @@ tbody tr:hover { background: #f8fafc; }
   .header { align-items: flex-start; }
   .header h1 { width: 100%; }
   .header-right { width: 100%; }
+  .header-right .home-link { flex: 1 1 100%; }
   .header select, .header button { flex: 1 1 140px; }
   .weather-kpi-strip { grid-template-columns: 1fr; }
   .meteo-control-stack { grid-template-columns: 1fr; }
@@ -1212,6 +1229,7 @@ tbody tr:hover {
 <div class="header">
   <h1><img src="/logo.png" alt="微境探界 logo" style="width:36px;height:36px;object-fit:contain;border-radius:50%;vertical-align:middle;margin-right:9px;box-shadow:0 0 0 1px rgba(154,225,255,.26),0 10px 28px rgba(47,183,255,.18);">微境探界 <span style="display:inline-block;font-size:12px;color:#9db8c4;font-weight:500;margin-left:8px;vertical-align:middle;">校园微气象监测平台</span></h1>
   <div class="header-right">
+    <a class="home-link" href="/">项目主页</a>
     <select id="deviceSelect" onchange="onDeviceChange()"></select>
     <select id="dateSelect" onchange="onDateChange()"><option value="">今日</option></select>
     <button id="downloadBtn" class="download" onclick="downloadCSV()">下载 CSV</button>
@@ -1236,11 +1254,11 @@ tbody tr:hover {
       <details class="module-switch">
         <summary>平台模块</summary>
         <div class="module-menu">
-          <a class="active" href="/">实时监测<small>传感器、趋势、定位</small></a>
+          <a class="active" href="/monitor">实时监测<small>传感器、趋势、定位</small></a>
           <a href="/decision/">空间决策看板<small>热场、白模与规划推演</small></a>
           <a class="ops" href="/grafana/">运行运维看板<small>服务指标与链路监控</small></a>
           <a href="/logs">数据日志<small>采集记录与调试排查</small></a>
-          <a class="author" href="/author/">项目主页<small>团队与阶段成果</small></a>
+          <a class="author" href="/">项目主页<small>团队与平台入口</small></a>
         </div>
       </details>
       <details class="module-switch">

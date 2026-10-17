@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f3f6f2">
+  <meta name="description" content="微境探界：面向城市热胁迫研究的遥感、地面观测与空间决策平台。">
+  <title>微境探界｜看见城市热环境</title>
+  <style>
+    :root{--ink:#172b31;--muted:#607277;--line:#d8e1dd;--paper:#f3f6f2;--white:#fff;--teal:#0b746f;--teal-dark:#084d51;--lime:#d9edb4;--coral:#eb7658;--night:#112d33;--max:1220px}
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth;scroll-padding-top:78px}
+    body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.55}
+    a{color:inherit;text-decoration:none}
+    button{font:inherit}
+    .wrap{width:min(var(--max),calc(100% - 48px));margin-inline:auto}
+    .topbar{height:72px;display:flex;align-items:center;position:sticky;top:0;z-index:20;background:rgba(243,246,242,.92);backdrop-filter:blur(16px);border-bottom:1px solid rgba(23,43,49,.09)}
+    .nav{display:flex;align-items:center;justify-content:space-between;gap:24px}
+    .brand{display:inline-flex;align-items:center;gap:11px;font-weight:800;letter-spacing:0;white-space:nowrap}
+    .brand img{width:42px;height:42px;object-fit:contain;border-radius:50%}
+    .brand small{display:block;color:var(--muted);font-size:10px;font-weight:600;line-height:1.2;margin-top:2px}
+    .nav-links{display:flex;align-items:center;gap:25px;color:#40575c;font-size:13px;font-weight:650}
+    .nav-links a:hover{color:var(--teal)}
+    .nav-cta,.button{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:44px;padding:0 18px;border:1px solid var(--teal);border-radius:6px;background:var(--teal);color:white;font-size:13px;font-weight:750;transition:.2s ease}
+    .nav-cta:hover,.button:hover{background:#095d5a;transform:translateY(-1px)}
+    .button.secondary{background:transparent;color:var(--ink);border-color:#9cadaa}
+    .button.secondary:hover{background:#fff;border-color:var(--teal);color:var(--teal)}
+    .menu-button{display:none;width:42px;height:42px;border:1px solid var(--line);border-radius:6px;background:transparent;color:var(--ink);font-size:20px}
+    .hero{position:relative;overflow:hidden;background:var(--night);color:white;min-height:600px;display:flex;align-items:center}
+    .hero::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(9,34,40,.92) 0%,rgba(9,42,46,.76) 45%,rgba(9,42,46,.1) 100%),url('/home-assets/hero-campus.jpg') center 48%/cover no-repeat;opacity:.96}
+    .hero::after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,rgba(7,28,32,.38),transparent 46%);pointer-events:none}
+    .hero-content{position:relative;z-index:1;width:min(var(--max),calc(100% - 48px));margin:0 auto;padding:84px 0 94px}
+    .kicker{display:flex;align-items:center;gap:10px;color:#c8e6dc;font-size:11px;font-weight:750;letter-spacing:1.8px;text-transform:uppercase}
+    .kicker::before{content:"";width:26px;height:1px;background:#a9d68e}
+    h1{max-width:700px;margin:23px 0 17px;font-size:clamp(42px,6vw,76px);line-height:1.08;letter-spacing:0;font-weight:780}
+    .hero p{max-width:580px;margin:0;color:#d0dfda;font-size:16px;line-height:1.9}
+    .hero-actions{display:flex;flex-wrap:wrap;gap:11px;margin-top:30px}
+    .hero .button.secondary{color:white;border-color:rgba(255,255,255,.5)}
+    .hero .button.secondary:hover{background:rgba(255,255,255,.12);color:white}
+    .hero-note{display:flex;align-items:center;gap:9px;margin-top:42px;color:#b4c9c4;font-size:11px}
+    .hero-note span{width:7px;height:7px;border-radius:50%;background:#b5d98d;box-shadow:0 0 0 4px rgba(181,217,141,.15)}
+    .hero-index{position:absolute;z-index:1;right:max(24px,calc((100vw - var(--max))/2));bottom:31px;color:rgba(255,255,255,.75);font:11px/1.5 ui-monospace,monospace;letter-spacing:1px}
+    .strip{background:var(--teal);color:white}
+    .strip-inner{display:grid;grid-template-columns:repeat(3,1fr);padding:24px 0}
+    .strip-item{padding:4px 25px;border-left:1px solid rgba(255,255,255,.25)}
+    .strip-item:first-child{border-left:0;padding-left:0}
+    .strip-item strong{display:block;font-size:15px;margin-bottom:3px}
+    .strip-item span{font-size:12px;color:#cce4dd}
+    section.content{padding:90px 0}
+    .section-head{display:flex;justify-content:space-between;align-items:end;gap:24px;margin-bottom:32px}
+    .section-head h2{margin:9px 0 0;font-size:34px;line-height:1.2;letter-spacing:0}
+    .section-head p{max-width:430px;margin:0;color:var(--muted);font-size:13px;line-height:1.8}
+    .eyebrow{color:var(--teal);font-size:10px;font-weight:800;letter-spacing:1.7px;text-transform:uppercase}
+    .platform-grid{display:grid;grid-template-columns:1.12fr .88fr;gap:16px}
+    .platform-card{position:relative;min-height:300px;overflow:hidden;padding:27px;border:1px solid var(--line);border-radius:7px;background:white;display:flex;flex-direction:column;justify-content:space-between}
+    .platform-card.primary{grid-row:span 2;min-height:616px;background:var(--teal-dark);color:white;border-color:var(--teal-dark)}
+    .platform-card.primary::after{content:"";position:absolute;inset:auto -80px -120px 5%;height:390px;background:url('/home-assets/campus-map.png') center/cover no-repeat;opacity:.76;pointer-events:none}
+    .platform-card:not(.primary)::after{content:"";position:absolute;width:180px;height:180px;right:-30px;bottom:-70px;border:1px solid rgba(11,116,111,.18);border-radius:50%;box-shadow:0 0 0 28px rgba(11,116,111,.04),0 0 0 56px rgba(11,116,111,.035)}
+    .card-top,.card-bottom{position:relative;z-index:1}
+    .card-code{font:11px ui-monospace,monospace;opacity:.72}
+    .platform-card h3{max-width:450px;margin:40px 0 9px;font-size:26px;line-height:1.28}
+    .platform-card p{max-width:440px;margin:0;color:var(--muted);font-size:13px;line-height:1.8}
+    .platform-card.primary p{color:#d1e2dd}
+    .card-link{display:inline-flex;align-items:center;gap:12px;margin-top:20px;font-size:13px;font-weight:750}
+    .card-link span{display:grid;place-items:center;width:32px;height:32px;border:1px solid currentColor;border-radius:50%;font-size:16px;transition:transform .2s ease}
+    .card-link:hover span{transform:translateX(4px)}
+    .team{background:#e7ede7}
+    .team-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+    .member{min-height:228px;background:white;border:1px solid rgba(23,43,49,.08);border-radius:6px;padding:19px;display:flex;flex-direction:column;justify-content:space-between}
+    .member-index{color:#8a9b99;font:11px ui-monospace,monospace}
+    .member-mark{width:39px;height:39px;display:grid;place-items:center;border-radius:50%;background:#e3f1e8;color:var(--teal);font-size:15px;font-weight:800}
+    .member h3{font-size:16px;margin:15px 0 3px}
+    .member p{margin:0;color:var(--muted);font-size:11px;line-height:1.7}
+    .team-note{margin-top:16px;color:#718184;font-size:11px}
+    .method-grid{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .method{padding:24px 22px 26px 0;margin-right:22px;border-right:1px solid var(--line)}
+    .method:last-child{border:0;margin:0}
+    .method b{display:block;color:var(--teal);font:12px ui-monospace,monospace}
+    .method h3{margin:23px 0 7px;font-size:17px}
+    .method p{margin:0;color:var(--muted);font-size:12px;line-height:1.8}
+    .footer{background:var(--night);color:white;padding:37px 0 calc(37px + env(safe-area-inset-bottom))}
+    .footer-inner{display:flex;align-items:center;justify-content:space-between;gap:20px}
+    .footer .brand small{color:#a3b8b4}
+    .footer-meta{color:#9eb3af;font-size:11px;text-align:right}
+    @media(max-width:900px){.nav-links{gap:15px}.team-grid{grid-template-columns:repeat(3,1fr)}.platform-card.primary{min-height:565px}.hero{min-height:560px}}
+    @media(max-width:640px){
+      .wrap{width:min(var(--max),calc(100% - 32px))}.topbar{height:62px}.brand img{width:36px;height:36px}.nav-cta{display:none}.menu-button{display:inline-grid;place-items:center}.nav-links{display:none;position:absolute;top:61px;left:0;right:0;padding:12px 16px 16px;background:var(--paper);border-bottom:1px solid var(--line);box-shadow:0 10px 20px rgba(23,43,49,.08);flex-direction:column;align-items:stretch;gap:0}.nav-links.open{display:flex}.nav-links a{padding:12px 5px;border-bottom:1px solid var(--line)}
+      .hero{min-height:610px;align-items:end}.hero::before{background:linear-gradient(90deg,rgba(9,34,40,.9),rgba(9,42,46,.46)),url('/home-assets/hero-campus.jpg') 58% center/cover no-repeat}.hero-content{width:calc(100% - 36px);padding:100px 0 82px}h1{font-size:46px;margin-top:19px}.hero p{font-size:14px}.hero-note{margin-top:30px}.hero-index{right:18px;bottom:18px}
+      .strip-inner{grid-template-columns:1fr;padding:10px 0}.strip-item,.strip-item:first-child{padding:13px 0;border:0;border-bottom:1px solid rgba(255,255,255,.2)}.strip-item:last-child{border-bottom:0}
+      section.content{padding:62px 0}.section-head{display:block;margin-bottom:23px}.section-head h2{font-size:28px}.section-head p{margin-top:12px}.platform-grid{grid-template-columns:1fr}.platform-card,.platform-card.primary{grid-row:auto;min-height:270px;padding:21px}.platform-card.primary{min-height:420px}.platform-card.primary::after{height:250px;bottom:-70px}.platform-card h3{font-size:23px;margin-top:36px}
+      .team-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.member{min-height:195px;padding:15px}.member h3{font-size:15px}.method-grid{grid-template-columns:1fr 1fr}.method{min-height:170px;padding:18px 13px 18px 0;margin-right:13px}.method:nth-child(2){border-right:0;margin-right:0}.method:nth-child(3),.method:nth-child(4){border-top:1px solid var(--line)}.method h3{margin-top:16px;font-size:15px}.footer-inner{align-items:flex-start;flex-direction:column}.footer-meta{text-align:left}
+    }
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition:none!important}}
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <nav class="nav wrap" aria-label="主导航">
+      <a class="brand" href="#top"><img src="/logo.png" alt="微境探界标识"><span>微境探界<small>城市热胁迫遥感与智能诊断</small></span></a>
+      <div class="nav-links" id="navLinks">
+        <a href="#platform">平台入口</a><a href="#team">研究团队</a><a href="#approach">研究路径</a>
+      </div>
+      <a class="nav-cta" href="/monitor">进入监测平台 <span aria-hidden="true">↗</span></a>
+      <button class="menu-button" id="menuButton" type="button" aria-label="打开导航" aria-expanded="false">☰</button>
+    </nav>
+  </header>
+  <main id="top">
+    <section class="hero">
+      <div class="hero-content">
+        <div class="kicker">Urban Heat Stress · Zhengzhou University</div>
+        <h1>看见城市的<br>每一度热</h1>
+        <p>微境探界以郑州大学校园为试点，融合遥感、地面气象观测与空间分析，探索从热环境识别到精细化决策的完整路径。</p>
+        <div class="hero-actions"><a class="button" href="/monitor">进入监测平台 <span aria-hidden="true">↗</span></a><a class="button secondary" href="#platform">了解平台</a></div>
+        <div class="hero-note"><span></span>遥感观测 · 校园微气象 · 空间决策</div>
+      </div>
+      <div class="hero-index">郑州大学主校区 / 研究试点</div>
+    </section>
+    <div class="strip"><div class="wrap strip-inner">
+      <div class="strip-item"><strong>从卫星到街区</strong><span>遥感影像与局地气候分区协同分析</span></div>
+      <div class="strip-item"><strong>从固定站到移动观测</strong><span>补充校园尺度的近地面环境信息</span></div>
+      <div class="strip-item"><strong>从观测到空间决策</strong><span>在地图场景中组织数据与分析结果</span></div>
+    </div></div>
+    <section class="content" id="platform">
+      <div class="wrap">
+        <div class="section-head"><div><div class="eyebrow">Explore the platform</div><h2>从这里进入研究现场</h2></div><p>观测、空间分析与运行维护各有入口，按任务进入对应工作界面。</p></div>
+        <div class="platform-grid">
+          <article class="platform-card primary"><div class="card-top"><span class="card-code">01 / SPATIAL DECISION</span><h3>把校园热环境<br>放回真实空间</h3><p>查看校园空间底图、建筑白模、观测站点与热风险表达，开展场景查看和方案对比。</p></div><div class="card-bottom"><a class="card-link" href="/decision/">打开空间决策看板 <span aria-hidden="true">↗</span></a></div></article>
+          <article class="platform-card"><div class="card-top"><span class="card-code">02 / FIELD OBSERVATION</span><h3>实时气象观测</h3><p>查看传感器状态、气温湿度变化、站点位置与移动巡测记录。</p></div><div class="card-bottom"><a class="card-link" href="/monitor">进入观测工作台 <span aria-hidden="true">↗</span></a></div></article>
+          <article class="platform-card"><div class="card-top"><span class="card-code">03 / DATA & OPERATIONS</span><h3>数据与运行维护</h3><p>访问设备管理、采集日志和服务运行看板。</p></div><div class="card-bottom"><a class="card-link" href="/sensors">打开平台管理 <span aria-hidden="true">↗</span></a></div></article>
+        </div>
+      </div>
+    </section>
+    <section class="content team" id="team">
+      <div class="wrap">
+        <div class="section-head"><div><div class="eyebrow">People behind the research</div><h2>一支跨学科团队</h2></div><p>遥感、气象、工程与健康视角共同参与，让空间数据和现场观测连接到真实问题。</p></div>
+        <div class="team-grid">
+          <article class="member"><div><span class="member-index">01 / LEAD</span><div class="member-mark">董</div></div><div><h3>董少睿</h3><p>项目负责人 · 遥感科学与技术<br>总体统筹 / 智能诊断 / 空间决策</p></div></article>
+          <article class="member"><div><span class="member-index">02 / ENGINEERING</span><div class="member-mark">胡</div></div><div><h3>胡翔宇</h3><p>工程与平台研发<br>物联网 / 系统实现</p></div></article>
+          <article class="member"><div><span class="member-index">03 / HEALTH</span><div class="member-mark">李</div></div><div><h3>李彝巍</h3><p>临床医学方向<br>热健康与医学决策</p></div></article>
+          <article class="member"><div><span class="member-index">04 / ROBOTICS</span><div class="member-mark">吕</div></div><div><h3>吕怡纬</h3><p>工程力学方向<br>移动观测 / 机器人系统</p></div></article>
+          <article class="member"><div><span class="member-index">05 / RESEARCH</span><div class="member-mark">康</div></div><div><h3>康煜</h3><p>遥感与环境研究<br>数据分析 / 学术研究</p></div></article>
+        </div>
+        <div class="team-note">指导教师：胡乔、闫梓宇 · 郑州大学</div>
+      </div>
+    </section>
+    <section class="content" id="approach">
+      <div class="wrap">
+        <div class="section-head"><div><div class="eyebrow">Research framework</div><h2>一条连贯的观测与分析路径</h2></div><p>不同数据源承担不同尺度的信息表达，平台将它们组织在同一研究流程中。</p></div>
+        <div class="method-grid">
+          <article class="method"><b>01 / OBSERVE</b><h3>多源环境观测</h3><p>结合卫星与无人机遥感、固定气象节点和移动观测。</p></article>
+          <article class="method"><b>02 / CHARACTERIZE</b><h3>热环境刻画</h3><p>联系地表覆盖、局地气候分区与近地面气象条件。</p></article>
+          <article class="method"><b>03 / DIAGNOSE</b><h3>风险诊断</h3><p>围绕热暴露及其空间差异组织指标和分析结果。</p></article>
+          <article class="method"><b>04 / DECIDE</b><h3>空间决策支持</h3><p>在校园空间中查看结果并比较规划情景。</p></article>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer class="footer"><div class="wrap footer-inner"><a class="brand" href="#top"><img src="/logo.png" alt=""><span>微境探界<small>郑州大学 · 城市热胁迫遥感与智能诊断</small></span></a><div class="footer-meta">面向研究与教学的校园微气候观测和空间分析平台<br>© 微境探界项目团队</div></div></footer>
+  <script>
+    const menuButton=document.getElementById('menuButton');
+    const navLinks=document.getElementById('navLinks');
+    menuButton.addEventListener('click',()=>{const open=navLinks.classList.toggle('open');menuButton.setAttribute('aria-expanded',String(open));menuButton.setAttribute('aria-label',open?'关闭导航':'打开导航');menuButton.textContent=open?'×':'☰'});
+    navLinks.addEventListener('click',event=>{if(event.target.closest('a')){navLinks.classList.remove('open');menuButton.setAttribute('aria-expanded','false');menuButton.setAttribute('aria-label','打开导航');menuButton.textContent='☰'}});
+  </script>
+</body>
+</html>

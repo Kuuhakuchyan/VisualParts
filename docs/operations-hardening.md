@@ -2,8 +2,9 @@
 
 ## 路由关系
 
-- `/`：IoT 实时监测首页。
-- `/monitor`、`/portal`：统一跳转到实时监测首页。
+- `/`：微境探界公开主页，展示项目定位、团队与平台入口。
+- `/monitor`：IoT 实时监测工作台。
+- `/portal`：兼容旧入口，跳转到公开主页。
 - `/decision/`：Cesium 三维微气候决策平台。
 - `/grafana/`：Grafana 运维看板。
 - `/author/`：Kuuhakuchyan 作者主页。
