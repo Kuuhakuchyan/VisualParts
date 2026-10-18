@@ -2080,3 +2080,10 @@ body {
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* Unified platform navigation without narrowing the map on mobile. */
+#header .header-module-menu { max-width:min(100%,560px); overflow-x:auto; scrollbar-width:thin; }
+#header .header-module-menu a { flex:0 0 auto; }
+@media (max-width:980px) {
+  #header .header-module-menu { width:100%; justify-content:flex-start; }
+}
