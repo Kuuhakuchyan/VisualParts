@@ -9,12 +9,12 @@
   <style>
     :root{--ink:#172b31;--muted:#607277;--line:#d8e1dd;--paper:#f3f6f2;--white:#fff;--teal:#0b746f;--teal-dark:#084d51;--lime:#d9edb4;--coral:#eb7658;--night:#112d33;--max:1220px}
     *{box-sizing:border-box}
-    html{scroll-behavior:smooth;scroll-padding-top:72px;scroll-snap-type:y mandatory}
+    html{scroll-behavior:smooth;scroll-padding-top:72px}
     body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.55}
     a{color:inherit;text-decoration:none}
     button{font:inherit}
     .wrap{width:min(var(--max),calc(100% - 48px));margin-inline:auto}
-    .topbar{height:72px;display:flex;align-items:center;position:sticky;top:0;z-index:20;background:rgba(243,246,242,.92);backdrop-filter:blur(16px);border-bottom:1px solid rgba(23,43,49,.09)}
+    .topbar{height:72px;display:flex;align-items:center;position:sticky;top:0;z-index:20;background:var(--paper);border-bottom:1px solid rgba(23,43,49,.09)}
     .nav{display:flex;align-items:center;justify-content:space-between;gap:24px}
     .brand{display:inline-flex;align-items:center;gap:11px;font-weight:800;letter-spacing:0;white-space:nowrap}
     .brand img{width:42px;height:42px;object-fit:contain;border-radius:50%}
@@ -86,11 +86,32 @@
     .method b{display:block;color:var(--teal);font:12px ui-monospace,monospace}
     .method h3{margin:23px 0 7px;font-size:17px}
     .method p{margin:0;color:var(--muted);font-size:12px;line-height:1.8}
+    .fieldwork{background:#e9f0eb}
+    .fieldwork-grid{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:14px}
+    .fieldwork-card{min-width:0;background:#fff;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+    .fieldwork-card img{display:block;width:100%;height:210px;object-fit:cover}
+    .fieldwork-card.feature img{height:280px;object-position:center 46%}
+    .fieldwork-card-body{padding:20px}
+    .fieldwork-card-body b{color:var(--teal);font:11px ui-monospace,monospace}
+    .fieldwork-card h3{font-size:19px;line-height:1.3;margin:12px 0 8px}
+    .fieldwork-card p{font-size:12px;line-height:1.8;color:var(--muted);margin:0}
+    .fieldwork-note{margin:16px 0 0;color:var(--muted);font-size:11px}
+    .journal-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+    .journal-card{display:block;background:#fff;border:1px solid var(--line);border-radius:7px;overflow:hidden;transition:transform .2s ease,box-shadow .2s ease}
+    .journal-card:hover{transform:translateY(-3px);box-shadow:0 12px 25px rgba(20,56,55,.1)}
+    .journal-card img{display:block;width:100%;height:190px;object-fit:cover}
+    .journal-art{height:190px;padding:22px;background:linear-gradient(125deg,#103f45,#0b746f);display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;color:#d9edb4;font:700 14px ui-monospace,monospace;letter-spacing:1px}
+    .journal-art span{border-bottom:1px solid rgba(217,237,180,.35);width:100%;padding-bottom:5px}
+    .journal-card-body{padding:20px}
+    .journal-card-body b{color:var(--teal);font:11px ui-monospace,monospace}
+    .journal-card h3{font-size:19px;line-height:1.4;margin:12px 0 8px}
+    .journal-card p{font-size:12px;line-height:1.8;color:var(--muted);margin:0}
+    .journal-card .read-more{display:inline-block;margin-top:15px;color:var(--teal);font-size:12px;font-weight:700}
     .footer{background:var(--night);color:white;padding:37px 0 calc(37px + env(safe-area-inset-bottom))}
     .footer-inner{display:flex;align-items:center;justify-content:space-between;gap:20px}
     .footer .brand small{color:#a3b8b4}
     .footer-meta{color:#9eb3af;font-size:11px;text-align:right}
-    .hero,section.content{scroll-snap-align:start;scroll-margin-top:72px}
+    .hero,section.content{scroll-margin-top:72px}
     section.content{position:relative;min-height:calc(100svh - 72px);display:flex;align-items:center}
     section.content>.wrap{width:min(var(--max),calc(100% - 48px))}
     .section-rail{position:fixed;right:18px;top:50%;transform:translateY(-50%);z-index:22;display:flex;flex-direction:column;gap:7px;align-items:end}
@@ -100,6 +121,7 @@
     .section-rail a:hover{color:var(--teal)}
     .section-rail a em{font-style:normal;background:rgba(243,246,242,.9);padding:3px 5px;border-radius:3px}
     .section-rail a:first-child em{background:rgba(13,37,42,.86);color:#e5f5eb}
+    @media(max-width:1380px){.section-rail{display:none}}
     .page-index{position:absolute;right:max(28px,calc((100vw - var(--max))/2));top:30px;color:var(--teal);font:11px ui-monospace,monospace}
     .hero-next{position:absolute;z-index:2;right:max(24px,calc((100vw - var(--max))/2));bottom:70px;width:42px;height:42px;border:1px solid rgba(255,255,255,.65);border-radius:50%;color:white;display:grid;place-items:center;font-size:21px;animation:next-pulse 1.8s ease-in-out infinite}
     @keyframes next-pulse{50%{transform:translateY(6px);border-color:#b9eac6}}
@@ -118,18 +140,17 @@
     .intro-footer{display:flex;justify-content:space-between;margin-top:13px;font:11px ui-monospace,monospace;color:#94b6b0}
     .intro-skip{background:none;border:0;color:#bde8da;cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:4px}
     @keyframes intro-scan{to{top:105%}}@keyframes intro-load{to{width:100%}}
-    .reveal{opacity:0;transform:translateY(24px);transition:opacity .65s ease,transform .65s ease}.reveal.visible{opacity:1;transform:none}
-    .hero::before{transition:transform .35s ease-out;transform:scale(1.035) translate3d(var(--hero-x,0px),var(--hero-y,0px),0)}
+    .reveal{opacity:0;transform:translateY(18px);transition:opacity .5s ease,transform .5s ease}.reveal.visible{opacity:1;transform:none}
     .platform-card{transition:transform .25s ease,box-shadow .25s ease}.platform-card:hover{box-shadow:0 16px 35px rgba(20,56,55,.12);transform:translateY(-4px)}
-    @media(max-width:900px){html{scroll-snap-type:y proximity}.nav-links{gap:15px}.team-grid{grid-template-columns:repeat(2,1fr)}.platform-card.primary{min-height:565px}.hero{min-height:560px}.section-rail{right:7px}.section-rail a em{display:none}}
+    @media(max-width:900px){.nav-links{gap:15px}.team-grid{grid-template-columns:repeat(2,1fr)}.fieldwork-grid,.journal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.fieldwork-card.feature{grid-column:span 2}.platform-card.primary{min-height:565px}.hero{min-height:560px}.section-rail{right:7px}.section-rail a em{display:none}}
     @media(max-width:640px){
-      html{scroll-snap-type:none}.wrap,section.content>.wrap{width:min(var(--max),calc(100% - 32px))}section.content{min-height:0;display:block}.section-rail{display:none}.page-index{right:16px;top:16px}.hero-next{right:18px;bottom:54px;width:34px;height:34px}.topbar{height:62px}.brand img{width:36px;height:36px}.nav-cta{display:none}.menu-button{display:inline-grid;place-items:center}.nav-links{display:none;position:absolute;top:61px;left:0;right:0;padding:12px 16px 16px;background:var(--paper);border-bottom:1px solid var(--line);box-shadow:0 10px 20px rgba(23,43,49,.08);flex-direction:column;align-items:stretch;gap:0}.nav-links.open{display:flex}.nav-links a{padding:12px 5px;border-bottom:1px solid var(--line)}
+      .wrap,section.content>.wrap{width:min(var(--max),calc(100% - 32px))}section.content{min-height:0;display:block}.section-rail{display:none}.page-index{right:16px;top:16px}.hero-next{right:18px;bottom:54px;width:34px;height:34px}.topbar{height:62px}.brand img{width:36px;height:36px}.nav-cta{display:none}.menu-button{display:inline-grid;place-items:center}.nav-links{display:none;position:absolute;top:61px;left:0;right:0;padding:12px 16px 16px;background:var(--paper);border-bottom:1px solid var(--line);box-shadow:0 10px 20px rgba(23,43,49,.08);flex-direction:column;align-items:stretch;gap:0}.nav-links.open{display:flex}.nav-links a{padding:12px 5px;border-bottom:1px solid var(--line)}
       .hero{min-height:610px;align-items:end}.hero::before{background:linear-gradient(90deg,rgba(9,34,40,.9),rgba(9,42,46,.46)),url('/home-assets/campus-scene.webp') 55% center/cover no-repeat}.hero-content{width:calc(100% - 36px);padding:100px 0 82px}h1{font-size:46px;margin-top:19px}.hero p{font-size:14px}.hero-note{margin-top:30px}.hero-index{right:18px;bottom:18px}
       .strip-inner{grid-template-columns:1fr;padding:10px 0}.strip-item,.strip-item:first-child{padding:13px 0;border:0;border-bottom:1px solid rgba(255,255,255,.2)}.strip-item:last-child{border-bottom:0}
       section.content{padding:62px 0}.section-head{display:block;margin-bottom:23px}.section-head h2{font-size:28px}.section-head p{margin-top:12px}.platform-grid{grid-template-columns:1fr}.platform-card,.platform-card.primary{grid-row:auto;min-height:310px;padding:21px}.platform-card.primary{min-height:420px}.platform-card.primary::after{background-position:57% center}.platform-card h3{font-size:23px;margin-top:36px}
-      .team-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.member{min-height:195px;padding:15px}.member h3{font-size:15px}.method-grid{grid-template-columns:1fr 1fr}.method{min-height:170px;padding:18px 13px 18px 0;margin-right:13px}.method:nth-child(2){border-right:0;margin-right:0}.method:nth-child(3),.method:nth-child(4){border-top:1px solid var(--line)}.method h3{margin-top:16px;font-size:15px}.footer-inner{align-items:flex-start;flex-direction:column}.footer-meta{text-align:left}.hero::before{transform:none}.platform-card:hover{transform:none}.demo-caption{bottom:70px}
+      .team-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.member{min-height:195px;padding:15px}.member h3{font-size:15px}.fieldwork-grid,.journal-grid{grid-template-columns:1fr}.fieldwork-card.feature{grid-column:auto}.fieldwork-card img,.fieldwork-card.feature img{height:210px}.journal-card img{height:190px}.method-grid{grid-template-columns:1fr 1fr}.method{min-height:170px;padding:18px 13px 18px 0;margin-right:13px}.method:nth-child(2){border-right:0;margin-right:0}.method:nth-child(3),.method:nth-child(4){border-top:1px solid var(--line)}.method h3{margin-top:16px;font-size:15px}.footer-inner{align-items:flex-start;flex-direction:column}.footer-meta{text-align:left}.platform-card:hover,.journal-card:hover{transform:none}.demo-caption{bottom:70px}
     }
-    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto;scroll-snap-type:none}*,*::before,*::after{transition:none!important;animation:none!important}.intro{display:none}.reveal{opacity:1;transform:none}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition:none!important;animation:none!important}.intro{display:none}.reveal{opacity:1;transform:none}}
   </style>
 </head>
 <body>
@@ -138,13 +159,13 @@
     <nav class="nav wrap" aria-label="主导航">
       <a class="brand" href="#top"><img src="/logo.png" alt="微境探界标识"><span>微境探界<small>城市热胁迫遥感与智能诊断</small></span></a>
       <div class="nav-links" id="navLinks">
-        <a href="#platform">平台入口</a><a href="#team">研究团队</a><a href="#approach">研究路径</a><a href="/author/">项目博客</a>
+        <a href="#platform">平台入口</a><a href="#team">研究团队</a><a href="#approach">研究路径</a><a href="/author/">项目博客</a><a href="#fieldwork">研究现场</a>
       </div>
       <a class="nav-cta" href="/monitor">进入监测平台 <span aria-hidden="true">↗</span></a>
       <button class="menu-button" id="menuButton" type="button" aria-label="打开导航" aria-expanded="false">☰</button>
     </nav>
   </header>
-  <nav class="section-rail" aria-label="页面章节"><a href="#top" class="active" aria-label="第1屏 项目概览"><em>01</em><span></span></a><a href="#platform" aria-label="第2屏 平台入口"><em>02</em><span></span></a><a href="#team" aria-label="第3屏 研究团队"><em>03</em><span></span></a><a href="#approach" aria-label="第4屏 研究路径"><em>04</em><span></span></a></nav>
+  <nav class="section-rail" aria-label="页面章节"><a href="#top" class="active" aria-label="第1屏 项目概览"><em>01</em><span></span></a><a href="#platform" aria-label="第2屏 平台入口"><em>02</em><span></span></a><a href="#fieldwork" aria-label="第3屏 研究现场"><em>03</em><span></span></a><a href="#team" aria-label="第4屏 研究团队"><em>04</em><span></span></a><a href="#approach" aria-label="第5屏 研究路径"><em>05</em><span></span></a><a href="#journal" aria-label="第6屏 项目日志"><em>06</em><span></span></a></nav>
   <main id="top">
     <section class="hero">
       <div class="hero-content">
@@ -173,8 +194,20 @@
         </div>
       </div>
     </section>
+    <section class="content fieldwork" id="fieldwork">
+      <span class="page-index">03 / FIELD NOTES</span>
+      <div class="wrap">
+        <div class="section-head"><div><div class="eyebrow">Research in context</div><h2>研究从现场开始</h2></div><p>从校园地表与建筑环境出发，把遥感视角、近地面观测与空间表达放在同一张研究地图上。</p></div>
+        <div class="fieldwork-grid">
+          <article class="fieldwork-card feature"><img src="/home-assets/campus-lcz.webp" alt="郑州大学校园局地气候分区分类研究图" loading="lazy" decoding="async"><div class="fieldwork-card-body"><b>01 / REMOTE SENSING</b><h3>从遥感影像识别校园肌理</h3><p>以郑州大学校园为试点，利用局地气候分区分类结果观察不同地表和建筑空间的分布。</p></div></article>
+          <article class="fieldwork-card"><img src="/home-assets/field-observation.webp" alt="地面气象观测主题配图" loading="lazy" decoding="async"><div class="fieldwork-card-body"><b>02 / OBSERVATION</b><h3>走近人的感受尺度</h3><p>固定节点与移动巡测互为补充，为近地面微气象变化提供观察视角。</p></div></article>
+          <article class="fieldwork-card"><img src="/home-assets/data-platform.webp" alt="环境数据与平台主题配图" loading="lazy" decoding="async"><div class="fieldwork-card-body"><b>03 / DATA</b><h3>让观测成为可用信息</h3><p>通过设备、日志与空间看板组织数据，支持后续分析、展示和决策讨论。</p></div></article>
+        </div>
+        <p class="fieldwork-note">左图为项目本地遥感分类阶段成果，非实时温度图；其余配图展示观测与平台主题，实时数据请以监测平台为准。</p>
+      </div>
+    </section>
     <section class="content team" id="team">
-      <span class="page-index">03 / TEAM</span>
+      <span class="page-index">04 / TEAM</span>
       <div class="wrap">
         <div class="section-head"><div><div class="eyebrow">People behind the research</div><h2>一支跨学科团队</h2></div><p>遥感、气象、工程与健康视角共同参与，让空间数据和现场观测连接到真实问题。</p></div>
         <div class="team-grid">
@@ -187,7 +220,7 @@
       </div>
     </section>
     <section class="content" id="approach">
-      <span class="page-index">04 / METHOD</span>
+      <span class="page-index">05 / METHOD</span>
       <div class="wrap">
         <div class="section-head"><div><div class="eyebrow">Research framework</div><h2>一条连贯的观测与分析路径</h2></div><p>不同数据源承担不同尺度的信息表达，平台将它们组织在同一研究流程中。</p></div>
         <div class="method-grid">
@@ -195,6 +228,17 @@
           <article class="method"><b>02 / CHARACTERIZE</b><h3>热环境刻画</h3><p>联系地表覆盖、局地气候分区与近地面气象条件。</p></article>
           <article class="method"><b>03 / DIAGNOSE</b><h3>风险诊断</h3><p>围绕热暴露及其空间差异组织指标和分析结果。</p></article>
           <article class="method"><b>04 / DECIDE</b><h3>空间决策支持</h3><p>在校园空间中查看结果并比较规划情景。</p></article>
+        </div>
+      </div>
+    </section>
+    <section class="content" id="journal">
+      <span class="page-index">06 / JOURNAL</span>
+      <div class="wrap">
+        <div class="section-head"><div><div class="eyebrow">Project journal</div><h2>继续阅读项目进展</h2></div><p>项目简介、平台工程与下一阶段计划，按主题进入博客阅读。</p></div>
+        <div class="journal-grid">
+          <a class="journal-card" href="/author/posts/microjie-overview/"><img src="/home-assets/campus-scene.webp" alt="项目空间场景演示画面" loading="lazy" decoding="async"><div class="journal-card-body"><b>01 / PROJECT</b><h3>“微境探界”：城市热胁迫的遥感-AGI仿生智能诊断</h3><p>认识项目关注的问题，以及遥感、微气候观测和智能决策如何连接。</p><span class="read-more">阅读文章 ↗</span></div></a>
+          <a class="journal-card" href="/author/posts/platform-architecture/"><img src="/home-assets/data-platform.webp" alt="微气候平台数据接入与架构主题配图" loading="lazy" decoding="async"><div class="journal-card-body"><b>02 / ENGINEERING</b><h3>微气候平台的当前工程结构</h3><p>了解 MQTT、空间数据库、FastAPI 与看板之间的工程关系。</p><span class="read-more">阅读文章 ↗</span></div></a>
+          <a class="journal-card" href="/author/posts/roadmap-security/"><div class="journal-art" aria-hidden="true"><span>OBSERVE</span><span>DIAGNOSE</span><span>DECIDE</span></div><div class="journal-card-body"><b>03 / ROADMAP</b><h3>下一阶段：安全性、可靠性与平台化补强</h3><p>从演示系统走向可维护的研究平台，梳理接下来需要补齐的工作。</p><span class="read-more">阅读文章 ↗</span></div></a>
         </div>
       </div>
     </section>
@@ -210,12 +254,20 @@
     if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)finishIntro();
     else{window.setTimeout(finishIntro,2100);document.getElementById('introSkip').addEventListener('click',finishIntro);}
     window.setTimeout(finishIntro,3500);
-    if('IntersectionObserver' in window){const observer=new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting){entry.target.classList.add('visible');observer.unobserve(entry.target)}}),{threshold:.08});document.querySelectorAll('.section-head,.platform-card,.member,.method').forEach(element=>{element.classList.add('reveal');observer.observe(element)})}
+    const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if('IntersectionObserver' in window&&!reducedMotion){
+      const observer=new IntersectionObserver(entries=>entries.forEach(entry=>{
+        entry.target.classList.toggle('visible',entry.isIntersecting);
+      }),{rootMargin:'-6% 0px -6% 0px',threshold:0});
+      document.querySelectorAll('.section-head,.platform-card,.fieldwork-card,.journal-card,.member,.method').forEach(element=>{element.classList.add('reveal');observer.observe(element)});
+    }
     const railLinks=[...document.querySelectorAll('.section-rail a')];
     const chapters=[document.querySelector('.hero'),...document.querySelectorAll('section.content')];
-    if('IntersectionObserver' in window){const chapterObserver=new IntersectionObserver(entries=>{entries.forEach(entry=>{if(entry.isIntersecting){const index=chapters.indexOf(entry.target);railLinks.forEach((link,i)=>{link.classList.toggle('active',i===index);if(i===index)link.setAttribute('aria-current','location');else link.removeAttribute('aria-current')});entry.target.classList.add('active-section')}})},{rootMargin:'-35% 0px -35% 0px'});chapters.forEach(chapter=>chapterObserver.observe(chapter))}
+    if('IntersectionObserver' in window){const chapterObserver=new IntersectionObserver(entries=>{entries.forEach(entry=>{
+      entry.target.classList.toggle('active-section',entry.isIntersecting);
+      if(entry.isIntersecting){const index=chapters.indexOf(entry.target);railLinks.forEach((link,i)=>{link.classList.toggle('active',i===index);if(i===index)link.setAttribute('aria-current','location');else link.removeAttribute('aria-current')})}
+    })},{rootMargin:'-35% 0px -35% 0px'});chapters.forEach(chapter=>chapterObserver.observe(chapter))}
     window.addEventListener('keydown',event=>{if(window.innerWidth<=900||event.altKey||event.ctrlKey||event.metaKey||/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)||!['PageDown','PageUp'].includes(event.key))return;const current=chapters.reduce((best,chapter,index)=>Math.abs(chapter.getBoundingClientRect().top-72)<Math.abs(chapters[best].getBoundingClientRect().top-72)?index:best,0);const next=Math.max(0,Math.min(chapters.length-1,current+(event.key==='PageDown'?1:-1)));if(next!==current){event.preventDefault();chapters[next].scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'})}});
-    if(window.matchMedia('(hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference)').matches){const hero=document.querySelector('.hero');hero.addEventListener('pointermove',event=>{const rect=hero.getBoundingClientRect();hero.style.setProperty('--hero-x',((event.clientX-rect.left)/rect.width-.5)*-14+'px');hero.style.setProperty('--hero-y',((event.clientY-rect.top)/rect.height-.5)*-10+'px')});hero.addEventListener('pointerleave',()=>{hero.style.setProperty('--hero-x','0px');hero.style.setProperty('--hero-y','0px')})}
   </script>
 </body>
 </html>
