@@ -24,16 +24,24 @@
       微境探界
       <span>校园微气象热风险决策平台</span>
     </div>
+    <details class="mobile-platform-menu">
+      <summary aria-label="展开平台导航">☰ <span>导航</span></summary>
+      <nav aria-label="手机平台导航">
+        <a href="/">项目主页</a><a href="/monitor">实时监测</a>
+        <a href="/sensors">传感器</a><a href="/logs">数据日志</a>
+        <a href="/grafana/">运维看板</a>
+      </nav>
+    </details>
 
     <div class="header-center">
       <div class="header-stat">
         气温 <span class="val" id="header-temp">--.-</span>
       </div>
       <div class="header-stat">
-        热胁迫 <span class="val" id="header-uhi">--.-</span>
+        湿度 <span class="val" id="header-humidity">--</span>
       </div>
       <div class="header-stat">
-        数据源 <span class="val">IoT/API</span>
+        数据源 <span class="val" id="header-source">连接中</span>
       </div>
     </div>
 
@@ -53,25 +61,27 @@
         <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.5"/><line x1="6" y1="2" x2="6" y2="10" stroke="currentColor" stroke-width="1.5"/><line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" stroke-width="1.5"/></svg>
         巡测
       </button>
-      <div class="status-badge ok" id="backend-status">
+      <div class="status-badge warn" id="backend-status">
         <span class="dot"></span>
-        后端连接正常
+        天气数据连接中
       </div>
       <span id="header-time" style="font-family:monospace;font-size:12px;color:#5a8aaa;">--</span>
     </div>
   </header>
+  <div class="weather-provenance" id="weather-provenance" role="status" aria-live="polite">郑州市中原区附近 · 天气数据加载中</div>
 
   <!-- ════════════════ LEFT PANEL ════════════════ -->
   <aside id="left-panel" class="panel">
-    <div class="panel-title">微气象实时态势</div>
+    <div class="panel-title">中原区附近 · 当前天气估计</div>
+    <p id="weather-empty" class="weather-empty">正在获取天气数据…</p>
 
-    <!-- 10个仪表盘（按规范排列：2列grid） -->
-    <div class="gauge-grid" id="weather-gauges">
+    <!-- 当前天气仪表盘 -->
+    <div class="gauge-grid" id="weather-gauges" hidden>
       <!-- Row 1 -->
       <div class="gauge-wrap" id="g-temp"></div>
       <div class="gauge-wrap" id="g-humid"></div>
       <!-- Row 2 -->
-      <div class="gauge-wrap" id="g-surftemp"></div>
+      <div class="gauge-wrap" id="g-apparent"></div>
       <div class="gauge-wrap" id="g-pressure"></div>
       <!-- Row 3 -->
       <div class="gauge-wrap" id="g-windspeed"></div>
@@ -80,10 +90,6 @@
       <div class="gauge-wrap span-2" id="g-compass"></div>
       <!-- Row 5 -->
       <div class="gauge-wrap" id="g-radiation"></div>
-      <div class="gauge-wrap" id="g-uhi"></div>
-      <!-- Row 6 -->
-      <div class="gauge-wrap" id="g-aqi"></div>
-      <div class="gauge-wrap" id="g-comfort"></div>
     </div>
 
     <div class="panel-title" style="margin-top:8px;">空间推演统计</div>
@@ -113,18 +119,20 @@
       <strong id="model-status-count">--</strong>
     </div>
 
-    <div id="weather-ribbon" class="weather-ribbon" aria-label="气象决策提示">
-      <div class="ribbon-item"><span>主视图</span><strong>热场诊断</strong></div>
-      <div class="ribbon-item"><span>观测链路</span><strong>IoT 站点</strong></div>
+    <div id="weather-ribbon" class="weather-ribbon" aria-label="场景提示">
+      <div class="ribbon-item"><span>主视图</span><strong>热场演示</strong></div>
+      <div class="ribbon-item"><span>图层</span><strong>站点示意</strong></div>
       <div class="ribbon-item"><span>推演目标</span><strong>降温 / 通风</strong></div>
     </div>
 
     <!-- 横向时序图 -->
-    <div id="timeseries-bar" class="panel">
+    <div id="timeseries-bar" class="panel" hidden>
       <div class="panel-title">24h 时序监测</div>
       <div id="timeseries-chart"></div>
     </div>
 
+    <button id="mobile-controls-toggle" class="mobile-map-toggle" type="button" aria-expanded="false" aria-controls="control-bar">推演工具</button>
+    <button id="mobile-layers-toggle" class="mobile-map-toggle" type="button" aria-expanded="false" aria-controls="gis-layer-panel">地图图层</button>
     <!-- 决策控制栏 -->
     <div id="control-bar">
       <select id="ctrl-type" style="background:rgba(0,100,200,0.1);border:1px solid var(--color-border);border-radius:14px;color:var(--color-text);font-size:12px;padding:4px 8px;outline:none;">
@@ -158,7 +166,7 @@
 
     <!-- 热力图色带图例 -->
     <div id="heatmap-legend" style="position:absolute;bottom:220px;right:16px;background:rgba(10,30,60,0.88);border:1px solid rgba(0,180,255,0.3);border-radius:8px;padding:8px 12px;backdrop-filter:blur(12px);z-index:50;display:none;">
-      <div style="font-size:11px;color:#5a8aaa;margin-bottom:6px;letter-spacing:1px;">热岛强度</div>
+      <div style="font-size:11px;color:#5a8aaa;margin-bottom:6px;letter-spacing:1px;">演示热场 · 非实测</div>
       <div id="legend-gradient" style="width:140px;height:14px;border-radius:3px;background:linear-gradient(to right,rgb(0,0,139),rgb(0,139,139),rgb(0,255,0),rgb(255,255,0),rgb(255,0,0));margin-bottom:4px;"></div>
       <div style="display:flex;justify-content:space-between;font-size:10px;color:#5a8aaa;">
         <span>冷岛</span><span>热岛</span>
@@ -168,7 +176,7 @@
 
   <!-- ════════════════ RIGHT PANEL ════════════════ -->
   <aside id="right-panel" class="panel">
-    <div class="panel-title">热胁迫与健康风险</div>
+    <div class="panel-title">场景推演与巡测</div>
 
     <!-- 追踪面板 -->
     <div id="tracking-panel" style="padding:8px;">
@@ -177,7 +185,7 @@
     </div>
 
     <!-- 健康风险卡片 -->
-    <div id="health-indicators">
+    <div id="health-indicators" hidden>
       <div class="health-card" id="hi-aqi">
         <div class="health-card-header">
           <span class="health-card-name hi-name">空气质量指数</span>
@@ -265,31 +273,13 @@
       <div style="font-size:12px;color:#5a8aaa;text-align:center;padding:12px 0;">暂无已保存的场景</div>
     </div>
 
-    <div class="panel-title">环境综合指数</div>
-    <div style="padding:8px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px dashed rgba(0,180,255,0.08);">
-        <span style="font-size:12px;color:#5a8aaa;">UHI强度</span>
-        <span style="font-family:monospace;font-size:14px;color:#ffcc00;">3.2°C</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px dashed rgba(0,180,255,0.08);">
-        <span style="font-size:12px;color:#5a8aaa;">热岛等级</span>
-        <span style="font-size:12px;color:#ffcc00;">中等</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px dashed rgba(0,180,255,0.08);">
-        <span style="font-size:12px;color:#5a8aaa;">总体评价</span>
-        <span style="font-size:12px;color:#00ff88;">良好</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;">
-        <span style="font-size:12px;color:#5a8aaa;">决策建议</span>
-        <span style="font-size:12px;color:#b3e0ff;">合理规划</span>
-      </div>
-    </div>
+    <p class="scenario-disclaimer">地图热场、站点树与空间推演为演示内容，不代表实时观测或实测热岛强度。</p>
   </aside>
 
   <!-- ════════════════ FOOTER ════════════════ -->
   <footer id="footer">
     <div class="footer-left">
-      <span>数据源: <strong style="color:#00b4ff;">IoT/API + 空间推演</strong></span>
+      <span>天气: <strong style="color:#00b4ff;">Open-Meteo 模型估计</strong></span>
       <span>|</span>
       <span>更新: <span id="footer-updated">--:--:--</span></span>
       <span>|</span>

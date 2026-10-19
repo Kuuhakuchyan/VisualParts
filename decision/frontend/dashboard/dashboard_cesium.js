@@ -147,7 +147,7 @@ export class MicroClimateDashboard {
     this._weatherPanels   = new WeatherPanels();
     this._healthPanel     = new HealthPanel();
     this._reasoningPanel  = new ReasoningPanel();
-    this._timeseries     = new EChartsTimeseries();
+    // 历史序列尚未接入实测数据，避免生成随机曲线冒充监测结果。
     this._trackingPanel  = new TrackingPanel();
     this._trackingMapWindow = new TrackingMapWindow();
     this._trackingMapWindow.init();
@@ -177,20 +177,17 @@ export class MicroClimateDashboard {
       const res = await apiGetWeather();
       console.debug("[Dashboard] _fetchWeatherData res:", res);
       if (res && res.success && res.data) {
+        document.getElementById("weather-gauges").hidden = false;
+        document.getElementById("weather-empty").hidden = true;
         this._weatherPanels?.update(res.data);
-        this._healthPanel?.update(res.data);
-        this._updateHeaderStats(res.data);
+        this._updateHeaderStats(res);
       } else {
-        console.warn("[Dashboard] 气象数据获取失败，尝试兜底数据", res);
-        this._healthPanel?.update({
-          aqi: 62, heatHealthRisk: 70, visibility: 12, uvIndex: 6, aod: 0.35, precipitation: 0,
-        });
+        console.warn("[Dashboard] 气象数据获取失败", res);
+        this._clearWeatherHeader();
       }
     } catch (e) {
       console.warn("[Dashboard] 气象数据获取失败:", e);
-      this._healthPanel?.update({
-        aqi: 62, heatHealthRisk: 70, visibility: 12, uvIndex: 6, aod: 0.35, precipitation: 0,
-      });
+      this._clearWeatherHeader();
     }
     await this._updateStats();
   }
@@ -568,11 +565,33 @@ export class MicroClimateDashboard {
     setInterval(tick, 1000);
   }
 
-  _updateHeaderStats(data) {
+  _updateHeaderStats(result) {
+    const data = result.data;
     const tempEl = document.getElementById("header-temp");
-    const uhiEl  = document.getElementById("header-uhi");
-    if (tempEl) tempEl.textContent = `${(data.temperature ?? 0).toFixed(1)}°C`;
-    if (uhiEl)  uhiEl.textContent  = `${(data.uhiIntensity ?? 0).toFixed(1)}°C`;
+    const humidityEl = document.getElementById("header-humidity");
+    if (tempEl) tempEl.textContent = Number.isFinite(data.temperature) ? data.temperature.toFixed(1) + "°C" : "--";
+    if (humidityEl) humidityEl.textContent = Number.isFinite(data.humidity) ? Math.round(data.humidity) + "%" : "--";
+    document.getElementById("header-source").textContent = "Open-Meteo";
+    const observed = result.observedAt ? new Date(result.observedAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false }) : "未知";
+    document.getElementById("weather-provenance").textContent = (result.location || "郑州市中原区附近") + " · Open-Meteo 网格模型估计，非校园站点实测 · 数据时间：" + observed;
+    document.getElementById("footer-updated").textContent = observed;
+    const status = document.getElementById("backend-status");
+    status.className = "status-badge ok";
+    status.innerHTML = '<span class="dot"></span>天气数据已更新';
+  }
+
+  _clearWeatherHeader() {
+    document.getElementById("weather-gauges").hidden = true;
+    document.getElementById("weather-empty").hidden = false;
+    document.getElementById("weather-empty").textContent = "天气服务暂不可用，请稍后重试。";
+    document.getElementById("header-temp").textContent = "--";
+    document.getElementById("header-humidity").textContent = "--";
+    document.getElementById("header-source").textContent = "暂不可用";
+    document.getElementById("weather-provenance").textContent = "郑州市中原区附近 · 天气服务暂不可用，未使用模拟值替代";
+    document.getElementById("footer-updated").textContent = "--";
+    const status = document.getElementById("backend-status");
+    status.className = "status-badge warn";
+    status.innerHTML = '<span class="dot"></span>天气数据暂不可用';
   }
 
   // =======================================================================

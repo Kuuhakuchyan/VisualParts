@@ -57,6 +57,7 @@ export class MicroClimateDashboard {
   }
 
   async init() {
+    this._bindMobileMapControls();
     if (this._isCesiumMode()) {
       document.documentElement.classList.add("mode-3d");
       this._setLoadingText("微境探界 · 高级三维模式初始化中...");
@@ -91,6 +92,27 @@ export class MicroClimateDashboard {
     this._notifyReady();
   }
 
+  _bindMobileMapControls() {
+    const pairs = [
+      ["mobile-controls-toggle", "control-bar"],
+      ["mobile-layers-toggle", "gis-layer-panel"],
+    ];
+    pairs.forEach(([buttonId, panelId]) => {
+      document.getElementById(buttonId)?.addEventListener("click", () => {
+        const button = document.getElementById(buttonId);
+        const panel = document.getElementById(panelId);
+        if (!panel) return;
+        const open = button.getAttribute("aria-expanded") !== "true";
+        pairs.forEach(([otherButtonId, otherPanelId]) => {
+          document.getElementById(otherButtonId)?.setAttribute("aria-expanded", "false");
+          document.getElementById(otherPanelId)?.classList.remove("is-open");
+        });
+        button.setAttribute("aria-expanded", String(open));
+        panel.classList.toggle("is-open", open);
+      });
+    });
+  }
+
   _isCesiumMode() {
     const params = new URLSearchParams(window.location.search);
     return params.get("mode") === "3d" || window.location.hash === "#3d";
@@ -104,7 +126,7 @@ export class MicroClimateDashboard {
     if (brandSub) brandSub.textContent = "校园热胁迫监测 / 空间推演";
 
     const sourceEl = document.querySelector(".header-center .header-stat:nth-child(3) .val");
-    if (sourceEl) sourceEl.textContent = "IoT/API";
+    if (sourceEl) sourceEl.textContent = "连接中";
 
     const btnStreet = document.getElementById("ctrl-street");
     const btnSat = document.getElementById("ctrl-satellite");
@@ -127,7 +149,7 @@ export class MicroClimateDashboard {
       <div id="gis-mode-panel" class="gis-mode-panel">
         <div>
           <div class="gis-mode-title">气象空间推演模式</div>
-          <div class="gis-mode-meta">热风险 / 白模 / 站点 / 巡测</div>
+          <div class="gis-mode-meta">热场演示 / 白模 / 站点示意 / 巡测</div>
         </div>
         <button id="ctrl-advanced-3d" class="ctrl-btn primary" type="button">高级 3D</button>
       </div>
@@ -146,8 +168,8 @@ export class MicroClimateDashboard {
     center.insertAdjacentHTML("beforeend", `
       <div id="gis-layer-panel" class="gis-layer-panel">
         <label><input type="checkbox" data-layer-toggle="buildings" checked /> 建筑白模</label>
-        <label><input type="checkbox" data-layer-toggle="heat" checked /> 热风险</label>
-        <label><input type="checkbox" data-layer-toggle="sensors" checked /> 气象站点</label>
+        <label><input type="checkbox" data-layer-toggle="heat" checked /> 热场演示</label>
+        <label><input type="checkbox" data-layer-toggle="sensors" checked /> 站点示意</label>
         <label><input type="checkbox" data-layer-toggle="tracking" checked /> 移动巡测</label>
       </div>
     `);
@@ -170,7 +192,7 @@ export class MicroClimateDashboard {
     this._weatherPanels = new WeatherPanels();
     this._healthPanel = new HealthPanel();
     this._reasoningPanel = new ReasoningPanel();
-    this._timeseries = new EChartsTimeseries();
+    // 历史序列尚未接入实测数据，避免生成随机曲线冒充监测结果。
     this._trackingPanel = new TrackingPanel();
 
     const modal = document.getElementById("building-detail-modal");
@@ -600,18 +622,19 @@ export class MicroClimateDashboard {
     try {
       const res = await apiGetWeather();
       if (res?.success && res.data) {
+        document.getElementById("weather-gauges").hidden = false;
+        document.getElementById("weather-empty").hidden = true;
         this._weatherPanels?.update(res.data);
-        this._healthPanel?.update(res.data);
-        this._updateHeaderStats(res.data);
+        this._updateHeaderStats(res);
         this._setBackendStatus(true);
       } else {
         this._setBackendStatus(false);
-        this._applyFallbackHealth();
+        this._clearWeatherHeader();
       }
     } catch (error) {
       console.warn("[GIS] 气象数据获取失败:", error);
       this._setBackendStatus(false);
-      this._applyFallbackHealth();
+      this._clearWeatherHeader();
     }
     await this._updateStats();
   }
@@ -1140,28 +1163,32 @@ export class MicroClimateDashboard {
     this._clockTimer = window.setInterval(tick, 1000);
   }
 
-  _updateHeaderStats(data) {
-    this._setText("header-temp", `${(data.temperature ?? 0).toFixed(1)}°C`);
-    this._setText("header-uhi", `${(data.uhiIntensity ?? 0).toFixed(1)}°C`);
-    this._setText("footer-updated", new Date().toLocaleTimeString("zh-CN", { hour12: false }));
+  _updateHeaderStats(result) {
+    const data = result.data;
+    this._setText("header-temp", Number.isFinite(data.temperature) ? data.temperature.toFixed(1) + "°C" : "--");
+    this._setText("header-humidity", Number.isFinite(data.humidity) ? Math.round(data.humidity) + "%" : "--");
+    this._setText("header-source", "Open-Meteo");
+    const observed = result.observedAt ? new Date(result.observedAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false }) : "未知";
+    this._setText("footer-updated", observed);
+    this._setText("weather-provenance", (result.location || "郑州市中原区附近") + " · Open-Meteo 网格模型估计，非校园站点实测 · 数据时间：" + observed);
   }
 
-  _applyFallbackHealth() {
-    this._healthPanel?.update({
-      aqi: 62,
-      heatHealthRisk: 70,
-      visibility: 12,
-      uvIndex: 6,
-      aod: 0.35,
-      precipitation: 0,
-    });
+  _clearWeatherHeader() {
+    document.getElementById("weather-gauges").hidden = true;
+    document.getElementById("weather-empty").hidden = false;
+    document.getElementById("weather-empty").textContent = "天气服务暂不可用，请稍后重试。";
+    this._setText("header-temp", "--");
+    this._setText("header-humidity", "--");
+    this._setText("header-source", "暂不可用");
+    this._setText("footer-updated", "--");
+    this._setText("weather-provenance", "郑州市中原区附近 · 天气服务暂不可用，未使用模拟值替代");
   }
 
   _setBackendStatus(online) {
     const el = document.getElementById("backend-status");
     if (!el) return;
     el.className = `status-badge ${online ? "ok" : "warn"}`;
-    el.innerHTML = `<span class="dot"></span>${online ? "后端连接正常" : "后端降级运行"}`;
+    el.innerHTML = '<span class="dot"></span>' + (online ? "天气数据已更新" : "天气数据暂不可用");
   }
 
   _getRadiusMeters() {

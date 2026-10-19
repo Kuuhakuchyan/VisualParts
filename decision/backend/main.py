@@ -1,7 +1,4 @@
-"""
-微境智护 — FastAPI 后端（Mock 数据版）
-端口 3000
-"""
+"""微境探界 — 决策推演 API；天气取自 Open-Meteo，空间推演仍属演示。"""
 
 import json
 import logging
@@ -13,6 +10,7 @@ import sqlite3
 import tempfile
 import threading
 import time
+import httpx
 from collections import defaultdict, deque
 from datetime import datetime
 from pathlib import Path
@@ -56,7 +54,7 @@ def _env_float(name: str, default: float) -> float:
 APP_VERSION = os.getenv("APP_VERSION", "0.1.0-DEMO")
 RATE_LIMIT_PER_MINUTE = _env_int("DECISION_RATE_LIMIT_PER_MINUTE", 240)
 WRITE_RATE_LIMIT_PER_MINUTE = _env_int("DECISION_WRITE_RATE_LIMIT_PER_MINUTE", 60)
-WEATHER_CACHE_SECONDS = _env_float("DECISION_WEATHER_CACHE_SECONDS", 3.0)
+WEATHER_CACHE_SECONDS = _env_float("DECISION_WEATHER_CACHE_SECONDS", 120.0)
 TRACKING_CACHE_SECONDS = _env_float("DECISION_TRACKING_CACHE_SECONDS", 0.8)
 
 # =============================================================================
@@ -66,7 +64,7 @@ TRACKING_CACHE_SECONDS = _env_float("DECISION_TRACKING_CACHE_SECONDS", 0.8)
 app = FastAPI(
     title="微境探界 — 城市微气候决策支持系统",
     version=APP_VERSION,
-    description="Mock 数据版后端，供 Demo 前端调用 What-If 推演接口",
+    description="提供空间推演演示接口，以及标明来源的区域天气估计",
 )
 
 ALLOWED_ORIGINS = [
@@ -258,6 +256,9 @@ class WeatherResponse(BaseModel):
     success: bool
     data: dict
     source: str
+    message: Optional[str] = None
+    observedAt: Optional[str] = None
+    location: Optional[str] = None
 
 
 # =============================================================================
@@ -631,20 +632,52 @@ async def operational_health():
 
 @app.get("/api/weather/current", response_model=WeatherResponse, tags=["weather"])
 async def get_current_weather(response: Response):
-    """当前气象数据（每分钟微小波动）"""
+    """中原区附近的 Open-Meteo 模型估计；不是校园站点实测。"""
     cached = _cache_get("weather.current", WEATHER_CACHE_SECONDS)
     if cached:
-        response.headers["Cache-Control"] = f"public, max-age={max(1, int(WEATHER_CACHE_SECONDS))}"
+        response.headers["Cache-Control"] = "no-store"
         return cached
-
-    data = get_mock_weather(BASE_WEATHER)
-    payload = WeatherResponse(
-        success=True,
-        data=data,
-        source="Mock-API",
-    )
-    _cache_set("weather.current", payload, WEATHER_CACHE_SECONDS)
-    response.headers["Cache-Control"] = f"public, max-age={max(1, int(WEATHER_CACHE_SECONDS))}"
+    response.headers["Cache-Control"] = "no-store"
+    params = {
+        "latitude": 34.75,
+        "longitude": 113.61,
+        "current": "temperature_2m,relative_humidity_2m,apparent_temperature,surface_pressure,wind_speed_10m,wind_direction_10m,precipitation,shortwave_radiation",
+        "wind_speed_unit": "ms",
+        "timezone": "Asia/Shanghai",
+        "forecast_days": 1,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            upstream = await client.get("https://api.open-meteo.com/v1/forecast", params=params)
+            upstream.raise_for_status()
+            upstream_data = upstream.json()
+            current = upstream_data["current"]
+        required = ("temperature_2m", "relative_humidity_2m", "time")
+        if any(current.get(field) is None for field in required):
+            raise ValueError("missing required current weather fields")
+        fields = {
+            "temperature": "temperature_2m",
+            "humidity": "relative_humidity_2m",
+            "apparentTemperature": "apparent_temperature",
+            "pressure": "surface_pressure",
+            "windSpeed": "wind_speed_10m",
+            "windDirection": "wind_direction_10m",
+            "precipitation": "precipitation",
+            "solarRadiation": "shortwave_radiation",
+        }
+        data = {key: current[value] for key, value in fields.items() if current.get(value) is not None}
+        grid_lat = upstream_data["latitude"]
+        grid_lon = upstream_data["longitude"]
+        payload = WeatherResponse(
+            success=True, data=data, source="Open-Meteo model",
+            location=f"郑州市中原区附近网格（{grid_lat:.3f}°N, {grid_lon:.3f}°E）",
+            observedAt=f"{current['time']}+08:00",
+            message="网格模型估计，非校园站点实测；热岛强度、AQI 等无可靠数据时不显示。",
+        )
+        _cache_set("weather.current", payload, WEATHER_CACHE_SECONDS)
+    except (httpx.HTTPError, KeyError, ValueError, TypeError) as exc:
+        logger.warning("Open-Meteo weather unavailable: %s", exc)
+        payload = WeatherResponse(success=False, data={}, source="Open-Meteo model", message="天气服务暂不可用")
     return payload
 
 
