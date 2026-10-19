@@ -5,7 +5,7 @@ export const announcementConfig: AnnouncementConfig = {
 	title: "公告",
 
 	// 公告内容
-	content: "作者主页正在随项目迭代更新，当前已接入微气候数据平台与 Grafana 看板。",
+	content: "持续记录校园热环境观测、遥感分析与平台研发进展。",
 
 	// 是否允许用户关闭公告
 	closable: true,

@@ -6,22 +6,22 @@ const SITE_LANG = "zh_CN";
 
 export const siteConfig: SiteConfig = {
 	// 站点标题
-	title: "Kuuhakuchyan",
+	title: "微境探界研究日志",
 
 	// 站点副标题
-	subtitle: "个人主页 · 项目作品与技术记录",
+	subtitle: "遥感观测 · 校园微气候 · 空间决策",
 
 	// 站点 URL
 	site_url: "https://weather.nogamenolife.cn/author/",
 
 	// 站点描述
 	description:
-		"Kuuhakuchyan 的个人主页，整理项目作品、研究记录、软件工程实践，以及“微境探界”等城市热环境与微气候方向作品。",
+		"微境探界项目研究日志，记录城市热胁迫遥感诊断、校园微气候观测、平台研发与空间决策实践。",
 
 	// 站点关键词
 	keywords: [
-		"Kuuhakuchyan",
-		"个人主页",
+		"微境探界研究日志",
+		"项目博客",
 		"项目作品",
 		"遥感",
 		"微气候",
@@ -56,7 +56,7 @@ export const siteConfig: SiteConfig = {
 	favicon: [
 		{
 			// 图标文件路径
-			src: "/favicon/favicon.ico",
+			src: "/favicon/platform.png",
 			// 可选，指定主题 'light' | 'dark'
 			// theme: "light",
 			// 可选，图标大小
@@ -74,11 +74,11 @@ export const siteConfig: SiteConfig = {
 		// 4. 网络图片: { type: "url", value: "https://example.com/logo.png", alt: "Logo" }
 		logo: {
 			type: "image",
-			value: "assets/images/firefly.png",
-			alt: "Kuuhakuchyan",
+			value: "assets/images/platform-logo.png",
+			alt: "微境探界",
 		},
 		// 导航栏标题
-		title: "Kuuhakuchyan",
+		title: "研究日志",
 		// 全宽导航栏，导航栏是否占满屏幕宽度
 		widthFull: false,
 		// 导航菜单对齐方式，left：左对齐，center：居中
@@ -125,7 +125,7 @@ export const siteConfig: SiteConfig = {
 		// 默认布局模式："list" 列表模式（单列布局），"grid" 网格模式（多列布局）
 		defaultMode: "list",
 		// 移动端默认布局模式，不设置则跟随 defaultMode
-		mobileDefaultMode: "grid",
+		mobileDefaultMode: "list",
 		// 文章简介显示行数，设为 0 则不截断
 		descriptionLines: 2,
 		// 文章卡片底部统计和发布日期是否显示图标

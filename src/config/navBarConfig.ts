@@ -8,12 +8,12 @@ import {
 const getDynamicNavBarConfig = (): NavBarConfig => {
 	const links: NavBarLink[] = [
 		{
-			name: "主页",
+			name: "研究日志",
 			url: "/",
 			icon: "material-symbols:home",
 		},
 		{
-			name: "札记",
+			name: "文章",
 			url: "#",
 			icon: "material-symbols:article",
 			children: [
@@ -35,21 +35,15 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 			],
 		},
 		{
-			name: "关于",
+			name: "关于项目",
 			url: "/about/",
 			icon: "material-symbols:person",
 		},
 		{
-			name: "微境探界平台",
+			name: "返回平台",
 			url: "https://weather.nogamenolife.cn/",
 			external: true,
 			icon: "material-symbols:dashboard",
-		},
-		{
-			name: "Firefly",
-			url: "https://github.com/CuteLeaf/Firefly",
-			external: true,
-			icon: "fa7-brands:github",
 		},
 	];
 

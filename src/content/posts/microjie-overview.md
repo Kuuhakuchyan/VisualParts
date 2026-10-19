@@ -6,11 +6,13 @@ pinned: true
 description: 项目面向城市热胁迫识别与微气候决策，尝试把遥感、物联网传感器、空间数据库和智能诊断方法组织成一套可持续迭代的平台。
 tags: [微境探界, 城市热胁迫, 遥感, AGI, 微气候]
 category: 项目简介
-image: ../../assets/images/DesktopWallpaper/microjie-desktop.webp
-author: Kuuhakuchyan
+image: ../../assets/images/campus-scene.webp
+author: 微境探界项目团队
 ---
 
 “微境探界”关注的是城市尺度下更细微、更贴近人的热环境差异。传统热环境分析往往依赖单一遥感影像或站点观测，而真实街区中的热暴露会受到建筑形态、地表材质、植被、水体、风环境和人的移动路径共同影响。
+
+配图为平台空间场景演示，画面中的部分观测指标使用模拟数据，不代表当前实时监测结果。
 
 项目希望把三类能力接到一起：
 

@@ -41,6 +41,7 @@ const posterSrc = url("/media/tsunade/preview.gif");
 		const sleepButton = mascot.querySelector<HTMLButtonElement>('[data-tsunade-action="sleep"]');
 
 		function syncPausedState() {
+			if (!mascot || !video) return;
 			mascot.classList.toggle("is-paused", video.paused);
 		}
 
