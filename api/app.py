@@ -370,7 +370,7 @@ async def author_homepage():
 
 @app.get("/home-assets/{asset_name}")
 async def home_asset(asset_name: str):
-    if asset_name not in {"hero-campus.jpg", "campus-map.png"}:
+    if asset_name not in {"hero-campus.jpg", "campus-map.png", "spatial-decision.png", "campus-scene.webp"}:
         raise HTTPException(status_code=404, detail="asset not found")
     return FileResponse(BASE_DIR / "static" / "home" / asset_name)
 
