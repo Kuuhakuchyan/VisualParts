@@ -5,7 +5,7 @@ updated: 2026-07-29
 description: 项目后续需要补齐高并发、逆向工程防护、接口鉴权、日志审计、备份恢复和自动化部署等软件工程细节。
 tags: [安全性, 高并发, 可靠性, 软件工程, 平台化]
 category: 研发计划
-image: ../../assets/images/spatial-decision.png
+image: ../../assets/images/research-roadmap.webp
 author: 微境探界项目团队
 ---
 

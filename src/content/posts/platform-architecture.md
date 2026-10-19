@@ -6,13 +6,13 @@ pinned: true
 description: 当前平台由 MQTT 接入、数据桥接、PostgreSQL/PostGIS/TimescaleDB、FastAPI 和 Grafana 组成，已经具备轻量化线上运行能力。
 tags: [IoT, FastAPI, PostgreSQL, Grafana, Docker]
 category: 平台工程
-image: ../../assets/images/spatial-decision.png
+image: ../../assets/images/data-platform.webp
 author: 微境探界项目团队
 ---
 
 当前 `weather` 平台是一套轻量但可扩展的物联网数据系统。设备侧通过 MQTT 上报传感数据，桥接服务负责清洗并写入数据库，FastAPI 对外提供查询接口和基础页面，Grafana 用于指标看板展示。
 
-配图为早期空间平台演示画面，其中部分观测指标使用模拟数据。
+配图展示项目的数据接入、时空数据管理与平台架构流程；图中界面为阶段性演示画面。
 
 上线后的关键工程状态包括：
 
