@@ -1,5 +1,6 @@
 "use strict";
 const API = "/api/weather/aic";
+let workspaceSite = new URLSearchParams(location.search).get("site") === "campus" ? "campus" : "zhongyuan";
 const $ = (id) => document.getElementById(id);
 const redFlags = new Set(["confusion", "unconscious", "slurred_speech", "seizure", "fainting"]);
 let observation = null;
@@ -33,11 +34,11 @@ async function loadWeather() {
   weatherController?.abort(); weatherController = new AbortController();
   const controller = weatherController; observation = null; invalidate();
   text("temperature", "—"); text("humidity", "—"); text("observed-at", "—"); text("provider", "—");
-  text("location", "中原区附近网格"); text("quality-note", "区域网格估计，非校园站点实测。");
+  text("location", workspaceSite === "campus" ? "校园周边网格" : "中原区附近网格"); text("quality-note", "区域网格估计，非校园站点实测。");
   text("weather-state", currentMode === "history" ? "正在获取2024年历史资料…" : "正在获取区域当前天气…");
   $("raw-download").disabled = true; $("refresh").disabled = true;
   try {
-    const result = await request(`${API}/observations/current?mode=${currentMode}`, { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(18000)]) });
+    const result = await request(`${API}/observations/current?mode=${currentMode}&site=${workspaceSite}`, { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(18000)]) });
     if (controller !== weatherController) return;
     observation = result.observation;
     text("temperature", observation.temperature_c.toFixed(1)); text("humidity", Math.round(observation.relative_humidity_pct));
@@ -123,4 +124,14 @@ $("raw-download").addEventListener("click", async () => {
 });
 $("json-download").addEventListener("click", () => { if (report) download(report, `microclimate-${report.report_sha256.slice(0, 12)}.json`); });
 $("print-report").addEventListener("click", () => { if (report) { document.querySelectorAll(".audit-details").forEach((d) => { d.open = true; }); window.print(); } });
+if (new URLSearchParams(location.search).get("embed") === "1") {
+  document.documentElement.classList.add("embedded");
+  const observer = new ResizeObserver(() => parent.postMessage({ type: "aic-height", height: document.body.scrollHeight + 12 }, location.origin));
+  observer.observe(document.body);
+  window.addEventListener("message", (event) => {
+    if (event.origin !== location.origin || event.source !== parent || event.data?.type !== "workspace-refresh") return;
+    workspaceSite = event.data.site === "campus" ? "campus" : "zhongyuan";
+    loadStatus(); loadWeather();
+  });
+}
 loadStatus(); loadWeather();

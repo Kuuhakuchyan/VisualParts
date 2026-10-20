@@ -1,4 +1,4 @@
-:root { --ink:#193238; --muted:#60757b; --line:#d7e4e0; --paper:#f2f6f3; --teal:#0b746f; --night:#102e35; }
+:root { --ink:#242e28; --muted:#6b7770; --line:#dfe4df; --paper:#f5f6f5; --teal:#147858; --night:#171c1a; }
 body.console-monitor,body.console-sensors,body.console-logs { background:var(--paper); background-image:none; color:var(--ink); font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif; min-width:0; }
 .console-monitor .header,.console-sensors .header,.console-logs .header { min-height:72px; padding:13px max(20px,calc((100vw - 1400px)/2)); background:var(--night); border-bottom:1px solid #426365; color:#f3faf7; gap:14px; }
 .console-monitor .header h1,.console-sensors .brand h1,.console-logs .brand h1 { color:#f3faf7; font-size:19px; line-height:1.25; letter-spacing:0; }
@@ -19,7 +19,7 @@ body.console-monitor,body.console-sensors,body.console-logs { background:var(--p
 .console-monitor .meteo-overview-inner { grid-template-columns:minmax(0,1fr) auto; gap:18px; padding:22px 16px 14px; align-items:end; }
 .console-monitor .meteo-title-block h2 { font-size:28px; color:var(--ink); margin:4px 0 5px; }
 .console-monitor .meteo-title-block p { font-size:13px; color:var(--muted); }
-.console-monitor .meteo-eyebrow { background:transparent; border:0; padding:0; color:var(--teal); font-size:11px; letter-spacing:.06em; }
+.console-monitor .meteo-eyebrow { background:transparent; border:0; padding:0; color:var(--teal); font-size:11px; letter-spacing:0; }
 .console-monitor .weather-kpi-strip { display:none; }
 .console-monitor .meteo-control-stack { grid-template-columns:minmax(170px,1fr); }
 .console-monitor .module-switch summary { min-height:39px; background:#fff; color:var(--ink); border:1px solid var(--line); border-radius:6px; }
@@ -69,7 +69,7 @@ body.console-monitor,body.console-sensors,body.console-logs { background:var(--p
 .console-sensors .action,.console-sensors .action.device,.console-sensors .action.ops { background:#e8f3ed; border-color:#cbe5d7; color:var(--teal); border-radius:5px; }
 .console-sensors .footer,.console-logs .footer { color:var(--muted); }
 .console-logs .page-intro { margin:5px 0 23px; }
-.console-logs .page-intro .eyebrow { color:var(--teal); font-size:11px; font-weight:750; letter-spacing:.06em; }
+.console-logs .page-intro .eyebrow { color:var(--teal); font-size:11px; font-weight:750; letter-spacing:0; }
 .console-logs .page-intro h2 { margin:5px 0 4px; font-size:27px; color:var(--ink); }
 .console-logs .page-intro p { color:var(--muted); font-size:13px; }
 .console-logs .section-label { font-size:13px; font-weight:750; color:var(--ink); margin:18px 0 9px; }

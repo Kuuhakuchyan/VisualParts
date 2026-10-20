@@ -12,6 +12,7 @@ import threading
 import time
 import httpx
 from collections import defaultdict, deque
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -69,6 +70,8 @@ app = FastAPI(
 
 from backend.aic.router import router as aic_router
 app.include_router(aic_router)
+from backend.planning import router as planning_router
+app.include_router(planning_router)
 
 ALLOWED_ORIGINS = [
     origin.strip()
@@ -278,13 +281,18 @@ _state_lock = threading.Lock()
 _state_tables = {"buildings", "scenarios"}
 
 
-def _connect_state_db() -> sqlite3.Connection:
+@contextmanager
+def _connect_state_db():
     STATE_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(STATE_DB_PATH, timeout=5)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA busy_timeout=5000")
     conn.execute("PRAGMA journal_mode=WAL")
-    return conn
+    try:
+        with conn:
+            yield conn
+    finally:
+        conn.close()
 
 
 def _init_state_store() -> None:
@@ -709,6 +717,8 @@ async def create_building(body: BuildingCreate):
 @app.post("/api/simulation/what-if", response_model=WhatIfResponse, tags=["simulation"])
 async def what_if_simulation(body: WhatIfRequest):
     """What-If 推演核心接口"""
+    if os.getenv("DECISION_ENABLE_LEGACY_MOCK") != "1":
+        raise HTTPException(409, "旧版未验证温降推演已停用。请使用决策工作台的几何方案比较；不提供随机温降或置信度。")
     start = time.time()
 
     action = body.action.upper()
@@ -861,6 +871,8 @@ async def list_scenarios():
 @app.get("/api/simulation/export", response_class=JSONResponse, tags=["simulation"])
 async def export_report():
     """导出推演报告（Markdown 格式）"""
+    if os.getenv("DECISION_ENABLE_LEGACY_MOCK") != "1":
+        raise HTTPException(409, "旧版模拟报告已停用。请在决策工作台导出可追溯记录或几何方案比较。")
     import json as _json
 
     md_lines = [

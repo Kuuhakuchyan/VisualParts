@@ -1,353 +1,45 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>微境探界 — 城市微气候决策支持系统</title>
-  <link rel="stylesheet" href="./frontend/dashboard/dashboard.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#171c1a">
+  <meta name="description" content="微境探界决策工作台：区域天气、空间研判、环境热风险与可追溯方案对比。">
+  <title>微境探界 · 决策工作台</title>
+  <link rel="icon" href="./logo.png">
+  <script type="module" src="./frontend/workspace/app.js"></script>
 </head>
 <body>
-
-<!-- 加载遮罩 -->
-<div id="loadingOverlay">
-  <div class="loader-ring"></div>
-  <div class="loader-text">微境探界 · 城市微气候决策支持系统初始化中...</div>
-</div>
-
-<!-- 主应用 -->
-<div id="app">
-
-  <!-- ════════════════ HEADER ════════════════ -->
-  <header id="header">
-    <div class="brand">
-      <img class="brand-icon" src="./logo.png" alt="微境探界 logo" />
-      微境探界
-      <span>校园微气象热风险决策平台</span>
-    </div>
-    <details class="mobile-platform-menu">
-      <summary aria-label="展开平台导航">☰ <span>导航</span></summary>
-      <nav aria-label="手机平台导航">
-        <a href="/">项目主页</a><a href="/monitor">实时监测</a>
-        <a href="/sensors">传感器</a><a href="/logs">数据日志</a>
-        <a href="/grafana/">运维看板</a>
+  <a class="skip-link" href="#main">跳至主要内容</a>
+  <div class="workspace-shell">
+    <aside class="sidebar" id="sidebar" aria-label="工作台导航">
+      <a href="/" class="brand"><img src="./logo.png" alt="微境探界标志"><span>微境探界<small>MICROCLIMATE LAB</small></span></a>
+      <div class="workspace-label">决策工作台 <span>WORKSPACE</span></div>
+      <nav class="primary-nav" aria-label="决策模块">
+        <a href="#overview" data-view="overview"><i data-lucide="layout-dashboard"></i><span>态势总览</span><small>01</small></a>
+        <a href="#spatial" data-view="spatial"><i data-lucide="map"></i><span>空间研判</span><small>02</small></a>
+        <a href="#risk" data-view="risk"><i data-lucide="shield-check"></i><span>热风险评估</span><small>03</small></a>
+        <a href="#plans" data-view="plans"><i data-lucide="git-compare-arrows"></i><span>方案对比</span><small>04</small></a>
+        <a href="#evidence" data-view="evidence"><i data-lucide="database"></i><span>数据与依据</span><small>05</small></a>
       </nav>
-    </details>
-
-    <div class="header-center">
-      <div class="header-stat">
-        气温 <span class="val" id="header-temp">--.-</span>
-      </div>
-      <div class="header-stat">
-        湿度 <span class="val" id="header-humidity">--</span>
-      </div>
-      <div class="header-stat">
-        数据源 <span class="val" id="header-source">连接中</span>
-      </div>
-    </div>
-
-    <div class="header-right">
-      <nav class="header-module-menu" aria-label="平台模块切换">
-        <a href="/">项目主页</a>
-        <a href="/monitor">实时监测</a>
-        <a href="/sensors">传感器</a>
-        <a href="/logs">数据日志</a>
-        <a href="/grafana/">运维看板</a>
-      </nav>
-      <button id="ctrl-export" class="ctrl-btn header-action">
-        <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 5l3 3 3-3M2 10h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        报告
-      </button>
-      <button id="ctrl-tracking" class="ctrl-btn header-action">
-        <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.5"/><line x1="6" y1="2" x2="6" y2="10" stroke="currentColor" stroke-width="1.5"/><line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" stroke-width="1.5"/></svg>
-        巡测
-      </button>
-      <div class="status-badge warn" id="backend-status">
-        <span class="dot"></span>
-        天气数据连接中
-      </div>
-      <span id="header-time" style="font-family:monospace;font-size:12px;color:#5a8aaa;">--</span>
-    </div>
-  </header>
-  <div class="weather-provenance" id="weather-provenance" role="status" aria-live="polite">郑州市中原区附近 · 天气数据加载中</div>
-
-  <!-- ════════════════ LEFT PANEL ════════════════ -->
-  <aside id="left-panel" class="panel">
-    <div class="panel-title">中原区附近 · 当前天气估计</div>
-    <p id="weather-empty" class="weather-empty">正在获取天气数据…</p>
-
-    <!-- 当前天气仪表盘 -->
-    <div class="gauge-grid" id="weather-gauges" hidden>
-      <!-- Row 1 -->
-      <div class="gauge-wrap" id="g-temp"></div>
-      <div class="gauge-wrap" id="g-humid"></div>
-      <!-- Row 2 -->
-      <div class="gauge-wrap" id="g-apparent"></div>
-      <div class="gauge-wrap" id="g-pressure"></div>
-      <!-- Row 3 -->
-      <div class="gauge-wrap" id="g-windspeed"></div>
-      <div class="gauge-wrap" id="g-precip"></div>
-      <!-- Row 4: 风向罗盘（独占两列） -->
-      <div class="gauge-wrap span-2" id="g-compass"></div>
-      <!-- Row 5 -->
-      <div class="gauge-wrap" id="g-radiation"></div>
-    </div>
-
-    <div class="panel-title" style="margin-top:8px;">空间推演统计</div>
-    <div class="metric-strip">
-      <div class="metric-tile">
-        <div class="metric-value" id="stat-buildings">--</div>
-        <div class="metric-label">真实白模</div>
-      </div>
-      <div class="metric-tile">
-        <div class="metric-value success" id="stat-added-buildings">0</div>
-        <div class="metric-label">新增</div>
-      </div>
-      <div class="metric-tile">
-        <div class="metric-value warning" id="stat-scenarios">0</div>
-        <div class="metric-label">推演</div>
-      </div>
-    </div>
-  </aside>
-
-  <!-- ════════════════ CENTER ════════════════ -->
-  <main id="center">
-    <!-- 地图容器：默认轻量 GIS，参数 mode=3d 时加载 Cesium 高级模式 -->
-    <div id="cesiumContainer"></div>
-    <div id="model-status" class="map-layer-status loading">
-      <span class="layer-dot"></span>
-      <span id="model-status-label">真实白模检测中</span>
-      <strong id="model-status-count">--</strong>
-    </div>
-
-    <div id="weather-ribbon" class="weather-ribbon" aria-label="场景提示">
-      <div class="ribbon-item"><span>主视图</span><strong>热场演示</strong></div>
-      <div class="ribbon-item"><span>图层</span><strong>站点示意</strong></div>
-      <div class="ribbon-item"><span>推演目标</span><strong>降温 / 通风</strong></div>
-    </div>
-
-    <!-- 横向时序图 -->
-    <div id="timeseries-bar" class="panel" hidden>
-      <div class="panel-title">24h 时序监测</div>
-      <div id="timeseries-chart"></div>
-    </div>
-
-    <button id="mobile-controls-toggle" class="mobile-map-toggle" type="button" aria-expanded="false" aria-controls="control-bar">推演工具</button>
-    <button id="mobile-layers-toggle" class="mobile-map-toggle" type="button" aria-expanded="false" aria-controls="gis-layer-panel">地图图层</button>
-    <!-- 决策控制栏 -->
-    <div id="control-bar">
-      <select id="ctrl-type" style="background:rgba(0,100,200,0.1);border:1px solid var(--color-border);border-radius:14px;color:var(--color-text);font-size:12px;padding:4px 8px;outline:none;">
-        <option value="residential">住宅体块 30m</option>
-        <option value="commercial" selected>综合建筑 60m</option>
-        <option value="office">办公体块 80m</option>
-        <option value="industrial">实验设施 40m</option>
-        <option value="public">公共服务 50m</option>
-      </select>
-      <button class="ctrl-btn primary" id="ctrl-add">
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        新增体块
-      </button>
-      <button class="ctrl-btn danger" id="ctrl-remove">
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 6h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        移除影响
-      </button>
-      <div class="ctrl-sep"></div>
-      <div class="ctrl-radius">
-        半径 <input type="range" id="ctrl-radius" min="50" max="300" value="100" step="10" /> <span id="ctrl-radius-val">100m</span>
-      </div>
-      <div class="ctrl-sep"></div>
-      <button class="ctrl-btn" id="ctrl-reset">
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6a4 4 0 1 1 1.5 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M2 9V6h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        重置
-      </button>
-      <div class="ctrl-sep"></div>
-      <button class="ctrl-btn" id="ctrl-street">平面气象底图</button>
-      <button class="ctrl-btn" id="ctrl-satellite">2.5D 白模</button>
-    </div>
-
-    <!-- 热力图色带图例 -->
-    <div id="heatmap-legend" style="position:absolute;bottom:220px;right:16px;background:rgba(10,30,60,0.88);border:1px solid rgba(0,180,255,0.3);border-radius:8px;padding:8px 12px;backdrop-filter:blur(12px);z-index:50;display:none;">
-      <div style="font-size:11px;color:#5a8aaa;margin-bottom:6px;letter-spacing:1px;">演示热场 · 非实测</div>
-      <div id="legend-gradient" style="width:140px;height:14px;border-radius:3px;background:linear-gradient(to right,rgb(0,0,139),rgb(0,139,139),rgb(0,255,0),rgb(255,255,0),rgb(255,0,0));margin-bottom:4px;"></div>
-      <div style="display:flex;justify-content:space-between;font-size:10px;color:#5a8aaa;">
-        <span>冷岛</span><span>热岛</span>
-      </div>
-    </div>
-  </main>
-
-  <!-- ════════════════ RIGHT PANEL ════════════════ -->
-  <aside id="right-panel" class="panel">
-    <div class="panel-title">场景推演与巡测</div>
-
-    <!-- 追踪面板 -->
-    <div id="tracking-panel" style="padding:8px;">
-      <div class="panel-title" style="padding:0 0 6px 0;border:none;">移动巡测目标</div>
-      <div id="tracking-entities"></div>
-    </div>
-
-    <!-- 健康风险卡片 -->
-    <div id="health-indicators" hidden>
-      <div class="health-card" id="hi-aqi">
-        <div class="health-card-header">
-          <span class="health-card-name hi-name">空气质量指数</span>
-          <span class="health-card-value hi-value">62</span>
-          <span class="health-card-name hi-unit">AQI</span>
-        </div>
-        <div class="health-card-bar"><div class="health-card-fill" style="width:20%;background:#ffcc00;"></div></div>
-      </div>
-      <div class="health-card" id="hi-heat">
-        <div class="health-card-header">
-          <span class="health-card-name hi-name">热健康风险指数</span>
-          <span class="health-card-value hi-value">70</span>
-          <span class="health-card-name hi-unit"></span>
-        </div>
-        <div class="health-card-bar"><div class="health-card-fill" style="width:70%;background:#ffcc00;"></div></div>
-      </div>
-      <div class="health-card" id="hi-vis">
-        <div class="health-card-header">
-          <span class="health-card-name hi-name">能见度</span>
-          <span class="health-card-value hi-value">12</span>
-          <span class="health-card-name hi-unit">km</span>
-        </div>
-        <div class="health-card-bar"><div class="health-card-fill" style="width:40%;background:#00b4ff;"></div></div>
-      </div>
-      <div class="health-card" id="hi-uv">
-        <div class="health-card-header">
-          <span class="health-card-name hi-name">紫外线指数</span>
-          <span class="health-card-value hi-value">6</span>
-          <span class="health-card-name hi-unit"></span>
-        </div>
-        <div class="health-card-bar"><div class="health-card-fill" style="width:50%;background:#ffcc00;"></div></div>
-      </div>
-      <div class="health-card" id="hi-aod">
-        <div class="health-card-header">
-          <span class="health-card-name hi-name">气溶胶光学厚度</span>
-          <span class="health-card-value hi-value">0.35</span>
-          <span class="health-card-name hi-unit">AOD</span>
-        </div>
-        <div class="health-card-bar"><div class="health-card-fill" style="width:35%;background:#ffcc00;"></div></div>
-      </div>
-      <div class="health-card" id="hi-precip">
-        <div class="health-card-header">
-          <span class="health-card-name hi-name">降水量</span>
-          <span class="health-card-value hi-value">0</span>
-          <span class="health-card-name hi-unit">mm</span>
-        </div>
-        <div class="health-card-bar"><div class="health-card-fill" style="width:0%;background:#4488ff;"></div></div>
-      </div>
-    </div>
-
-    <div class="panel-title">推理状态</div>
-
-    <!-- 推理状态卡片 -->
-    <div class="reasoning-card">
-      <div class="reasoning-card-header">
-        <div class="reasoning-status">
-          <span class="dot gray" id="reasoning-dot"></span>
-          <span id="reasoning-label">待机中</span>
-        </div>
-        <span style="font-size:11px;color:#5a8aaa;" id="reasoning-scene-id"></span>
-      </div>
-      <div class="reasoning-steps" id="reasoning-steps">
-        <div class="reasoning-step" style="padding:12px 0;">
-          <span style="font-size:12px;color:#5a8aaa;">选择建筑体块并点击「新增体块」或「移除影响」开始推演</span>
-        </div>
-      </div>
-      <div class="reasoning-result" id="reasoning-result">
-        <div style="font-size:12px;color:#5a8aaa;text-align:center;padding:8px 0;">
-          暂无推理记录
-        </div>
-      </div>
-    </div>
-
-    <div class="panel-title" style="margin-top:8px;">巡测影像识别</div>
-    <div id="bird-indicators">
-      <div class="health-card">
-        <div style="display:flex;align-items:center;justify-content:center;height:80px;color:#5a8aaa;font-size:12px;">
-          暂无巡测影像，请接入移动端采集数据
-        </div>
-      </div>
-    </div>
-
-    <div class="panel-title" style="margin-top:8px;">场景列表</div>
-    <div id="scenario-list" style="padding:8px;">
-      <div style="font-size:12px;color:#5a8aaa;text-align:center;padding:12px 0;">暂无已保存的场景</div>
-    </div>
-
-    <p class="scenario-disclaimer">地图热场、站点树与空间推演为演示内容，不代表实时观测或实测热岛强度。</p>
-  </aside>
-
-  <!-- ════════════════ FOOTER ════════════════ -->
-  <footer id="footer">
-    <div class="footer-left">
-      <span>天气: <strong style="color:#00b4ff;">Open-Meteo 模型估计</strong></span>
-      <span>|</span>
-      <span>更新: <span id="footer-updated">--:--:--</span></span>
-      <span>|</span>
-      <span>推理引擎: <strong style="color:#00ff88;">演示物理模型</strong></span>
-      <span>|</span>
-      <span>白模: <strong id="model-attribution" style="color:#36c6b4;">检测中</strong></span>
-    </div>
-    <div class="footer-right">
-      <span>v0.1.0-DEMO</span>
-      <span>|</span>
-      <span>微境探界</span>
-    </div>
-  </footer>
-</div>
-
-  <!-- 建筑详情弹窗 -->
-  <div id="building-detail-modal" class="panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:340px;z-index:200;box-shadow:0 8px 40px rgba(0,0,0,0.5);">
-    <div class="panel-title" style="justify-content:space-between;">
-      <span>建筑详情</span>
-      <button id="modal-close" style="background:none;border:none;color:#5a8aaa;font-size:18px;cursor:pointer;line-height:1;padding:0 4px;">&times;</button>
-    </div>
-    <div style="padding:12px;">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-        <div style="padding:8px;background:rgba(0,30,60,0.4);border-radius:6px;">
-          <div style="font-size:11px;color:#5a8aaa;">建筑名称</div>
-          <div id="modal-name" style="font-size:13px;color:#b3e0ff;margin-top:2px;">--</div>
-        </div>
-        <div style="padding:8px;background:rgba(0,30,60,0.4);border-radius:6px;">
-          <div style="font-size:11px;color:#5a8aaa;">建筑高度</div>
-          <div id="modal-height" style="font-size:13px;color:#b3e0ff;margin-top:2px;">--</div>
-        </div>
-        <div style="padding:8px;background:rgba(0,30,60,0.4);border-radius:6px;">
-          <div style="font-size:11px;color:#5a8aaa;">建筑类型</div>
-          <div id="modal-type" style="font-size:13px;color:#b3e0ff;margin-top:2px;">--</div>
-        </div>
-        <div style="padding:8px;background:rgba(0,30,60,0.4);border-radius:6px;">
-          <div style="font-size:11px;color:#5a8aaa;">建造时间</div>
-          <div id="modal-time" style="font-size:13px;color:#b3e0ff;margin-top:2px;">--</div>
-        </div>
-      </div>
-      <div style="padding:8px;background:rgba(0,30,60,0.4);border-radius:6px;margin-bottom:12px;">
-        <div style="font-size:11px;color:#5a8aaa;">场景ID</div>
-        <div id="modal-scenario" style="font-size:11px;color:#5a8aaa;margin-top:2px;word-break:break-all;">--</div>
-      </div>
-      <div style="display:flex;gap:8px;">
-        <button id="modal-undo" class="ctrl-btn" style="flex:1;justify-content:center;font-size:12px;">撤销推理</button>
-        <button id="modal-delete" class="ctrl-btn danger" style="flex:1;justify-content:center;font-size:12px;">删除建筑</button>
-      </div>
+      <div class="sidebar-secondary"><p>平台管理</p><a href="/monitor"><i data-lucide="radio"></i>实时监测<i data-lucide="arrow-up-right"></i></a><a href="/sensors"><i data-lucide="cpu"></i>传感器管理<i data-lucide="arrow-up-right"></i></a><a href="/logs"><i data-lucide="logs"></i>数据日志<i data-lucide="arrow-up-right"></i></a><a href="/grafana/"><i data-lucide="activity"></i>运行保障<i data-lucide="arrow-up-right"></i></a></div>
+      <div class="sidebar-bottom"><span class="lab-mark">M / E</span><div>从环境数据到空间决策<small>可核查 · 有边界 · 可追溯</small></div></div>
+    </aside>
+    <button class="nav-scrim" id="nav-scrim" aria-label="关闭导航" hidden></button>
+    <div class="workspace-main">
+      <header class="topbar">
+        <div class="topbar-left"><button class="icon-button mobile-menu" id="nav-toggle" aria-label="展开导航" aria-expanded="false" aria-controls="sidebar"><i data-lucide="menu"></i></button><span class="breadcrumb">工作空间 <span>/</span> <strong id="breadcrumb-title">态势总览</strong></span></div>
+        <div class="topbar-actions"><label class="site-select"><i data-lucide="map-pin"></i><span class="sr-only">研判区域</span><select id="site-select"><option value="zhongyuan">郑州 · 中原区</option><option value="campus">校园周边</option></select></label><button id="refresh-all" class="icon-button" title="刷新当前区域数据" aria-label="刷新数据"><i data-lucide="refresh-cw"></i></button><span class="connection-status" id="connection-status" role="status">连接中</span></div>
+      </header>
+      <main id="main" tabindex="-1">
+        <div class="page-heading"><div><p class="eyebrow" id="page-eyebrow">ENVIRONMENTAL INTELLIGENCE</p><h1 id="page-title">区域环境态势</h1><p id="page-description">汇集区域天气、空间底图与风险依据。</p></div><div class="page-actions" id="page-actions"></div></div>
+        <div id="data-alert" class="notice" role="status" hidden></div>
+        <div id="view-root" aria-busy="true"><div class="initial-state">正在连接区域天气与证据服务…</div></div>
+        <footer class="workspace-footer"><span>微境探界 / 决策工作台</span><span>网格资料与校园实测分别标注 · 不作疾病确诊</span><a href="./aic/" target="_blank" rel="noopener">匿名评估入口 <i data-lucide="arrow-up-right"></i></a></footer>
+      </main>
     </div>
   </div>
-  <div id="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:199;"></div>
-
-<!-- 主模块入口 -->
-<script type="module" src="./frontend/dashboard/dashboard.js"></script>
-
-<!-- 启动脚本 -->
-<script type="module">
-  import { MicroClimateDashboard } from "./frontend/dashboard/dashboard.js";
-
-  const dashboard = new MicroClimateDashboard();
-  dashboard.init();
-
-  // 页面卸载清理
-  window.addEventListener("beforeunload", () => dashboard.destroy());
-
-  // 赋值到全局供调试
-  window.__dashboard = dashboard;
-</script>
-
+  <div class="toast" id="toast" role="status" hidden></div>
+  <dialog id="delete-dialog"><form method="dialog"><i data-lucide="trash-2"></i><h2>删除这个方案？</h2><p>删除后，方案将从当前浏览器的工作区移除。建议先导出需要的记录。</p><div class="dialog-actions"><button value="cancel" class="button">取消</button><button value="confirm" class="button danger">删除方案</button></div></form></dialog>
 </body>
 </html>

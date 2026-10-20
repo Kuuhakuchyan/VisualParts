@@ -20,10 +20,13 @@ export default defineConfig(({ mode }) => {
     build: {
       target: "esnext",
       sourcemap: false,
+      rollupOptions: { input: { main: path.resolve(__dirname, "index.html"), legacy: path.resolve(__dirname, "legacy.html") } },
     },
     server: {
       port: 5173,
       proxy: {
+        "/tiles": { target: "https://weather.nogamenolife.cn", changeOrigin: true },
+        "/data": { target: "https://weather.nogamenolife.cn/decision", changeOrigin: true },
         "/api/simulation": {
           target: "http://localhost:3000",
           changeOrigin: true,

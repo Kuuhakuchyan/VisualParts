@@ -1,0 +1,17 @@
+.embedded, .embedded body { background: transparent; }
+.embedded .topbar, .embedded .page-title, .embedded footer { display: none; }
+.embedded main { max-width: none; padding: 0; }
+.embedded .workspace { gap: 26px; grid-template-columns: minmax(270px,350px) minmax(0,1fr); }
+.embedded .results { background: transparent; }
+.embedded .inputs { border: 1px solid #dfe4df; border-top: 3px solid #18774f; }
+.embedded .results, .embedded .inputs { min-width: 0; }
+.embedded h2, .embedded h3 { font-size: 14px; }
+.embedded .measurements strong { font-size: 30px; }
+.embedded .section { padding: 20px; }
+.embedded .risk-heading h3 { font-size: 19px; }
+.embedded .method-section p, .embedded .result-section p { font-size: 12px; line-height: 1.9; }
+.embedded .data-meta, .embedded .muted { font-size: 11px; }
+.embedded .source-link { font-size: 11px; }
+.embedded .primary { background: #18774f; border-color: #18774f; }
+@media(max-width:1000px) { .embedded .workspace { display: block; } .embedded .inputs { margin-bottom: 30px; } .embedded .results { padding-top: 22px; } }
+@media print { .embedded .inputs { display:none!important; } .embedded .page-title { display:block; } .embedded .workspace { display:block; } }

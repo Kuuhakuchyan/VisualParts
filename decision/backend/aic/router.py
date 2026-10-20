@@ -47,12 +47,21 @@ async def status(response: Response):
 
 
 @router.get("/observations/current")
-async def current(response: Response, mode: Literal["current", "history"] = "current"):
+async def current(response: Response, mode: Literal["current", "history"] = "current", site: Literal["zhongyuan", "campus"] = "zhongyuan"):
     response.headers["Cache-Control"] = "no-store"
     try:
-        return {"success": True, "observation": await weather.get(mode)}
+        return {"success": True, "observation": await weather.get(mode, site)}
     except (httpx.HTTPError, ValueError, KeyError, TypeError, IndexError):
         raise HTTPException(503, "天气上游暂不可用；未使用模拟数据替代。危险症状可直接触发急救提示。")
+
+
+@router.get("/timeline")
+async def timeline(response: Response, site: Literal["zhongyuan", "campus"] = "zhongyuan"):
+    response.headers["Cache-Control"] = "no-store"
+    try:
+        return await weather.timeline(site)
+    except (httpx.HTTPError, ValueError, KeyError, TypeError, IndexError):
+        raise HTTPException(503, "小时天气资料暂不可用；未生成替代曲线。")
 
 
 @router.get("/observations/{record_id}")

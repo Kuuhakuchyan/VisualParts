@@ -594,7 +594,7 @@ details[open] > summary .twisty { transform:rotate(90deg); }
   </div>
   <div class="header-tools"><span class="refresh" id="refreshTime"></span><a href="/">项目主页 ↗</a></div>
 </div>
-<nav class="console-nav" aria-label="平台模块"><a href="/monitor">实时监测</a><a class="active" aria-current="page" href="/sensors">传感器管理</a><a href="/logs">数据日志</a><a href="/decision/">空间决策</a><a href="/grafana/">运行看板</a></nav>
+<nav class="console-nav" aria-label="平台模块"><a href="/monitor">实时监测</a><a class="active" aria-current="page" href="/sensors">传感器管理</a><a href="/logs">数据日志</a><a href="/decision/">决策工作台</a><a href="/decision/#risk">热风险评估</a><a href="/decision/#evidence">数据与依据</a><a href="/grafana/">运行看板</a></nav>
 <div class="container" id="content"><div class="empty">加载中...</div></div>
 <div class="footer">微境探界 · 传感器管理</div>
 <script>
@@ -803,7 +803,7 @@ body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-seri
   <div class="brand"><img src="/logo.png" alt=""><div><h1>数据日志</h1><span>站点记录与按日期归档</span></div></div>
   <div class="header-tools"><a href="/">项目主页 ↗</a></div>
 </div>
-<nav class="console-nav" aria-label="平台模块"><a href="/monitor">实时监测</a><a href="/sensors">传感器管理</a><a class="active" aria-current="page" href="/logs">数据日志</a><a href="/decision/">空间决策</a><a href="/grafana/">运行看板</a></nav>
+<nav class="console-nav" aria-label="平台模块"><a href="/monitor">实时监测</a><a href="/sensors">传感器管理</a><a class="active" aria-current="page" href="/logs">数据日志</a><a href="/decision/">决策工作台</a><a href="/decision/#risk">热风险评估</a><a href="/decision/#evidence">数据与依据</a><a href="/grafana/">运行看板</a></nav>
 <div class="container">
   <div class="page-intro"><div class="eyebrow">DATA ARCHIVE / 观测数据</div><h2>按设备查看与导出</h2><p>选择站点后查看有数据的日期，按需下载 CSV 记录。</p></div>
   <div class="section-label">选择观测设备</div>
@@ -1243,7 +1243,7 @@ tbody tr:hover {
     <span class="last-update" id="lastUpdate"></span>
   </div>
 </div>
-<nav class="console-nav" aria-label="平台模块"><a class="active" aria-current="page" href="/monitor">实时监测</a><a href="/sensors">传感器管理</a><a href="/logs">数据日志</a><a href="/decision/">空间决策</a><a href="/grafana/">运行看板</a></nav>
+<nav class="console-nav" aria-label="平台模块"><a class="active" aria-current="page" href="/monitor">实时监测</a><a href="/sensors">传感器管理</a><a href="/logs">数据日志</a><a href="/decision/">决策工作台</a><a href="/decision/#risk">热风险评估</a><a href="/decision/#evidence">数据与依据</a><a href="/grafana/">运行看板</a></nav>
 
 <section class="meteo-overview" aria-label="微气象态势总览">
   <div class="meteo-overview-inner">
