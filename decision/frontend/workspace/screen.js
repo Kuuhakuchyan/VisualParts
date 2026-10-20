@@ -1,5 +1,6 @@
 import "./screen.css";
 import { $, icons, icon, escape as e, numeric as n, date, download, toast } from "./ui.js";
+import { defaultBounds, regionalValidity } from "./regional.js";
 
 export class DecisionScreen {
   constructor(options) { Object.assign(this, options); this.disposed = false; this.panel = null; }
@@ -20,6 +21,14 @@ export class DecisionScreen {
     $("decision-screen").append($("toast"));
     icons();
     $("screen-site").value = this.state.site;
+    document.querySelectorAll('.screen-nav [data-screen-panel=risk] span').forEach(node=>node.textContent="区域人群研判");
+    const riskAction=document.querySelector('.screen-right [data-screen-panel=risk]');
+    riskAction.innerHTML=`${icon("cpu")}区域 × 人群研判 ${icon("arrow-right")}`;
+    if (this.competition) { $("screen-site").options[0].textContent="某街区"; $("screen-site").options[1].textContent="某校园"; }
+    const locationSection = document.querySelector(".screen-location");
+    locationSection.insertAdjacentHTML("afterbegin", `<div class="screen-region-controls"><h2>区域 × 人群研判</h2><p id="screen-region-state" class="screen-muted">选择矩形范围，再选择目标人群。</p><div class="screen-region-actions"><button id="screen-select-region" class="screen-action">${icon("map")}地图选区</button><button id="screen-region-assess" class="screen-action primary">${icon("cpu")}人群研判</button></div><div id="screen-region-result"></div></div>`);
+    $("screen-select-region").addEventListener("click",()=>this.selectRegion());
+    $("screen-region-assess").addEventListener("click",()=>this.openPanel("risk"));
     $("screen-site").addEventListener("change", (event) => this.onSite(event.target.value));
     $("screen-refresh").addEventListener("click", async () => {
       const button = $("screen-refresh");
@@ -33,9 +42,9 @@ export class DecisionScreen {
     document.addEventListener("fullscreenchange", this.fullscreenListener);
     document.querySelectorAll("[data-screen-panel]").forEach((button) => button.addEventListener("click", () => this.openPanel(button.dataset.screenPanel)));
     $("screen-panel-close").addEventListener("click", () => $("screen-drawer").close());
-    $("screen-drawer").addEventListener("close", () => { if (this.disposed) return; $("decision-screen").append($("toast")); this.onPanel(null); this.panel = null; $("screen-panel-content").replaceChildren(); this.update(); });
-    $("screen-export").addEventListener("click", () => download({ project: "微境探界", edition: this.competition ? "AIC" : "platform", exported_at: new Date().toISOString(), observation: this.state.observation, environment: this.state.summary?.environment || null, errors: this.state.errors }, "microclimate-screen-evidence.json"));
-    this.clock = () => { if (!this.disposed) $("screen-clock").textContent = new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false }) + " 北京时间"; };
+    $("screen-drawer").addEventListener("close", () => { if (this.disposed) return; $("decision-screen").append($("toast")); this.onPanel(null); this.panel = null; $("screen-panel-content").replaceChildren(); this.update(); if(this.map?.selectingRegion) $("screen-region-state").textContent="请依次点击矩形的两个对角点；Esc 可取消。"; });
+    $("screen-export").addEventListener("click", () => download({ project: "微境探界", edition: this.competition ? "AIC" : "platform", exported_at: new Date().toISOString(), observation: this.state.observation, environment: this.state.summary?.environment || null, regional_report: this.state.regionalReport || null, errors: this.state.errors }, "microclimate-screen-evidence.json"));
+    this.clock = () => { if (!this.disposed) { $("screen-clock").textContent = new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false }) + " 北京时间"; const minute=Math.floor(Date.now()/60000); if(this.validityMinute!==minute){this.validityMinute=minute;this.updateRegional();} } };
     this.clock(); this.clockTimer = setInterval(this.clock, 1000);
     this.update(); this.mountMap();
   }
@@ -43,18 +52,18 @@ export class DecisionScreen {
     try {
       const { SpatialWorkspace } = await import("./map.js");
       if (this.disposed) return;
-      this.map = new SpatialWorkspace({ observation: this.state.observation, plans: this.state.plans, dark: true, onChoose: (point) => { this.onDraft(point); this.openPanel("plans"); }, onState: (value) => {
+      this.map = new SpatialWorkspace({ observation: this.state.observation, plans: this.state.plans, dark: true, onRegion: (bounds) => { this.setRegion(bounds); this.openPanel("risk"); }, onChoose: (point) => { this.onDraft(point); this.openPanel("plans"); }, onState: (value) => {
         if (this.disposed) return;
         $("screen-buildings").textContent = value.buildings ? `${value.buildings} 栋` : "暂缺";
         $("workspace-map").dataset.renderer = value.model;
       } });
       await this.map.init();
-      if (!this.disposed) { this.map.observation = this.state.observation; this.map.plans = this.state.plans; this.map.updateWeather(); }
+      if (!this.disposed) { this.map.observation = this.state.observation; this.map.plans = this.state.plans; this.map.updateWeather(); this.updateRegional(); this.map.map.fitBounds([[this.state.regionalDraft?.bounds?.west ?? defaultBounds(this.state.site).west,this.state.regionalDraft?.bounds?.south ?? defaultBounds(this.state.site).south],[this.state.regionalDraft?.bounds?.east ?? defaultBounds(this.state.site).east,this.state.regionalDraft?.bounds?.north ?? defaultBounds(this.state.site).north]],{padding:80,duration:0}); }
     } catch { if (!this.disposed) $("map-state").textContent = "地图暂不可用，天气与风险操作仍可使用。"; }
   }
   openPanel(kind) {
     this.map?.stopOrbit();
-    const names = { plans: ["INTERVENTION PLANS", "干预方案与并列比较"], risk: ["HEAT RISK", "环境热风险评估"], evidence: ["EVIDENCE", "数据来源与方法依据"] };
+    const names = { plans: ["INTERVENTION PLANS", "干预方案与并列比较"], risk: ["REGIONAL HEALTH RISK", "区域 × 人群 · 热健康风险研判"], evidence: ["EVIDENCE", "数据来源与方法依据"] };
     this.panel = kind;
     $("screen-panel-label").textContent = names[kind][0];
     $("screen-panel-title").textContent = names[kind][1];
@@ -64,6 +73,7 @@ export class DecisionScreen {
     if (!$("screen-drawer").open) $("screen-drawer").showModal();
   }
   update() {
+    this.updateRegional();
     if (this.disposed) return;
     const { observation: o, summary, status, loading, errors, plans } = this.state;
     const valid = this.fresh();
@@ -71,7 +81,7 @@ export class DecisionScreen {
     $("screen-status").textContent = loading ? "正在连接气象服务" : valid ? "网格天气已更新 · 非现场实测" : o ? "天气记录待核查" : "天气服务暂不可用";
     $("screen-status").parentElement.classList.toggle("is-warning", !valid);
     $("screen-weather").innerHTML = `<div class="screen-temperature">${n(o?.temperature_c)}<small>°C</small><span>2 m 气温 · 模型估计</span></div><div class="screen-weather-grid">${this.measure("相对湿度", n(o?.relative_humidity_pct, 0), "%", "droplets")}${this.measure("近地风速", n(o?.extras?.wind_speed_10m), "m/s", "wind")}${this.measure("当前降水", n(o?.extras?.precipitation), "mm", "cloud-rain")}${this.measure("风向", n(o?.extras?.wind_direction_10m, 0), "°", "compass")}</div><div class="screen-source-note"><strong>${e(o?.location_label || "等待天气记录")}</strong><span>${o ? date(o.observed_at, true) + " 北京时间" : e(errors.weather || "连接中")}</span><small>${o ? "Open-Meteo · 网格估计" : "不使用模拟数据替代缺测"}</small></div>`;
-    $("screen-risk").innerHTML = `<div class="screen-risk-index"><strong>${n(summary?.environment?.heat_index_c)}</strong><span>°C<small>热指数参考</small></span></div><h3>${e(summary?.environment?.risk_label || "暂无有效评估")}</h3><p class="screen-muted">${e(summary?.environment?.limitations?.[0] || "环境指标与症状分开判断，危险症状不等待天气或 AI。")}</p><span class="screen-review">${status?.protocol_reviewed && status?.approved_clauses ? "部分医学条款已审核" : "医学条款待医师审核"}</span>`;
+    $("screen-risk").innerHTML = `<div class="screen-risk-index"><strong>${n(summary?.environment?.heat_index_c)}</strong><span>°C<small>热指数参考</small></span></div><h3>${e(summary?.environment?.risk_label || "暂无有效评估")}</h3><p class="screen-muted">${e(summary?.environment?.limitations?.[0] || "从区域环境热风险出发，结合目标人群的活动、暴露和医学证据分别研判。")}</p><span class="screen-review">${status?.protocol_reviewed && status?.approved_clauses ? "部分医学条款已审核" : "医学条款待医师审核"}</span>`;
     $("screen-plan-count").textContent = plans.length;
     $("screen-pipeline").innerHTML = this.pipeline("区域网格", valid ? "有效记录" : "待核查", valid) + this.pipeline("现场设备", "本轮有效实测未接入", false) + this.pipeline("医学依据", status ? `${status.approved_clauses}/${status.draft_clauses} 条已审核` : "状态暂缺", !!status?.approved_clauses);
     const points = this.state.timeline?.points?.filter((p) => p.period === "forecast") || [];
@@ -83,6 +93,22 @@ export class DecisionScreen {
     icons();
   }
   measure(label, value, unit, symbol) { return `<div><span>${icon(symbol)}${label}</span><strong>${value}<small>${unit}</small></strong></div>`; }
+  selectRegion() {
+    if (!this.map?.map?.getSource("regional-area")) { toast("地图尚未就绪，可先在区域研判中填写边界。"); return; }
+    $("screen-drawer").close(); this.map.beginRegion();
+    $("screen-region-state").textContent="请依次点击矩形的两个对角点；Esc 可取消。";
+  }
+  setRegion(bounds) {
+    this.state.regionalDraft={ area_kind:this.state.site==="campus"?"campus":"neighborhood", mode:"current", groups:["students","athletes","workers"], activity:"walk", exposure_minutes:30, exposure:"unknown", use_ai:true, ...this.state.regionalDraft, bounds };
+    this.state.regionalReport=null; this.updateRegional();
+  }
+  updateRegional() {
+    if (this.disposed || !$("screen-region-result")) return;
+    const report=this.state.regionalReport, bounds=this.state.regionalDraft?.bounds||defaultBounds(this.state.site);
+    $("screen-region-state").textContent=`选区 ${n(bounds.west,3)}–${n(bounds.east,3)}°E / ${n(bounds.south,3)}–${n(bounds.north,3)}°N`;
+    $("screen-region-result").innerHTML=report?`<div class="screen-cohort-summary"><strong>${e(report.environment.risk_label)}</strong><p>${report.cohorts.length}类人群 / ${report.coverage.unique_model_grids}个模型网格</p><span>${report.generation.mode==="ai_regional_evidence_selection"?"AI 证据编排已完成":"规则结果 · 可核查降级原因"}</span><small>${e(regionalValidity(report).label)}</small><small>${report.medical_review==="pending"?"医学防护条款待审核":"仅展示已审核医学条款"}</small></div>`:'';
+    this.map?.setRegion(bounds,report);
+  }
   pipeline(label, value, ready) { return `<div class="screen-pipeline-row ${ready ? "ready" : ""}"><i></i><span>${label}</span><small>${e(value)}</small></div>`; }
   async updateChart(points) {
     const revision = this.chartRevision = (this.chartRevision || 0) + 1;

@@ -30,10 +30,25 @@ class WeatherEvidence:
         self.cache = {}
         self.locks = {}
 
-    async def get(self, mode, site="zhongyuan"):
-        key = (mode, site)
-        async with self.locks.setdefault(key, asyncio.Lock()):
-            location = SITES[site]
+    def lock_for(self, key):
+        # Fixed stripes cannot evict a lock that already has waiting requests.
+        return self.locks.setdefault(hash(key) % 64, asyncio.Lock())
+
+    def cache_record(self, key, ttl, record):
+        now = time.monotonic()
+        self.cache = {k: v for k, v in self.cache.items() if v[0] > now}
+        while len(self.cache) >= 256:
+            self.cache.pop(next(iter(self.cache)))
+        self.cache[key] = (now + ttl, record)
+
+    async def get(self, mode, site="zhongyuan", location=None, history_hour=None):
+        if history_hour is not None and (type(history_hour) is not int or not 0 <= history_hour <= 23):
+            raise ValueError("invalid history hour")
+        if location:
+            location = {**location, "latitude": round(location["latitude"], 5), "longitude": round(location["longitude"], 5)}
+        key = (mode, site, tuple(sorted(location.items())) if location else None, history_hour)
+        async with self.lock_for(key):
+            location = location or SITES[site]
             item = self.cache.get(key)
             if item and time.monotonic() < item[0]:
                 return item[1]
@@ -61,7 +76,13 @@ class WeatherEvidence:
                          and math.isfinite(hourly["relative_humidity_2m"][i]) and 0 <= hourly["relative_humidity_2m"][i] <= 100]
                 if not valid:
                     raise ValueError("no historical observations")
-                index = max(valid, key=lambda i: hourly["temperature_2m"][i])
+                if history_hour is not None:
+                    matches = [i for i in valid if hourly["time"][i] == f"{HISTORY_DATE}T{history_hour:02d}:00"]
+                    if not matches:
+                        raise ValueError("historical reference hour missing")
+                    index = matches[0]
+                else:
+                    index = max(valid, key=lambda i: hourly["temperature_2m"][i])
                 current = {k: v[index] for k, v in hourly.items()}
                 units = raw["hourly_units"]
             else:
@@ -94,18 +115,18 @@ class WeatherEvidence:
                 "temperature_c": t, "relative_humidity_pct": rh,
                 "units": {"temperature": "°C", "humidity": "%"}, "quality_status": "validated",
                 "quality_note": "已检查字段、范围、单位与时区；非现场校准或校园实测。",
-                "selection": "当日有效小时中气温最高的一小时；并非自动筛选热浪事件" if mode == "history" else "上游当前时刻",
+                "selection": (f"统一历史参考时刻 {HISTORY_DATE} {history_hour:02d}:00 北京时间；不代表各点当日最高温" if history_hour is not None else "当日有效小时中气温最高的一小时；并非自动筛选热浪事件") if mode == "history" else "上游当前时刻",
                 "disclaimer": "区域网格估计，不代表具体测点。历史资料不用于当前天气判断。" if mode == "history" else "区域网格模型估计，非校园站点实测。",
                 "extras": extras,
                 "attribution": "Weather data by Open-Meteo.com (CC BY 4.0); see source URL for dataset provenance.",
             }
             record = self.store.put(record, raw)
-            self.cache[key] = (time.monotonic() + (86400 if mode == "history" else 120), record)
+            self.cache_record(key, 86400 if mode == "history" else 120, record)
             return record
 
     async def timeline(self, site="zhongyuan"):
         key = ("timeline", site)
-        async with self.locks.setdefault(key, asyncio.Lock()):
+        async with self.lock_for(key):
             cached = self.cache.get(key)
             if cached and time.monotonic() < cached[0]:
                 return cached[1]
@@ -151,5 +172,5 @@ class WeatherEvidence:
                 "location_label": location["label"], "units": expected,
                 "disclaimer": "过去小时是模型资料，未来小时为预报；均非校园仪器实测，缺失值保留为空。"}, raw)
             result = {"snapshot": snapshot, "points": points}
-            self.cache[key] = (time.monotonic() + 300, result)
+            self.cache_record(key, 300, result)
             return result

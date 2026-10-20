@@ -97,6 +97,28 @@ class WeatherTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ValueError):
             await self.weather.timeline()
 
+    async def test_uniform_historical_hour_not_each_point_peak(self):
+        raw = {"utc_offset_seconds": 28800, "latitude": 34.8, "longitude": 113.5,
+               "hourly_units": {"temperature_2m": "°C", "relative_humidity_2m": "%"},
+               "hourly": {"time": ["2024-06-12T14:00", "2024-06-12T15:00"],
+                          "temperature_2m": [32, 34], "relative_humidity_2m": [50, 45]}}
+        self.replace_raw(raw)
+        chosen = await self.weather.get("history", history_hour=14)
+        peak = await self.weather.get("history")
+        self.assertEqual(chosen["temperature_c"], 32)
+        self.assertEqual(peak["temperature_c"], 34)
+        self.assertIn("统一历史参考时刻", chosen["selection"])
+        with self.assertRaises(ValueError):
+            await self.weather.get("history", history_hour=13)
+
+    async def test_cache_and_locks_stay_bounded(self):
+        for i in range(600):
+            self.weather.lock_for(("synthetic", i))
+            self.weather.cache_record(("synthetic", i), 100, i)
+        self.assertLessEqual(len(self.weather.cache), 256)
+        self.assertLessEqual(len(self.weather.locks), 64)
+        self.assertIs(self.weather.lock_for("same-key"), self.weather.lock_for("same-key"))
+
 
 class TimelineAPITests(unittest.TestCase):
     def test_upstream_failure_and_site_validation(self):

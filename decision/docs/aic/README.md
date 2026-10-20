@@ -1,10 +1,12 @@
-# AIC 匿名热风险原型
+# 微境探界 AIC 区域人群研判原型
 
 独立入口 `/decision/aic/`，独立API前缀 `/api/weather/aic/`。沿用现有决策服务与天气代理，不调用空间Mock、随机置信度、示例设备状态或原AGI推演器。原有页面及数据库保留。
 
 ## 已实现的边界
 
-当前网格与2024-06-12真实历史再分析天气分开，历史案例取当日气温最高的有效小时。每条观测包含上游原始响应、规范化JSON哈希、来源URL、请求坐标、返回网格、单位、北京时间和质量说明。质量校验是格式/范围校验，不代表现场校准。历史天气不冒充校园实测。
+主流程为“区域范围 → 气象与环境热风险 → 目标人群及独立活动/暴露 → AI证据编排 → 医学依据与场地核查”。个人症状自查保留为辅助分页，不替代区域人群研判。大屏侧栏与子工作台复用同一研判模块。
+
+当前网格与2024-06-12真实历史再分析天气分开。区域历史案例统一采用北京时间14:00，避免把不同点各自的最高温小时当作同时刻空间证据；个人辅助页仍取当日最高温有效小时并明确说明。每条观测包含上游原始响应、规范化JSON哈希、来源URL、请求坐标、返回网格、单位、北京时间和质量说明。质量校验是格式/范围校验，不代表现场校准。历史天气不冒充校园实测。
 
 环境方法为NOAA/NWS两阶段Heat Index，含低湿/高湿修正，摄氏温度先转华氏计算，分级后显示四舍五入数值。保守运行范围为气温80至112°F，计算热指数不超过参考图表上限137°F，超过范围不外推；低于80°F不输出高温分级。分类阈值80/90/103/125°F采用连续区间。本原型仅参考阴凉、轻风条件，不能用公开网格准确代表具体日晒位置，不输出实测WBGT。活动/时长不改变热指数。
 
@@ -20,7 +22,7 @@ $env:AIC_SOURCE_MANIFEST="G:/Working/大创/_git_publish/VisualParts-weather/dec
 npm.cmd run dev -- --host 127.0.0.1 --port 5192
 ```
 
-开发地址 `/aic/index.html`。Vite开发服务器的目录回退可能返回原决策页，须带index.html。构建后public/aic整体复制至dist/aic，Nginx的目录index会让公开地址 `/decision/aic/` 正常访问。
+开发地址 `/aic/`。Vite插件复用主平台壳层，并提供竞赛匿名衍生素材。构建输出独立的 `/decision/aic/` 壳层；个人辅助页为 `/decision/aic/assessment.html`。
 
 ## 来源存档与医师审核
 
@@ -44,7 +46,7 @@ python -m backend.aic.manage review-import --input 已审核文件.json --output
 python -m backend.aic.manage model-smoke --output output/aic/model-smoke.json
 ```
 
-真实模型只在审核与检索通过后调用，每进程每分钟最多6次，最多2个并发；仅允许返回提供的建议ID数组。未知ID、重复、自由文本、超时、服务错误均退回已审核条款。最终建议为审核原文，AI负责选择和编排。该限制保证引用与输出的一致性，不声称自由文本医学推理。未审核时功能锁定，不能拿连通性测试冒充医学RAG验证。
+医学建议模型只在审核与检索通过后调用；区域模型可独立编排已有气象事实、群体情景及非临床管理核查项，不产生新医学建议。两者共享每进程每分钟6次预算、最多2个模型并发。只接受提供的ID，未知ID、重复、自由文本、超时和服务错误均明确降级。最终医学建议为审核原文。不能拿接口连通性或证据排序冒充医学RAG质量、区域健康预测精度或临床验证。
 
 ## 现场观测接入
 
@@ -59,7 +61,7 @@ python -m backend.aic.manage field-import --input 私密测点记录.json --outp
 ## 评测与验收
 
 ```text
-python -m unittest backend.aic.test_aic -v
+python -m unittest backend.aic.test_aic backend.aic.test_weather backend.aic.test_regional backend.test_planning -v
 python -m backend.aic.manage scenarios --output docs/aic/evaluation-scenarios.json
 python -m backend.aic.manage evaluate --input 已标注场景.json --output output/aic/clinician-evaluation.json
 ```

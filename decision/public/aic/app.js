@@ -1,5 +1,7 @@
 "use strict";
 const API = "/api/weather/aic";
+const competition=new URLSearchParams(location.search).get('edition')!=='platform';
+const anonymous=(value)=>typeof value==='string'?(competition?value.replace(/郑州大学|Zhengzhou\s+University|ZZU/gi,'某校园').replace(/闫梓宇/g,'指导教师（匿名）').replace(/中原区/g,'某街区'):value):Array.isArray(value)?value.map(anonymous):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).map(([k,v])=>[k,anonymous(v)])):value;
 let workspaceSite = new URLSearchParams(location.search).get("site") === "campus" ? "campus" : "zhongyuan";
 const $ = (id) => document.getElementById(id);
 const redFlags = new Set(["confusion", "unconscious", "slurred_speech", "seizure", "fainting"]);
@@ -9,7 +11,7 @@ let weatherController = null;
 let assessmentController = null;
 let currentMode = "current";
 const timeLabel = (iso) => iso ? new Date(iso).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false }) : "—";
-function text(id, value) { $(id).textContent = value; }
+function text(id, value) { $(id).textContent = anonymous(value); }
 function element(tag, value, className) { const node = document.createElement(tag); if (value != null) node.textContent = value; if (className) node.className = className; return node; }
 function link(label, url) { const node = element("a", label); node.href = url; node.target = "_blank"; node.rel = "noopener noreferrer"; return node; }
 function symptoms() { return [...document.querySelectorAll('[name="symptom"]:checked')].map((el) => el.value); }
@@ -26,7 +28,8 @@ async function request(url, options = {}) {
   return result;
 }
 function download(value, name) {
-  const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: "application/json;charset=utf-8" }));
+  const output=competition?{presentation_redacted:true,integrity_note:'匿名展示副本；原始摘要对应未脱敏源记录，地理坐标保留用于追溯。',record:anonymous(value)}:value;
+  const url = URL.createObjectURL(new Blob([JSON.stringify(output, null, 2)], { type: "application/json;charset=utf-8" }));
   const anchor = document.createElement("a"); anchor.href = url; anchor.download = name; anchor.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
@@ -134,4 +137,6 @@ if (new URLSearchParams(location.search).get("embed") === "1") {
     loadStatus(); loadWeather();
   });
 }
+document.querySelector('.page-title h1').textContent='个人热风险自查（辅助）';
+document.querySelector('.wordmark').href='./#risk';
 loadStatus(); loadWeather();

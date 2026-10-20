@@ -2,6 +2,7 @@ import "./style.css";
 import { $ as byId, icons, icon, escape as e, numeric as n, date, badge, toast, download, request, empty } from "./ui.js";
 import { DecisionScreen } from "./screen.js";
 import { configureEdition } from "./edition.js";
+import { mountRegional } from "./regional.js";
 
 const API = "/api/weather/aic";
 const PLAN_API = "/api/weather/workspace/plans";
@@ -12,14 +13,15 @@ const views = {
   screen: ["可视化大屏", "MICROCLIMATE COMMAND", "微境探界 · 环境决策大屏", "空间、气象与研判一体化"],
   overview: ["态势总览", "ENVIRONMENTAL INTELLIGENCE", "区域环境态势", "从区域天气出发，查看变化、核查依据，再进入研判。"],
   spatial: ["空间研判", "SPATIAL WORKSPACE", "把问题放回真实空间", "查看校园建筑与区域网格，选取干预位置，建立可比较的空间方案。"],
-  risk: ["热风险评估", "HEAT RISK ASSESSMENT", "环境、暴露与症状分开判断", "以可追溯天气记录评估环境热风险，危险症状独立触发升级。"],
+  risk: ["区域人群研判", "AREA & COHORT ASSESSMENT", "从区域热风险到人群健康防护", "选择空间范围与目标人群，结合气象证据、热风险与 AI 研判，核查医学防护依据。个人自查保留为辅助功能。"],
   plans: ["方案对比", "INTERVENTION PLANNING", "把干预设想变成可核查方案", "保存位置与参数，对比几何指标，明确尚未验证的热环境效果。"],
   evidence: ["数据与依据", "EVIDENCE & PROVENANCE", "每个结果，都有来处", "核查原始天气快照、质量状态、方法版本与医学知识审核进度。"],
 };
 const interventions = { shade: "遮阴设施", greening: "绿化干预", cool_roof: "冷屋面", building: "建筑体块" };
 let savedSite;
-try { savedSite = localStorage.getItem("microclimate-site"); } catch { /* Optional preference. */ }
-const state = { site: ["zhongyuan", "campus"].includes(savedSite) ? savedSite : "zhongyuan", view: "overview", observation: null, timeline: null, status: null, summary: null, plans: [], selected: new Set(), errors: {}, loading: true, period: "forecast", draft: null };
+const sitePreferenceKey = competition ? "microclimate-competition-site" : "microclimate-site";
+try { savedSite = localStorage.getItem(sitePreferenceKey); } catch { /* Optional preference. */ }
+const state = { site: ["zhongyuan", "campus"].includes(savedSite) ? savedSite : competition ? "campus" : "zhongyuan", view: "overview", observation: null, timeline: null, status: null, summary: null, plans: [], selected: new Set(), errors: {}, loading: true, period: "forecast", draft: null };
 let cleanup = () => {};
 let screenInstance;
 let panelCleanup = () => {};
@@ -165,8 +167,8 @@ function renderOverview(version) {
   $("view-root").innerHTML = `<div class="context-line"><span>${icon("map-pin")}${e(o?.location_label || (state.site === "campus" ? "校园周边网格" : "中原区附近网格"))}</span><span>${icon("clock-3")}${o ? `${date(o.observed_at)} 北京时间` : "等待有效天气记录"}</span>${badge(o ? (valid ? "网格估计 · 非现场实测" : "记录时间待核查") : "天气暂缺", valid ? "green" : "amber")}</div>
     <div class="metrics-grid">${metric("当前气温", n(o?.temperature_c), "°C", "2米高度模型估计", "thermometer", "temperature")}${metric("相对湿度", n(o?.relative_humidity_pct, 0), "%", "与气温采用同一网格和时刻", "droplets")}${metric("近地风速", n(x.wind_speed_10m), "m/s", `10米风 · ${x.wind_direction_10m == null ? "风向暂缺" : n(x.wind_direction_10m, 0) + "°"}`, "wind")}${metric("当前降水", n(x.precipitation), "mm", "上游当前时间区间降水量", "cloud-rain")}</div>
     <div class="overview-grid"><section class="trend-section"><div class="section-header"><div><p class="eyebrow">HOURLY OUTLOOK</p><h2>天气变化</h2></div><div class="segments" role="group" aria-label="时间范围"><button data-period="past_model" aria-pressed="${state.period === "past_model"}">过去24小时</button><button data-period="forecast" aria-pressed="${state.period === "forecast"}">未来24小时</button></div></div><div class="chart-legend"><span class="legend-temp">气温 °C</span><span class="legend-humidity">相对湿度 %</span><small id="chart-kind">${state.period === "forecast" ? "模型预报" : "过去小时模型资料 · 非仪器观测"}</small></div><div id="weather-chart" class="weather-chart" role="img" aria-label="小时气温与相对湿度趋势"></div><div class="trend-summary"><span>${peak ? `未来24小时最高气温 ${n(max)}°C，预计 ${date(peak.time, true)}` : "暂无可用预报，未生成替代曲线。"}</span><button class="text-button" id="toggle-series">查看小时明细 ${icon("chevron-right")}</button></div><div id="series-table" hidden></div></section>
-    <section class="assessment-summary"><div class="section-header"><div><p class="eyebrow">RISK REFERENCE</p><h2>环境风险参考</h2></div>${icon("shield-check")}</div><div class="reference-value">${state.summary?.environment.heat_index_c == null ? "—" : n(state.summary.environment.heat_index_c)}<span>°C 热指数</span></div><h3>${e(state.summary?.environment.risk_label || (state.loading ? "等待天气记录" : "暂无有效评估"))}</h3><p>${e(state.summary?.environment.limitations[0] || "风险参考需要有效天气记录。天气缺失时，危险症状仍可独立触发升级。")}</p><a href="#risk" class="button primary">${icon("shield-check")}进入完整评估 ${icon("arrow-right")}</a><div class="reference-note">活动、暴露时长与症状在评估页单独填写。当前医学条款${state.status?.approved_clauses ? "部分已审核" : "待专业审核"}。</div></section></div>
-    <div class="workflow-grid"><a class="spatial-preview" href="#spatial"><img src="${import.meta.env.BASE_URL}campus-map.png" alt="校园空间底图预览" loading="lazy"><div><p class="eyebrow">SPATIAL ANALYSIS</p><h2>查看空间，定位干预</h2><p>校园建筑底图 / 区域网格 / 方案位置</p><span>进入空间研判 ${icon("arrow-up-right")}</span></div></a><section class="work-queue"><div class="section-header"><h2>工作链路</h2><span class="eyebrow">DATA → DECISION</span></div><a href="#evidence"><span class="step-number">01</span><div><strong>确认数据来源</strong><small>${o ? `当前记录 ${o.id.slice(0, 16)}…` : "等待上游天气"}</small></div>${badge(o ? "可核查" : "待接入", o ? "green" : "amber")}</a><a href="#risk"><span class="step-number">02</span><div><strong>评估暴露与症状</strong><small>环境分级与危险症状分别判断</small></div>${icon("chevron-right")}</a><a href="#plans"><span class="step-number">03</span><div><strong>建立与对比方案</strong><small>${state.plans.length} 个当前浏览器方案 · 几何层面比较</small></div>${icon("chevron-right")}</a></section></div>`;
+    <section class="assessment-summary"><div class="section-header"><div><p class="eyebrow">RISK REFERENCE</p><h2>环境风险参考</h2></div>${icon("shield-check")}</div><div class="reference-value">${state.summary?.environment.heat_index_c == null ? "—" : n(state.summary.environment.heat_index_c)}<span>°C 热指数</span></div><h3>${e(state.summary?.environment.risk_label || (state.loading ? "等待天气记录" : "暂无有效评估"))}</h3><p>${e(state.summary?.environment.limitations[0] || "风险参考需要有效天气记录。天气缺失时，危险症状仍可独立触发升级。")}</p><a href="#risk" class="button primary">${icon("shield-check")}进入区域人群研判 ${icon("arrow-right")}</a><div class="reference-note">先选择区域与目标人群，再分别设置活动和暴露情景。当前医学条款${state.status?.approved_clauses ? "部分已审核" : "待专业审核"}。</div></section></div>
+    <div class="workflow-grid"><a class="spatial-preview" href="#spatial"><img src="${import.meta.env.BASE_URL}${competition ? "aic/assets/campus-preview.png" : "campus-map.png"}" alt="${competition ? "某校园建筑轮廓匿名预览，OSM资料衍生示意，非卫星影像" : "校园空间底图预览"}" loading="lazy"><div><p class="eyebrow">SPATIAL ANALYSIS</p><h2>查看空间，定位干预</h2><p>校园建筑底图 / 区域网格 / 方案位置</p><span>进入空间研判 ${icon("arrow-up-right")}</span></div></a><section class="work-queue"><div class="section-header"><h2>工作链路</h2><span class="eyebrow">DATA → DECISION</span></div><a href="#evidence"><span class="step-number">01</span><div><strong>确认数据来源</strong><small>${o ? `当前记录 ${o.id.slice(0, 16)}…` : "等待上游天气"}</small></div>${badge(o ? "可核查" : "待接入", o ? "green" : "amber")}</a><a href="#risk"><span class="step-number">02</span><div><strong>区域与人群研判</strong><small>气象热风险 → 人群暴露 → AI证据 → 防护依据</small></div>${icon("chevron-right")}</a><a href="#plans"><span class="step-number">03</span><div><strong>建立与对比方案</strong><small>${state.plans.length} 个当前浏览器方案 · 几何层面比较</small></div>${icon("chevron-right")}</a></section></div>`;
   document.querySelectorAll("[data-period]").forEach((b) => b.addEventListener("click", () => { state.period = b.dataset.period; render(); }));
   $("toggle-series").addEventListener("click", () => { $("series-table").hidden = !$("series-table").hidden; });
   renderSeriesTable();
@@ -200,9 +202,7 @@ async function mountChart(version) {
 }
 
 function renderRisk() {
-  $("view-root").innerHTML = `<div class="embedded-risk"><iframe id="risk-frame" src="${import.meta.env.BASE_URL}aic/assessment.html?embed=1&site=${state.site}" title="匿名环境热风险评估" style="height:1450px"></iframe></div>`;
-  const listener = (event) => { const frame = $("risk-frame"); if (event.origin === location.origin && event.source === frame?.contentWindow && event.data?.type === "aic-height") frame.style.height = `${Math.min(15000, Math.max(800, Number(event.data.height) || 1450))}px`; };
-  window.addEventListener("message", listener); cleanup = () => window.removeEventListener("message", listener);
+  cleanup = mountRegional($("view-root"), { state, onResult: () => screenInstance?.updateRegional(), onSelect: state.view === "screen" ? () => screenInstance.selectRegion() : null });
 }
 
 async function renderSpatial(version) {
@@ -292,10 +292,11 @@ $("nav-toggle").addEventListener("click", () => nav(!document.body.classList.con
 $("nav-scrim").addEventListener("click", () => nav(false));
 document.addEventListener("keydown", (event) => { if (event.key === "Escape") nav(false); });
 $("site-select").value = state.site;
-$("site-select").addEventListener("change", () => { state.site = $("site-select").value; try { localStorage.setItem("microclimate-site", state.site); } catch { /* Optional preference. */ } state.observation = null; state.timeline = null; state.summary = null; updateStatus(); render(); refresh(); });
+$("site-select").addEventListener("change", () => { state.site = $("site-select").value; try { localStorage.setItem(sitePreferenceKey, state.site); } catch { /* Optional preference. */ } state.observation = null; state.timeline = null; state.summary = null; state.regionalDraft=null; state.regionalReport=null; updateStatus(); render(); refresh(); });
 $("refresh-all").addEventListener("click", () => refresh());
 window.addEventListener("hashchange", route);
 const timer = setInterval(() => { if (!document.hidden && !$("refresh-all").disabled) refresh(); }, 300000);
 window.addEventListener("pagehide", () => { panelCleanup(); cleanup(); refreshController?.abort(); clearInterval(timer); });
 window.addEventListener("pageshow", (event) => { if (event.persisted) location.reload(); });
+document.querySelector('[data-view=risk] span').textContent="区域人群研判";
 route(); refresh({ initial: true });

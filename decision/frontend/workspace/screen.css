@@ -32,6 +32,13 @@
 .screen-right { right: 22px; border-top-color: #c6b587; }
 .screen-section { padding: 17px 19px; border-bottom: 1px solid var(--screen-line); }
 .screen-section:last-child { border-bottom: 0; }
+.screen-region-controls { border-bottom:1px solid var(--screen-line); padding-bottom:17px; margin-bottom:17px; }
+.screen-region-controls h2 { font-size:13px; font-weight:550; }
+.screen-region-actions { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+.screen-cohort-summary { border-left:2px solid #71b8be; padding:10px; margin-top:13px; background:#4a7f8019; font-size:11px; line-height:1.8; }
+.screen-cohort-summary strong { color:#dcecc6; font-weight:500; }
+.screen-cohort-summary p { font-size:10px; margin:5px 0; }
+.screen-cohort-summary span,.screen-cohort-summary small { display:block; font-size:9px; color:#aac3b5; }
 .screen-section-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
 .screen-section-title h2 { font-size: 13px; font-weight: 550; }
 .screen-section-title>span { font: 8px ui-monospace, monospace; color: #87a28d; }

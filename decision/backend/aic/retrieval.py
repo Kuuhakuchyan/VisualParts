@@ -59,6 +59,8 @@ class KnowledgeBase:
             return [], "environment_unavailable"
         candidates = []
         for clause in self.approved():
+            if clause.get("groups") and context.get("group") not in clause["groups"]:
+                continue
             if fixed and not clause.get("fallback"):
                 continue
             if clause["risks"] and context["risk"] not in clause["risks"]:

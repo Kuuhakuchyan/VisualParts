@@ -1,5 +1,6 @@
 """Anonymous API, separate from mock simulation endpoints."""
 
+import asyncio
 import os
 import time
 from collections import deque
@@ -10,7 +11,8 @@ import httpx
 from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, ConfigDict, Field
 
-from .generation import select_advice
+from .generation import select_advice, select_regional
+from .regional import GROUPS, REGIONAL_VERSION, RegionalRequest, sample_region, cohort_context, cohort_assessment, regional_facts
 from .retrieval import KnowledgeBase
 from .risk import RULE_VERSION, SYMPTOMS, assess_environment, build_context, triage
 from .store import ObservationStore, digest
@@ -21,6 +23,17 @@ store = ObservationStore()
 weather = WeatherEvidence(store)
 kb = KnowledgeBase()
 _ai_budget = deque()
+_regional_slots = asyncio.Semaphore(2)
+
+
+def take_ai_budget():
+    now = time.monotonic()
+    while _ai_budget and _ai_budget[0] < now - 60:
+        _ai_budget.popleft()
+    if len(_ai_budget) >= 6:
+        return False
+    _ai_budget.append(now)
+    return True
 
 
 class AssessmentRequest(BaseModel):
@@ -43,7 +56,56 @@ async def status(response: Response):
             "protocol_reviewed": kb.protocol_reviewed(),
             "model_configured": bool(os.getenv("AIC_DEEPSEEK_API_KEY")),
             "symptoms": SYMPTOMS, "sources": kb.public_sources(),
-            "historical_spatial_rag": "not_validated", "clinical_validation": False}
+            "historical_spatial_rag": "not_validated", "clinical_validation": False,
+            "regional_method_version": REGIONAL_VERSION, "population_groups": {k: v[0] for k, v in GROUPS.items()}}
+
+
+@router.post("/regional-assess")
+async def regional_assess(body: RegionalRequest, response: Response):
+    response.headers["Cache-Control"] = "no-store"
+    async with _regional_slots:
+        result = await sample_region(weather, body)
+        contexts = [cohort_context(body, group, result["environment"]) for group in dict.fromkeys(body.groups)]
+        facts, actions = regional_facts(result, body)
+        evidence = [{"id": s["observation"]["id"], "temperature_c": s["observation"]["temperature_c"],
+                     "humidity_pct": s["observation"]["relative_humidity_pct"], "observed_at": s["observation"]["observed_at"],
+                     "environment": s["environment"]} for s in result["samples"] if s["observation"]]
+        usable = result["coverage"]["usable_samples"] > 0
+        permitted = body.use_ai and usable and take_ai_budget()
+        selection, generation = await select_regional(facts, actions, contexts, evidence, enabled=permitted)
+        if body.use_ai and not permitted:
+            generation["reason"] = "environment_unavailable" if not usable else "model_budget_limit"
+        cohorts, citations = [], {}
+        for context in contexts:
+            candidates, retrieval_status = kb.retrieve(context)
+            if not kb.protocol_reviewed():
+                candidates, retrieval_status = [], "protocol_review_pending"
+            for clause in candidates:
+                citations[clause["id"]] = kb.citation(clause)
+            group = context["group"]
+            assessment = cohort_assessment(context, result["environment"], result["coverage"])
+            cohorts.append({"id": group, "label": GROUPS[group][0], "consideration": GROUPS[group][1],
+                            "environment_risk": result["environment"]["risk"],
+                            "assessment": assessment["label"], "attention_factors": assessment["factors"],
+                            "assessment_method": assessment["method"], "assessment_note": assessment["note"],
+                            "source_ids": ["WHO-HEAT", "NWS-LEVELS"], "context": context,
+                            "retrieval_status": retrieval_status,
+                            "medical_advice": [{"id": c["id"], "text": c["text_zh"], "citation_id": c["id"], "review_status": "approved"} for c in candidates]})
+        cohort_by_id = {c["id"]: c for c in cohorts}
+        report = {**result, "schema_version": "regional-cohort-report-1", "project": "微境探界",
+                  "created_at": datetime.now(timezone.utc).isoformat(), "input": body.model_dump(),
+                  "purpose": "区域与人群热健康风险辅助研判；不是疾病确诊、处方、患病概率或临床验证。",
+                  "cohorts": [cohort_by_id[g] for g in selection["group_order"]], "facts": facts, "management_checks": actions,
+                  "interpretation": selection, "generation": generation, "citations": list(citations.values()),
+                  "sources": kb.public_sources(), "medical_review": "reviewed_clauses_only" if citations else "pending",
+                  "medical_message": "医学建议仅展示通过专业审核且适用的原文；无已审核证据时不生成医学处置。AI区域证据编排不代表医学审核完成。",
+                  "rules_version": RULE_VERSION, "regional_version": REGIONAL_VERSION, "knowledge_version": kb.data["version"],
+                  "privacy": "不收集身份或个体病史，区域报告不在服务端持久化；AI接收天气数值、群体枚举与证据，不发送地点名称或坐标。",
+                  "limitations": ["中心及四角仅为有限网格采样，不代表全区连续实测或热风险热力图。",
+                                  "无可靠现场残差、辐射、标准WBGT及人员健康数据，不提供空间插值、患病概率、标准WBGT或疾病诊断。",
+                                  "人群差异为定性情景解释，不是已验证的人群风险模型；不进行数值加权或等效升温。"]}
+        report["report_sha256"] = digest(report)
+        return report
 
 
 @router.get("/observations/current")
@@ -94,13 +156,9 @@ async def assess(body: AssessmentRequest, response: Response):
         candidates = []
         generation["reason"] = "emergency_bypass_model"
     elif body.use_ai and candidates:
-        now = time.monotonic()
-        while _ai_budget and _ai_budget[0] < now - 60:
-            _ai_budget.popleft()
-        if len(_ai_budget) >= 6:
+        if not take_ai_budget():
             generation["reason"] = "model_budget_limit"
         else:
-            _ai_budget.append(now)
             selected, generation = await select_advice(candidates, context)
             by_id = {c["id"]: c for c in candidates}
             candidates = [by_id[c] for c in selected]

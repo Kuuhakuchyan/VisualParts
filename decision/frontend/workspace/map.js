@@ -1,13 +1,15 @@
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { $, escape as e, numeric as n, date } from "./ui.js";
+import { isCompetition, anonymousText } from "./edition.js";
 
 const empty = () => ({ type: "FeatureCollection", features: [] });
 export class SpatialWorkspace {
-  constructor({ observation, plans, onChoose, dark = false, onState = () => {} }) {
+  constructor({ observation, plans, onChoose, onRegion, dark = false, onState = () => {} }) {
     this.observation = observation;
     this.plans = plans;
     this.onChoose = onChoose;
+    this.onRegion = onRegion;
     this.dark = dark; this.onState = onState;
     this.disposed = false;
     this.abort = new AbortController();
@@ -20,7 +22,7 @@ export class SpatialWorkspace {
 
   async init() {
     this.map = new maplibregl.Map({ container: "workspace-map", center: [113.531, 34.814], zoom: this.dark ? 15.7 : 15.3, pitch: 54, bearing: -24, maxPitch: 70, attributionControl: false, canvasContextAttributes: { antialias: true, preserveDrawingBuffer: new URLSearchParams(location.search).get("capture") === "1" },
-      style: { version: 8, light: { anchor: "map", color: "#fff0da", intensity: 0.6, position: [1.5, 210, 38] }, sources: { imagery: { type: "raster", tileSize: 256, tiles: [`${location.origin}/tiles/world-imagery/{z}/{y}/{x}`], attribution: "Esri World Imagery" }, streets: { type: "raster", tileSize: 256, tiles: [`${location.origin}/tiles/world-topo/{z}/{y}/{x}`], attribution: "Esri World Topographic Map" } }, layers: [{ id: "background", type: "background", paint: { "background-color": this.dark ? "#202c2b" : "#e4e9df" } }, { id: "imagery", type: "raster", source: "imagery", paint: { "raster-opacity": 1, "raster-saturation": -0.15, "raster-brightness-max": this.dark ? 0.72 : 1 } }, { id: "streets", type: "raster", source: "streets", layout: { visibility: "none" } }] },
+      style: { version: 8, light: { anchor: "map", color: "#fff0da", intensity: 0.6, position: [1.5, 210, 38] }, sources: isCompetition ? {} : { imagery: { type: "raster", tileSize: 256, tiles: [`${location.origin}/tiles/world-imagery/{z}/{y}/{x}`], attribution: "Esri World Imagery" }, streets: { type: "raster", tileSize: 256, tiles: [`${location.origin}/tiles/world-topo/{z}/{y}/{x}`], attribution: "Esri World Topographic Map" } }, layers: [{ id: "background", type: "background", paint: { "background-color": this.dark ? "#202c2b" : "#e4e9df" } }, ...(isCompetition ? [] : [{ id: "imagery", type: "raster", source: "imagery", paint: { "raster-opacity": 1, "raster-saturation": -0.15, "raster-brightness-max": this.dark ? 0.72 : 1 } }, { id: "streets", type: "raster", source: "streets", layout: { visibility: "none" } }])] },
     });
     this.map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
     this.map.addControl(new maplibregl.NavigationControl({ showCompass: true, visualizePitch: true }), "top-right");
@@ -40,6 +42,14 @@ export class SpatialWorkspace {
     this.map.addSource("plans", { type: "geojson", data: this.planFeatures() });
     this.map.addLayer({ id: "plan-areas", type: "fill", source: "plans", paint: { "fill-color": ["match", ["get", "intervention"], "greening", "#76be70", "cool_roof", "#9b92d0", "building", "#cb9572", "#e6bd58"], "fill-opacity": 0.7 } });
     this.map.addLayer({ id: "plan-outline", type: "line", source: "plans", paint: { "line-color": "#fff", "line-width": 2 } });
+    this.map.addSource("regional-area", { type: "geojson", data: empty() });
+    this.map.addLayer({ id: "regional-area-fill", type: "fill", source: "regional-area", paint: { "fill-color": "#5fbed0", "fill-opacity": 0.09 } });
+    this.map.addLayer({ id: "regional-area-line", type: "line", source: "regional-area", paint: { "line-color": "#65d4dc", "line-width": 2, "line-dasharray": [3,2] } });
+    this.map.addSource("regional-samples", { type: "geojson", data: empty() });
+    this.map.addLayer({ id: "regional-sample-points", type: "circle", source: "regional-samples", paint: { "circle-radius": 7, "circle-color": ["match", ["get", "risk"], "danger", "#e47160", "extreme_danger", "#c14258", "extreme_caution", "#ecb761", "caution", "#d2cc7c", "below_range", "#8dc7b4", "#9ca8ab"], "circle-stroke-width": 2, "circle-stroke-color": "#fff" } });
+    this.regionKeyHandler = (event) => { if (event.key === "Escape" && this.selectingRegion) { this.selectingRegion = false; this.regionFirst = null; this.map.getCanvas().style.cursor = ""; this.updateMapState(); } };
+    document.addEventListener("keydown", this.regionKeyHandler);
+    if (isCompetition) for (const id of ["map-imagery", "map-streets"]) { const button = $(id); if (button) { button.disabled = true; button.setAttribute("aria-pressed", "false"); button.title = "竞赛匿名模式不加载含地名、校名或校徽的影像与街道底图"; button.textContent = id === "map-imagery" ? "匿名底图" : "街道停用"; } }
     this.map.on("click", (event) => this.pick(event));
     this.map.on("moveend", () => { if (!this.disposed) $("map-pitch")?.setAttribute("aria-pressed", String(this.map.getPitch() >= 20)); });
     this.map.on("mousemove", (event) => { if (!this.disposed) $("map-coordinate").textContent = `${n(event.lngLat.lng, 5)}°E / ${n(event.lngLat.lat, 5)}°N`; });
@@ -62,7 +72,7 @@ export class SpatialWorkspace {
     window.addEventListener("workspace:weather", this.weatherListener);
     this.updateWeather();
     try {
-      const response = await fetch(`${import.meta.env.BASE_URL}data/zzu_osm_buildings.geojson`, { signal: AbortSignal.any([this.abort.signal, AbortSignal.timeout(15000)]), cache: "force-cache" });
+      const response = await fetch(`${import.meta.env.BASE_URL}${isCompetition ? "aic/assets/campus-buildings.geojson" : "data/zzu_osm_buildings.geojson"}`, { signal: AbortSignal.any([this.abort.signal, AbortSignal.timeout(15000)]), cache: "force-cache" });
       if (!response.ok) throw new Error("building data");
       const data = await response.json();
       if (data.type !== "FeatureCollection" || !Array.isArray(data.features)) throw new Error("invalid GeoJSON");
@@ -94,6 +104,7 @@ export class SpatialWorkspace {
     this.map.triggerRepaint();
   }
   setBasemap(name) {
+    if (isCompetition) return;
     this.tileFailed = false;
     this.visible(["imagery"], name === "imagery"); this.visible(["streets"], name === "streets");
     for (const key of ["imagery", "streets"]) $("map-" + key)?.setAttribute("aria-pressed", String(key === name));
@@ -116,7 +127,7 @@ export class SpatialWorkspace {
   updateMapState() {
     if (this.disposed) return;
     $("map-state").classList.toggle("warn", !!(this.tileFailed || this.buildingFailed || this.modelFailed));
-    $("map-state").textContent = `${this.buildings ? `${this.buildings}栋建筑轮廓 · 高度含估计值` : (this.buildingFailed ? "建筑资料暂不可用" : "正在读取建筑资料")}${this.tileFailed ? " · 当前底图部分瓦片不可用" : ""}${this.modelFailed ? " · 细节渲染不可用，已保留基础体块" : ""}`;
+    $("map-state").textContent = `${this.selectingRegion ? "选区中：依次点击两个对角点 / Esc取消 · " : ""}${isCompetition ? "匿名建筑底图 · " : ""}${this.buildings ? `${this.buildings}栋建筑轮廓 · 高度含估计值` : (this.buildingFailed ? "建筑资料暂不可用" : "正在读取建筑资料")}${this.tileFailed ? " · 当前底图部分瓦片不可用" : ""}${this.modelFailed ? " · 细节渲染不可用，已保留基础体块" : ""}`;
     $("workspace-map").dataset.model = this.modelLayer && !this.modelFailed ? "three" : "extrusion";
     $("workspace-map").dataset.buildings = String(this.buildings);
     this.onState({ buildings: this.buildings, model: this.modelLayer && !this.modelFailed ? "Three.js 建筑细节" : "建筑体块", unavailable: this.buildingFailed, tileFailed: this.tileFailed });
@@ -132,7 +143,15 @@ export class SpatialWorkspace {
   pick(event) {
     if (this.disposed) return;
     const { lng, lat } = event.lngLat;
-    if (lng < 113.4 || lng > 113.9 || lat < 34.6 || lat > 34.95) { $("picked-description").textContent = "当前方案登记范围为郑州城区，请返回区域后选点。"; return; }
+    if (this.selectingRegion) {
+      if (lng < 113.4 || lng > 113.9 || lat < 34.6 || lat > 34.95) { toastRegion("选区超出当前资料支持范围，请返回区域后选择。"); return; }
+      if (!this.regionFirst) { this.regionFirst = [lng, lat]; $("map-state").textContent = "已选择第一个角点，请点击对角点。Esc取消"; return; }
+      const [lon0, lat0] = this.regionFirst;
+      const bounds = { west: Number(Math.min(lng,lon0).toFixed(6)), east: Number(Math.max(lng,lon0).toFixed(6)), south: Number(Math.min(lat,lat0).toFixed(6)), north: Number(Math.max(lat,lat0).toFixed(6)) };
+      if (bounds.east-bounds.west < 0.0001 || bounds.north-bounds.south < 0.0001 || bounds.east-bounds.west > 0.1 || bounds.north-bounds.south > 0.1) { $("map-state").textContent = "矩形范围需有面积且经纬跨度不超过0.1度；重新选择两个角点。"; this.regionFirst=null; return; }
+      this.selectingRegion=false; this.regionFirst=null; this.map.getCanvas().style.cursor=""; this.setRegion(bounds); this.updateMapState(); this.onRegion?.(bounds); return;
+    }
+    if (lng < 113.4 || lng > 113.9 || lat < 34.6 || lat > 34.95) { $("picked-description").textContent = anonymousText("当前方案登记范围为郑州城区，请返回区域后选点。"); return; }
     this.point = { longitude: Number(lng.toFixed(6)), latitude: Number(lat.toFixed(6)) };
     this.marker?.remove(); this.marker = new maplibregl.Marker({ color: "#147858" }).setLngLat([lng, lat]).addTo(this.map);
     $("picked-location").textContent = `${n(lng, 6)}°E / ${n(lat, 6)}°N`;
@@ -143,10 +162,10 @@ export class SpatialWorkspace {
     let description = "已选择研判位置；坐标来自地图点击，未作现场测量。";
     if (isBuilding) {
       const p = feature.properties;
-      description = `建筑轮廓 · ${p.name || "未命名建筑"} · 高度${p.height_m == null ? "缺失，按18米示意" : n(Number(p.height_m)) + "米（底图属性，未现场核验）"}`;
+      description = `建筑轮廓 · ${isCompetition ? "某校园建筑" : (p.name || "未命名建筑")} · 高度${p.height_m == null ? "缺失，按18米示意" : n(Number(p.height_m)) + "米（底图属性，未现场核验）"}`;
     } else if (feature?.layer.id === "plan-areas") description = `已有方案：${feature.properties.name}，用户输入的理想化范围。`;
     else if (feature?.layer.id === "weather-grid-point") description = "模型返回的网格中心，不是校园现场传感器。";
-    $("picked-description").textContent = description;
+    $("picked-description").textContent = anonymousText(description);
     this.modelLayer?.select(isBuilding ? feature.id : null);
     $("use-location").disabled = false;
     this.popup?.remove(); this.popup = new maplibregl.Popup({ offset: 28, closeOnClick: true }).setLngLat([lng, lat]).setHTML(`<h3>已选研判位置</h3><p>${e(description)}</p>`).addTo(this.map);
@@ -158,5 +177,15 @@ export class SpatialWorkspace {
       return { type: "Feature", properties: { name: p.name, intervention: p.intervention }, geometry: { type: "Polygon", coordinates: [[[p.longitude-dx,p.latitude-dy],[p.longitude+dx,p.latitude-dy],[p.longitude+dx,p.latitude+dy],[p.longitude-dx,p.latitude+dy],[p.longitude-dx,p.latitude-dy]]] } };
     }) };
   }
-  destroy() { this.disposed = true; this.stopOrbit(); this.abort.abort(); this.readyDone?.(); clearTimeout(this.readyTimer); this.resizeObserver?.disconnect(); this.handlers.forEach((remove) => remove()); window.removeEventListener("workspace:weather", this.weatherListener); document.removeEventListener("visibilitychange", this.visibilityHandler); this.popup?.remove(); this.marker?.remove(); this.map?.remove(); }
+  beginRegion() { this.stopOrbit(); this.selectingRegion=true; this.regionFirst=null; this.map.getCanvas().style.cursor="crosshair"; this.updateMapState(); }
+  setRegion(bounds, report=null) {
+    if (this.disposed || !this.map?.getSource("regional-area")) return;
+    const {west:w,east:e,south:s,north:n}=bounds;
+    this.map.getSource("regional-area").setData({type:"FeatureCollection",features:[{type:"Feature",properties:{},geometry:{type:"Polygon",coordinates:[[[w,s],[e,s],[e,n],[w,n],[w,s]]]}}]});
+    const seen=new Set();
+    const features=(report?.samples||[]).flatMap(sample=>{const o=sample.observation;if(!o)return [];const key=`${o.location.longitude}/${o.location.latitude}`;if(seen.has(key))return [];seen.add(key);return [{type:"Feature",geometry:{type:"Point",coordinates:[o.location.longitude,o.location.latitude]},properties:{risk:sample.environment.risk,sample:sample.id}}];});
+    this.map.getSource("regional-samples").setData({type:"FeatureCollection",features});
+  }
+  destroy() { this.disposed = true; this.stopOrbit(); this.abort.abort(); this.readyDone?.(); clearTimeout(this.readyTimer); this.resizeObserver?.disconnect(); this.handlers.forEach((remove) => remove()); window.removeEventListener("workspace:weather", this.weatherListener); document.removeEventListener("visibilitychange", this.visibilityHandler); document.removeEventListener("keydown", this.regionKeyHandler); this.popup?.remove(); this.marker?.remove(); this.map?.remove(); }
 }
+function toastRegion(message) { $("map-state").textContent=message; }
