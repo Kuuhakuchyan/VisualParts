@@ -7,6 +7,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     base,
+    optimizeDeps: { exclude: ["maplibre-gl"] },
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "src"),
