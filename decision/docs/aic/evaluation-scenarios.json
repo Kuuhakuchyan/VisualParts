@@ -1,0 +1,488 @@
+{
+  "status": "awaiting_clinician_labels",
+  "cases": [
+    {
+      "id": "SC-01",
+      "sample_type": "simulated_test_only",
+      "temperature_c": 25,
+      "humidity_pct": 60,
+      "activity": "walk",
+      "minutes": 30,
+      "symptoms": [],
+      "exposure": "unknown",
+      "clinician_label": {
+        "expected_ids": null,
+        "urgent": null,
+        "reviewer": "",
+        "reviewed_at": "",
+        "support_pass": null,
+        "fixed_baseline_scores": null,
+        "rag_scores": null
+      }
+    },
+    {
+      "id": "SC-02",
+      "sample_type": "simulated_test_only",
+      "temperature_c": 30,
+      "humidity_pct": 50,
+      "activity": "walk",
+      "minutes": 30,
+      "symptoms": [],
+      "exposure": "unknown",
+      "clinician_label": {
+        "expected_ids": null,
+        "urgent": null,
+        "reviewer": "",
+        "reviewed_at": "",
+        "support_pass": null,
+        "fixed_baseline_scores": null,
+        "rag_scores": null
+      }
+    },
+    {
+      "id": "SC-03",
+      "sample_type": "simulated_test_only",
+      "temperature_c": 32,
+      "humidity_pct": 70,
+      "activity": "run",
+      "minutes": 60,
+      "symptoms": [],
+      "exposure": "unknown",
+      "clinician_label": {
+        "expected_ids": null,
+        "urgent": null,
+        "reviewer": "",
+        "reviewed_at": "",
+        "support_pass": null,
+        "fixed_baseline_scores": null,
+        "rag_scores": null
+      }
+    },
+    {
+      "id": "SC-04",
+      "sample_type": "simulated_test_only",
+      "temperature_c": 35,
+      "humidity_pct": 65,
+      "activity": "work",
+      "minutes": 120,
+      "symptoms": [],
+      "exposure": "unknown",
+      "clinician_label": {
+        "expected_ids": null,
+        "urgent": null,
+        "reviewer": "",
+        "reviewed_at": "",
+        "support_pass": null,
+        "fixed_baseline_scores": null,
+        "rag_scores": null
+      }
+    },
+    {
+      "id": "SC-05",
+      "sample_type": "simulated_test_only",
+      "temperature_c": 38,
+      "humidity_pct": 70,
+      "activity": "rest",
+      "minutes": 10,
+      "symptoms": [],
+      "exposure": "unknown",
+      "clinician_label": {
+        "expected_ids": null,
+        "urgent": null,
+        "reviewer": "",
+        "reviewed_at": "",
+        "support_pass": null,
+        "fixed_baseline_scores": null,
+        "rag_scores": null
+      }
+    },
+    {
+      "id": "SC-06",
+      "sample_type": "simulated_test_only",
+      "temperature_c": 22,
+      "humidity_pct": 50,
+      "activity": "walk",
+      "minutes": 30,
+      "symptoms": [
+        "confusion"
+      ],
+      "exposure": "unknown",
+      "clinician_label": {
+        "expected_ids": null,
+        "urgent": null,
+        "reviewer": "",
+        "reviewed_at": "",
+        "support_pass": null,
+        "fixed_baseline_scores": null,
+        "rag_scores": null
+      }
+    },
+    {
+      "id": "SC-07",
+      "sample_type": "simulated_test_only",
+      "temperature_c": 20,
+      "humidity_pct": 50,
+      "activity": "rest",
+      "minutes": 15,
+      "symptoms": [
+        "unconscious"
+      ],
+      "exposure": "unknown",
+      "clinician_label": {
+        "expected_ids": null,
+        "urgent": null,
+        "reviewer": "",
+        "reviewed_at": "",
+        "support_pass": null,
+        "fixed_baseline_scores": null,
+        "rag_scores": null
+      }
+    },
+    {
+      "id": "SC-08",
+      "sample_type": "simulated_test_only",
+      "temperature_c": 24,
+      "humidity_pct": 60,
+      "activity": "walk",
+      "minutes": 30,
+      "symptoms": [
+        "slurred_speech"
+      ],
+      "exposure": "unknown",
+      "clinician_label": {
+        "expected_ids": null,
+        "urgent": null,
+        "reviewer": "",
+        "reviewed_at": "",
+        "support_pass": null,
+        "fixed_baseline_scores": null,
+        "rag_scores": null
+      }
+    },
+    {
+      "id": "SC-09",
+      "sample_type": "simulated_test_only",
+      "temperature_c": 25,
+      "humidity_pct": 60,
+      "activity": "run",
+      "minutes": 60,
+      "symptoms": [
+        "seizure"
+      ],
+      "exposure": "unknown",
+      "clinician_label": {
+        "expected_ids": null,
+        "urgent": null,
+        "reviewer": "",
+        "reviewed_at": "",
+        "support_pass": null,
+        "fixed_baseline_scores": null,
+        "rag_scores": null
+      }
+    },
+    {
+      "id": "SC-10",
+      "sample_type": "simulated_test_only",
+      "temperature_c": 23,
+      "humidity_pct": 60,
+      "activity": "work",
+      "minutes": 20,
+      "symptoms": [
+        "fainting"
+      ],
+      "exposure": "unknown",
+      "clinician_label": {
+        "expected_ids": null,
+        "urgent": null,
+        "reviewer": "",
+        "reviewed_at": "",
+        "support_pass": null,
+        "fixed_baseline_scores": null,
+        "rag_scores": null
+      }
+    },
+    {
+      "id": "SC-11",
+      "sample_type": "simulated_test_only",
+      "temperature_c": 31,
+      "humidity_pct": 70,
+      "activity": "walk",
+      "minutes": 45,
+      "symptoms": [
+        "dizziness"
+      ],
+      "exposure": "unknown",
+      "clinician_label": {
+        "expected_ids": null,
+        "urgent": null,
+        "reviewer": "",
+        "reviewed_at": "",
+        "support_pass": null,
+        "fixed_baseline_scores": null,
+        "rag_scores": null
+      }
+    },
+    {
+      "id": "SC-12",
+      "sample_type": "simulated_test_only",
+      "temperature_c": 32,
+      "humidity_pct": 65,
+      "activity": "work",
+      "minutes": 90,
+      "symptoms": [
+        "nausea"
+      ],
+      "exposure": "unknown",
+      "clinician_label": {
+        "expected_ids": null,
+        "urgent": null,
+        "reviewer": "",
+        "reviewed_at": "",
+        "support_pass": null,
+        "fixed_baseline_scores": null,
+        "rag_scores": null
+      }
+    },
+    {
+      "id": "SC-13",
+      "sample_type": "simulated_test_only",
+      "temperature_c": 33,
+      "humidity_pct": 70,
+      "activity": "run",
+      "minutes": 45,
+      "symptoms": [
+        "vomiting"
+      ],
+      "exposure": "unknown",
+      "clinician_label": {
+        "expected_ids": null,
+        "urgent": null,
+        "reviewer": "",
+        "reviewed_at": "",
+        "support_pass": null,
+        "fixed_baseline_scores": null,
+        "rag_scores": null
+      }
+    },
+    {
+      "id": "SC-14",
+      "sample_type": "simulated_test_only",
+      "temperature_c": 30,
+      "humidity_pct": 65,
+      "activity": "walk",
+      "minutes": 30,
+      "symptoms": [
+        "headache"
+      ],
+      "exposure": "unknown",
+      "clinician_label": {
+        "expected_ids": null,
+        "urgent": null,
+        "reviewer": "",
+        "reviewed_at": "",
+        "support_pass": null,
+        "fixed_baseline_scores": null,
+        "rag_scores": null
+      }
+    },
+    {
+      "id": "SC-15",
+      "sample_type": "simulated_test_only",
+      "temperature_c": 34,
+      "humidity_pct": 65,
+      "activity": "work",
+      "minutes": 120,
+      "symptoms": [
+        "cramps"
+      ],
+      "exposure": "unknown",
+      "clinician_label": {
+        "expected_ids": null,
+        "urgent": null,
+        "reviewer": "",
+        "reviewed_at": "",
+        "support_pass": null,
+        "fixed_baseline_scores": null,
+        "rag_scores": null
+      }
+    },
+    {
+      "id": "SC-16",
+      "sample_type": "simulated_test_only",
+      "temperature_c": 32,
+      "humidity_pct": 80,
+      "activity": "walk",
+      "minutes": 60,
+      "symptoms": [
+        "weakness"
+      ],
+      "exposure": "unknown",
+      "clinician_label": {
+        "expected_ids": null,
+        "urgent": null,
+        "reviewer": "",
+        "reviewed_at": "",
+        "support_pass": null,
+        "fixed_baseline_scores": null,
+        "rag_scores": null
+      }
+    },
+    {
+      "id": "SC-17",
+      "sample_type": "simulated_test_only",
+      "temperature_c": 28,
+      "humidity_pct": 85,
+      "activity": "rest",
+      "minutes": 120,
+      "symptoms": [],
+      "exposure": "unknown",
+      "clinician_label": {
+        "expected_ids": null,
+        "urgent": null,
+        "reviewer": "",
+        "reviewed_at": "",
+        "support_pass": null,
+        "fixed_baseline_scores": null,
+        "rag_scores": null
+      }
+    },
+    {
+      "id": "SC-18",
+      "sample_type": "simulated_test_only",
+      "temperature_c": 29,
+      "humidity_pct": 40,
+      "activity": "run",
+      "minutes": 30,
+      "symptoms": [],
+      "exposure": "unknown",
+      "clinician_label": {
+        "expected_ids": null,
+        "urgent": null,
+        "reviewer": "",
+        "reviewed_at": "",
+        "support_pass": null,
+        "fixed_baseline_scores": null,
+        "rag_scores": null
+      }
+    },
+    {
+      "id": "SC-19",
+      "sample_type": "simulated_test_only",
+      "temperature_c": 36,
+      "humidity_pct": 60,
+      "activity": "work",
+      "minutes": 240,
+      "symptoms": [],
+      "exposure": "unknown",
+      "clinician_label": {
+        "expected_ids": null,
+        "urgent": null,
+        "reviewer": "",
+        "reviewed_at": "",
+        "support_pass": null,
+        "fixed_baseline_scores": null,
+        "rag_scores": null
+      }
+    },
+    {
+      "id": "SC-20",
+      "sample_type": "simulated_test_only",
+      "temperature_c": 33,
+      "humidity_pct": 75,
+      "activity": "walk",
+      "minutes": 180,
+      "symptoms": [
+        "nausea",
+        "dizziness"
+      ],
+      "exposure": "unknown",
+      "clinician_label": {
+        "expected_ids": null,
+        "urgent": null,
+        "reviewer": "",
+        "reviewed_at": "",
+        "support_pass": null,
+        "fixed_baseline_scores": null,
+        "rag_scores": null
+      }
+    },
+    {
+      "id": "SC-21",
+      "sample_type": "simulated_test_only",
+      "temperature_c": 18,
+      "humidity_pct": 55,
+      "activity": "rest",
+      "minutes": 5,
+      "symptoms": [],
+      "exposure": "unknown",
+      "clinician_label": {
+        "expected_ids": null,
+        "urgent": null,
+        "reviewer": "",
+        "reviewed_at": "",
+        "support_pass": null,
+        "fixed_baseline_scores": null,
+        "rag_scores": null
+      }
+    },
+    {
+      "id": "SC-22",
+      "sample_type": "simulated_test_only",
+      "temperature_c": 40,
+      "humidity_pct": 30,
+      "activity": "work",
+      "minutes": 60,
+      "symptoms": [],
+      "exposure": "unknown",
+      "clinician_label": {
+        "expected_ids": null,
+        "urgent": null,
+        "reviewer": "",
+        "reviewed_at": "",
+        "support_pass": null,
+        "fixed_baseline_scores": null,
+        "rag_scores": null
+      }
+    },
+    {
+      "id": "SC-23",
+      "sample_type": "simulated_test_only",
+      "temperature_c": 31,
+      "humidity_pct": 90,
+      "activity": "run",
+      "minutes": 90,
+      "symptoms": [],
+      "exposure": "unknown",
+      "clinician_label": {
+        "expected_ids": null,
+        "urgent": null,
+        "reviewer": "",
+        "reviewed_at": "",
+        "support_pass": null,
+        "fixed_baseline_scores": null,
+        "rag_scores": null
+      }
+    },
+    {
+      "id": "SC-24",
+      "sample_type": "simulated_test_only",
+      "temperature_c": 28,
+      "humidity_pct": 50,
+      "activity": "walk",
+      "minutes": 30,
+      "symptoms": [
+        "vomiting"
+      ],
+      "exposure": "unknown",
+      "clinician_label": {
+        "expected_ids": null,
+        "urgent": null,
+        "reviewer": "",
+        "reviewed_at": "",
+        "support_pass": null,
+        "fixed_baseline_scores": null,
+        "rag_scores": null
+      }
+    }
+  ]
+}

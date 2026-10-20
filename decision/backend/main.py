@@ -67,6 +67,9 @@ app = FastAPI(
     description="提供空间推演演示接口，以及标明来源的区域天气估计",
 )
 
+from backend.aic.router import router as aic_router
+app.include_router(aic_router)
+
 ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.getenv(

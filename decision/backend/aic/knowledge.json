@@ -1,0 +1,16 @@
+{
+  "version": "medical-draft-1.0.0",
+  "sources": [
+    {"id":"NWS-METHOD","title":"The Heat Index Equation","publisher":"NOAA/NWS Weather Prediction Center","url":"https://www.wpc.ncep.noaa.gov/html/heatindex_equation.shtml","version_date":"2022-05-12","date_basis":"Page last modified","kind":"environment_method"},
+    {"id":"NWS-LEVELS","title":"Heat Index","publisher":"NOAA/NWS Amarillo","url":"https://www.weather.gov/ama/heatindex","version_date":null,"date_basis":"页面未提供明确版本日期，按抓取快照固定版本","kind":"environment_method"},
+    {"id":"NWS-ILLNESS","title":"Heat Related Illnesses","publisher":"NOAA/NWS","url":"https://www.weather.gov/safety/heat-illness","version_date":null,"date_basis":"页面未提供明确版本日期，按抓取快照固定版本","kind":"medical"},
+    {"id":"WHO-HEAT","title":"Heat and health","publisher":"World Health Organization","url":"https://www.who.int/news-room/fact-sheets/detail/climate-change-heat-and-health","version_date":null,"date_basis":"以抓取快照的页面日期和哈希为准，不假定持续不变","kind":"medical"}
+  ],
+  "clauses": [
+    {"id":"WHO-AVOID-PEAK","source_id":"WHO-HEAT","location":"How to protect yourself / Keep out of the heat","quote":"Avoid going outside and doing strenuous activity during the hottest time of day.","text_zh":"避免在一天中最热的时段外出或从事剧烈活动。","population":"一般公众；特殊人群需另行个体化建议","risks":["caution","extreme_caution","danger","extreme_danger"],"activities":["walk","run","work"],"min_minutes":0,"symptoms":[],"keywords":["户外","高温","活动","运动","劳动"],"fallback":true,"conflicts_with":[]},
+    {"id":"WHO-SHADE","source_id":"WHO-HEAT","location":"How to protect yourself / Keep out of the heat","quote":"Stay in the shade.","text_zh":"在阴凉处活动。","population":"一般公众","risks":["caution","extreme_caution","danger","extreme_danger"],"activities":[],"min_minutes":0,"symptoms":[],"keywords":["日晒","户外","阴凉"],"fallback":true,"conflicts_with":[]},
+    {"id":"WHO-CLOTHING","source_id":"WHO-HEAT","location":"How to protect yourself / Keep your body cool and hydrated","quote":"Use light and loose-fitting clothing and bed linens.","text_zh":"穿着轻薄、宽松的衣物。","population":"一般公众","risks":["caution","extreme_caution","danger","extreme_danger"],"activities":[],"min_minutes":30,"symptoms":[],"keywords":["衣物","长时间","暴露"],"fallback":true,"conflicts_with":[]},
+    {"id":"NWS-COOL-ENV","source_id":"NWS-ILLNESS","location":"Heat Exhaustion / First Aid","quote":"Move person to a cooler environment, preferably a well air-conditioned room.","text_zh":"转移至较凉爽的环境，优先选择有适宜空调的房间。","population":"出现热相关不适者；需结合症状分流，不能据此确诊热衰竭","risks":[],"activities":[],"min_minutes":0,"symptoms":["dizziness","weakness","nausea","headache","cramps"],"keywords":["头晕","乏力","恶心","头痛","痉挛"],"fallback":true,"conflicts_with":[]},
+    {"id":"NWS-MEDICAL-ATTENTION","source_id":"NWS-ILLNESS","location":"Heat Exhaustion / First Aid","quote":"Seek immediate medical attention if the person vomits, symptoms worsen or last longer than 1 hour","text_zh":"出现呕吐、症状加重或持续超过1小时时，立即寻求医疗帮助。","population":"热相关不适者；症状持续时间不得用户外暴露时长替代","risks":[],"activities":[],"min_minutes":0,"symptoms":["vomiting"],"keywords":["呕吐","就医"],"fallback":true,"conflicts_with":[]}
+  ]
+}

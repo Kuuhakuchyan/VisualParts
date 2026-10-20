@@ -1,4 +1,9 @@
 ﻿.env
+.env.*
+!.env.example
+.venv-aic/
+**/aic_state/
+**/review-private/
 data/
 grafana_data/
 mosquitto/data/

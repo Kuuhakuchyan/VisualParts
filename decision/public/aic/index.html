@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="description" content="微境探界匿名环境热风险评估原型">
+  <title>微境探界 · 热环境风险</title>
+  <link rel="stylesheet" href="./style.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="wordmark" href="./index.html">微境探界 <span>MICROCLIMATE</span></a>
+    <span class="prototype">匿名评估 · 原型</span>
+  </header>
+  <main>
+    <div class="page-title"><div><p class="eyebrow">THERMAL ENVIRONMENT</p><h1>热环境风险</h1></div><span id="release-status" class="review-badge">审核状态加载中</span></div>
+    <div class="workspace">
+      <section class="inputs" aria-label="评估条件">
+        <section class="section">
+          <div class="section-heading"><h2><span>01</span> 气象数据</h2><button id="refresh" type="button">刷新</button></div>
+          <fieldset class="segments"><legend class="sr-only">数据场景</legend><label><input type="radio" name="mode" value="current" checked><span>当前网格</span></label><label><input type="radio" name="mode" value="history"><span>历史高温 · 2024</span></label></fieldset>
+          <p id="weather-state" role="status">正在获取区域天气…</p>
+          <div class="measurements"><div><span>气温</span><strong id="temperature">—</strong><small>°C</small></div><div><span>相对湿度</span><strong id="humidity">—</strong><small>%</small></div></div>
+          <dl class="data-meta"><div><dt>位置</dt><dd id="location">中原区附近网格</dd></div><div><dt>北京时间</dt><dd id="observed-at">—</dd></div><div><dt>来源</dt><dd id="provider">—</dd></div></dl>
+          <p class="muted" id="quality-note">网格数据不代表校园现场实测。</p>
+          <button id="raw-download" class="text-button" type="button" disabled>下载原始数据与来源</button>
+        </section>
+        <form id="assessment-form">
+          <section class="section">
+            <h2><span>02</span> 活动与暴露</h2>
+            <label class="field">活动类型<select id="activity"><option value="rest">静坐 / 休息</option><option value="walk" selected>户外步行</option><option value="run">跑步 / 运动</option><option value="work">户外劳动</option></select></label>
+            <div class="field-row"><label class="field">暴露时长（分钟）<input id="duration" type="number" min="1" max="480" step="1" value="30" required></label><label class="field">环境条件<select id="exposure"><option value="unknown">不确定</option><option value="shade">阴凉、轻风</option><option value="sun">阳光直射</option></select></label></div>
+          </section>
+          <section class="section">
+            <h2><span>03</span> 当前症状 <small>可选</small></h2>
+            <fieldset class="symptoms"><legend class="sr-only">匿名症状</legend>
+              <label><input type="checkbox" name="symptom" value="dizziness">头晕</label><label><input type="checkbox" name="symptom" value="headache">头痛</label><label><input type="checkbox" name="symptom" value="nausea">恶心</label><label><input type="checkbox" name="symptom" value="vomiting">呕吐</label><label><input type="checkbox" name="symptom" value="cramps">肌肉痉挛</label><label><input type="checkbox" name="symptom" value="weakness">乏力</label>
+              <label class="red-flag"><input type="checkbox" name="symptom" value="confusion">意识混乱</label><label class="red-flag"><input type="checkbox" name="symptom" value="slurred_speech">言语不清</label><label class="red-flag"><input type="checkbox" name="symptom" value="unconscious">意识丧失</label><label class="red-flag"><input type="checkbox" name="symptom" value="seizure">抽搐</label><label class="red-flag"><input type="checkbox" name="symptom" value="fainting">晕厥</label>
+            </fieldset>
+            <div id="emergency-banner" class="emergency" role="alert" hidden><strong>请立即寻求急救</strong><p>出现危险症状，请立即拨打120或联系当地急救。不要等待本页评估完成。</p><a href="tel:120">拨打120</a></div>
+          </section>
+          <section class="section submit-section"><label class="ai-option"><input id="use-ai" type="checkbox" disabled>使用 AI 编排已审核建议</label><p id="ai-state" class="muted">正在检查知识库…</p><button class="primary" id="assess-button" type="submit">评估环境风险</button><p id="form-error" role="alert" hidden></p></section>
+        </form>
+      </section>
+      <section class="results" aria-label="风险结果">
+        <div class="result-top"><h2>评估结果</h2><div class="report-actions"><button id="json-download" type="button" disabled>导出 JSON</button><button id="print-report" type="button" disabled>打印 / PDF</button></div></div>
+        <div id="result-empty" class="empty-state"><span class="empty-rule"></span><h3>等待评估</h3><p>数据来源、热指数、症状分流与引用将显示在此处。</p></div>
+        <article id="report" hidden aria-live="polite">
+          <p id="case-label" class="eyebrow"></p>
+          <div class="risk-heading"><div><p class="muted">阴凉、轻风条件下的热指数参考</p><h3 id="risk-label"></h3></div><div class="index-value"><strong id="heat-index">—</strong><span>°C</span></div></div>
+          <div class="risk-scale" role="img" aria-label="热指数参考分级：警惕、高度警惕、危险、极度危险"><span>警惕</span><span>高度警惕</span><span>危险</span><span>极度危险</span></div>
+          <p id="applicability" class="notice"></p>
+          <section class="result-section"><h3>症状分流</h3><p id="triage-message"></p></section>
+          <section class="result-section"><div class="section-heading"><h3>防护建议</h3><span id="generation-mode" class="small-badge"></span></div><p id="medical-message" class="notice"></p><ol id="advice-list"></ol></section>
+          <section class="result-section"><h3>引用依据</h3><div id="citations"></div><p id="no-citations" class="muted" hidden>当前没有可公开展示的已审核医学条款。</p></section>
+          <details class="audit-details"><summary>规则、数据与可追溯记录</summary><dl id="audit-meta" class="data-meta"></dl><ul id="limitations"></ul></details>
+        </article>
+        <section class="method-section"><h3>方法与来源</h3><p>采用 NOAA/NWS 热指数；活动和暴露时长用于建议筛选，不换算成升温。仅有温湿度时不输出实测 WBGT。危险症状独立触发急救提示。</p><div id="sources"></div><p id="professional-status" class="muted">用于环境热风险评估，不作疾病确诊、处方或临床疗效承诺。医学知识条款及症状规则尚待执业医师审核。</p></section>
+      </section>
+    </div>
+  </main>
+  <footer><span>微境探界 · 环境风险评估原型</span><span>数据可追溯 · 不收集身份或病史</span></footer>
+</body>
+</html>
