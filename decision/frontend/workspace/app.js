@@ -1,9 +1,15 @@
 import "./style.css";
-import { $, icons, icon, escape as e, numeric as n, date, badge, toast, download, request, empty } from "./ui.js";
+import { $ as byId, icons, icon, escape as e, numeric as n, date, badge, toast, download, request, empty } from "./ui.js";
+import { DecisionScreen } from "./screen.js";
+import { configureEdition } from "./edition.js";
 
 const API = "/api/weather/aic";
 const PLAN_API = "/api/weather/workspace/plans";
+let panelRoot = null;
+const $ = (id) => id === "view-root" && panelRoot ? panelRoot : byId(id);
+const competition = configureEdition();
 const views = {
+  screen: ["可视化大屏", "MICROCLIMATE COMMAND", "微境探界 · 环境决策大屏", "空间、气象与研判一体化"],
   overview: ["态势总览", "ENVIRONMENTAL INTELLIGENCE", "区域环境态势", "从区域天气出发，查看变化、核查依据，再进入研判。"],
   spatial: ["空间研判", "SPATIAL WORKSPACE", "把问题放回真实空间", "查看校园建筑与区域网格，选取干预位置，建立可比较的空间方案。"],
   risk: ["热风险评估", "HEAT RISK ASSESSMENT", "环境、暴露与症状分开判断", "以可追溯天气记录评估环境热风险，危险症状独立触发升级。"],
@@ -15,16 +21,21 @@ let savedSite;
 try { savedSite = localStorage.getItem("microclimate-site"); } catch { /* Optional preference. */ }
 const state = { site: ["zhongyuan", "campus"].includes(savedSite) ? savedSite : "zhongyuan", view: "overview", observation: null, timeline: null, status: null, summary: null, plans: [], selected: new Set(), errors: {}, loading: true, period: "forecast", draft: null };
 let cleanup = () => {};
+let screenInstance;
+let panelCleanup = () => {};
+let activePanel = null;
 let generation = 0;
 let refreshController;
 let planToken;
 let pendingDelete;
 let planSaveBusy = false;
+let planRevision = 0;
 try {
-  planToken = localStorage.getItem("microclimate-workspace-token");
+  const tokenKey = competition ? "microclimate-competition-token" : "microclimate-workspace-token";
+  planToken = localStorage.getItem(tokenKey);
   if (!/^[a-f0-9]{64}$/.test(planToken || "")) {
     planToken = [...crypto.getRandomValues(new Uint8Array(32))].map((x) => x.toString(16).padStart(2, "0")).join("");
-    localStorage.setItem("microclimate-workspace-token", planToken);
+    localStorage.setItem(tokenKey, planToken);
   }
 } catch { planToken = null; }
 const planHeaders = () => ({ "X-Workspace-Token": planToken || "", "Content-Type": "application/json" });
@@ -35,6 +46,7 @@ const fresh = () => {
   return age >= -900000 && age <= 7200000 && value.quality_status === "validated";
 };
 const isCurrentView = (value) => generation === value;
+const plansActive = () => state.view === "plans" || (state.view === "screen" && activePanel === "plans");
 const sourceRow = (label, value) => `<div><dt>${e(label)}</dt><dd>${e(value)}</dd></div>`;
 function nav(open) { document.body.classList.toggle("nav-open", open); $("nav-toggle").setAttribute("aria-expanded", String(open)); $("nav-scrim").hidden = !open; }
 
@@ -42,6 +54,7 @@ async function refresh({ initial = false } = {}) {
   refreshController?.abort();
   const controller = refreshController = new AbortController();
   const site = state.site;
+  const revision = planRevision;
   $("refresh-all").disabled = true;
   $("refresh-all").classList.add("refreshing");
   $("connection-status").textContent = "更新中";
@@ -59,7 +72,10 @@ async function refresh({ initial = false } = {}) {
   state.observation = results[0].status === "fulfilled" ? results[0].value.observation : null;
   state.timeline = results[1].status === "fulfilled" ? results[1].value : null;
   state.status = results[2].status === "fulfilled" ? results[2].value : null;
-  if (results[3].status === "fulfilled" && !planSaveBusy) state.plans = results[3].value.plans;
+  if (results[3].status === "fulfilled" && !planSaveBusy && revision === planRevision) {
+    state.plans = results[3].value.plans;
+    state.selected = new Set([...state.selected].filter((id) => state.plans.some((plan) => plan.id === id)));
+  }
   state.loading = false;
   state.summary = null;
   state.errors.summary = null;
@@ -69,9 +85,13 @@ async function refresh({ initial = false } = {}) {
   }
   if (controller.signal.aborted) return;
   updateStatus();
-  if (["overview", "evidence"].includes(state.view)) render();
-  else if (state.view === "plans" && !planSaveBusy) { renderPlanList(); renderComparison(); $("plan-count").textContent = state.plans.length; }
+  if (state.view === "screen" && screenInstance) screenInstance.update();
+  else if (["overview", "evidence"].includes(state.view)) render();
+  else if (plansActive() && !planSaveBusy) { renderPlanList(); renderComparison(); $("plan-count").textContent = state.plans.length; }
   else if (state.view === "spatial") window.dispatchEvent(new CustomEvent("workspace:weather", { detail: { observation: state.observation, plans: state.plans } }));
+  if (state.view === "screen" && activePanel === "plans" && !planSaveBusy) { renderPlanList(); renderComparison(); $("plan-count").textContent = state.plans.length; }
+  if (state.view === "screen" && activePanel === "evidence") mountScreenPanel("evidence");
+  if (state.view === "screen" && activePanel === "risk" && !initial) $("risk-frame")?.contentWindow?.postMessage({ type: "workspace-refresh", site: state.site }, location.origin);
   if (state.view === "risk" && !initial) $("risk-frame")?.contentWindow?.postMessage({ type: "workspace-refresh", site: state.site }, location.origin);
   $("refresh-all").disabled = false;
   $("refresh-all").classList.remove("refreshing");
@@ -88,14 +108,22 @@ function updateStatus() {
 }
 
 function render() {
+  panelCleanup(); panelCleanup = () => {}; activePanel = null;
   cleanup(); cleanup = () => {};
+  screenInstance = null;
   const version = ++generation;
   const meta = views[state.view];
   $("breadcrumb-title").textContent = meta[0]; $("page-eyebrow").textContent = meta[1]; $("page-title").textContent = meta[2]; $("page-description").textContent = meta[3];
   document.title = `${meta[0]} · 微境探界`;
+  document.body.classList.toggle("screen-mode", state.view === "screen");
   document.querySelectorAll("[data-view]").forEach((a) => { const active = a.dataset.view === state.view; a.classList.toggle("active", active); if (active) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
   $("page-actions").innerHTML = state.view === "risk" ? `<a class="button" href="${import.meta.env.BASE_URL}aic/" target="_blank" rel="noopener">${icon("external-link")}独立匿名入口</a>` : `<button class="button" id="export-workspace">${icon("download")}导出${state.view === "plans" ? "对比" : "记录"}</button>`;
   $("view-root").setAttribute("aria-busy", String(state.loading));
+  if (state.view === "screen") {
+    const screen = screenInstance = new DecisionScreen({ state, competition, refresh, fresh, onSite: (site) => { $("site-select").value = site; $("site-select").dispatchEvent(new Event("change")); }, onPanel: mountScreenPanel, onDraft: (point) => { state.draft = { ...state.draft, ...point }; } });
+    screen.mount();
+    cleanup = () => screen.destroy();
+  }
   if (state.view === "overview") renderOverview(version);
   if (state.view === "spatial") renderSpatial(version);
   if (state.view === "risk") renderRisk();
@@ -109,6 +137,21 @@ function render() {
     } else download({ exported_at: new Date().toISOString(), observation: state.observation, timeline: state.timeline, environment_reference: state.summary?.environment || null, methods: state.status, errors: state.errors }, "microclimate-workspace-evidence.json");
   });
   icons();
+}
+
+function mountScreenPanel(kind) {
+  panelCleanup(); panelCleanup = () => {};
+  activePanel = kind;
+  if (!kind) return;
+  const root = $("screen-panel-content");
+  const savedCleanup = cleanup;
+  try {
+    panelRoot = root;
+    if (kind === "plans") renderPlans();
+    if (kind === "risk") renderRisk();
+    if (kind === "evidence") renderEvidence();
+    if (cleanup !== savedCleanup) panelCleanup = cleanup;
+  } finally { panelRoot = null; cleanup = savedCleanup; }
 }
 
 function metric(name, value, unit, foot, symbol, className = "") { return `<article class="metric ${className}"><div class="metric-label">${icon(symbol)}${e(name)}</div><div class="metric-value">${e(value)}<span>${e(unit)}</span></div><p>${e(foot)}</p></article>`; }
@@ -157,17 +200,19 @@ async function mountChart(version) {
 }
 
 function renderRisk() {
-  $("view-root").innerHTML = `<div class="embedded-risk"><iframe id="risk-frame" src="${import.meta.env.BASE_URL}aic/index.html?embed=1&site=${state.site}" title="匿名环境热风险评估" style="height:1450px"></iframe></div>`;
+  $("view-root").innerHTML = `<div class="embedded-risk"><iframe id="risk-frame" src="${import.meta.env.BASE_URL}aic/assessment.html?embed=1&site=${state.site}" title="匿名环境热风险评估" style="height:1450px"></iframe></div>`;
   const listener = (event) => { const frame = $("risk-frame"); if (event.origin === location.origin && event.source === frame?.contentWindow && event.data?.type === "aic-height") frame.style.height = `${Math.min(15000, Math.max(800, Number(event.data.height) || 1450))}px`; };
   window.addEventListener("message", listener); cleanup = () => window.removeEventListener("message", listener);
 }
 
 async function renderSpatial(version) {
   $("view-root").innerHTML = `<div class="spatial-workspace"><div class="map-stage"><div id="workspace-map" aria-label="校园空间研判地图"></div><div class="map-state" id="map-state" role="status">正在加载校园底图…</div><div class="map-toolbar"><button class="icon-button" id="map-home" title="回到校园" aria-label="回到校园">${icon("focus")}</button><button class="icon-button" id="map-grid" title="定位当前天气网格" aria-label="定位当前天气网格">${icon("crosshair")}</button><button class="icon-button" id="map-pitch" title="切换平面与倾斜视角" aria-label="切换平面与倾斜视角" aria-pressed="true">${icon("box")}</button></div><div class="map-coordinate" id="map-coordinate">113.531°E / 34.814°N</div></div><aside class="map-inspector"><div class="section-header"><h2>图层与选点</h2>${icon("layers")}</div><div class="layer-options"><label><input type="checkbox" id="layer-buildings" checked><span>校园建筑白模<small>OSM轮廓 · 高度含估计值</small></span></label><label><input type="checkbox" id="layer-grid" checked><span>区域天气网格<small>模型返回中心 · 不代表仪器位置</small></span></label><label><input type="checkbox" id="layer-plans" checked><span>已保存干预方案<small>当前浏览器工作区</small></span></label></div><div class="inspector-section"><p class="eyebrow">SELECTED LOCATION</p><h3>研判位置</h3><p id="picked-location">尚未选点</p><p class="muted" id="picked-description">选择地图位置后可登记干预方案。</p><button class="button primary" id="use-location" disabled>${icon("plus")}以此位置建立方案</button></div><div class="inspector-section"><h3>区域天气</h3><div id="map-weather"></div></div><div class="inspector-section map-method"><h3>空间资料边界</h3><p>建筑高度缺失时按18米示意。当前未接入可信实测温度残差，不绘制空间温度热场。</p><a href="#evidence" class="text-button">核查数据与方法 ${icon("arrow-up-right")}</a></div></aside></div>`;
+  document.querySelector(".map-toolbar").insertAdjacentHTML("beforeend", `<button class="icon-button" id="map-imagery" title="卫星影像底图" aria-label="卫星影像底图" aria-pressed="true">${icon("image")}</button><button class="icon-button" id="map-streets" title="街道底图" aria-label="街道底图" aria-pressed="false">${icon("map")}</button><button class="icon-button" id="map-orbit" title="开启或暂停环绕" aria-label="开启或暂停环绕" aria-pressed="false">${icon("play")}</button>`);
+  icons();
   try {
     const { SpatialWorkspace } = await import("./map.js");
     if (!isCurrentView(version)) return;
-    const map = new SpatialWorkspace({ observation: state.observation, plans: state.plans, onChoose: (point) => { state.draft = point; location.hash = "plans"; } });
+    const map = new SpatialWorkspace({ observation: state.observation, plans: state.plans, onChoose: (point) => { state.draft = { ...state.draft, ...point }; location.hash = "plans"; } });
     cleanup = () => map.destroy();
     await map.init();
     if (isCurrentView(version)) { map.observation = state.observation; map.plans = state.plans; map.updateWeather(); }
@@ -178,7 +223,7 @@ function renderPlans() {
   const draft = state.draft;
   $("view-root").innerHTML = `<div class="plan-layout"><section class="plan-editor"><div class="section-header"><h2>新建干预方案</h2>${icon("sliders-horizontal")}</div><form id="plan-form"><label class="field">方案名称<input name="name" maxlength="50" placeholder="如：步行通道遮阴试点" required></label><label class="field">干预类型<select name="intervention"><option value="shade">遮阴设施</option><option value="greening">绿化干预</option><option value="cool_roof">冷屋面</option><option value="building">建筑体块</option></select></label><div class="field-row"><label class="field">经度 °E<input name="longitude" type="number" step="0.000001" min="113.4" max="113.9" value="${draft?.longitude ?? (state.site === "campus" ? 113.531 : 113.61)}" required></label><label class="field">纬度 °N<input name="latitude" type="number" step="0.000001" min="34.6" max="34.95" value="${draft?.latitude ?? (state.site === "campus" ? 34.814 : 34.75)}" required></label></div><a class="text-button" href="#spatial">${icon("map-pin")}在地图上选择位置</a><label class="field">干预面积 m²<input name="area_m2" type="number" min="1" max="10000" step="0.1" value="100" required></label><div id="geometry-fields"><div class="field-row"><label class="field">高度 m<input name="height_m" type="number" min="1" max="100" step="0.1" value="3" required></label><label class="field">假定太阳高度角 °<input name="solar_altitude_deg" type="number" min="5" max="85" step="0.1" value="45" required></label></div><p class="field-help">太阳高度角为情景假设，不是自动计算的现场太阳位置。</p></div><div id="albedo-fields" hidden><div class="field-row"><label class="field">原反照率<input name="baseline_albedo" type="number" min="0" max="1" step="0.01" value="0.2"></label><label class="field">拟用反照率<input name="proposed_albedo" type="number" min="0" max="1" step="0.01" value="0.6"></label></div></div><p class="inline-error" id="plan-error" role="alert" hidden></p><button class="button primary full" type="submit" id="save-plan" ${!planToken ? "disabled" : ""}>${icon("plus")}保存并加入对比</button><p class="field-help">方案保存在当前浏览器凭证对应的服务端工作区。清除浏览器存储会丢失访问凭证，请及时导出；不保存症状或身份信息。</p></form></section><div class="plan-content"><div class="section-header"><div><h2>方案档案 <span id="plan-count">${state.plans.length}</span></h2><p class="muted">最多选取3个方案进行并列比较</p></div><label class="search-field">${icon("search")}<input id="plan-search" type="search" placeholder="搜索方案" aria-label="搜索方案"></label></div><div id="plan-list"></div><section class="comparison-section"><div class="section-header"><h2>并列比较</h2><button class="button" id="print-comparison">${icon("printer")}打印</button></div><div id="comparison"></div></section></div></div><div class="method-band">${icon("triangle-alert")}<div><strong>当前比较止于可复核的几何层面</strong><p>不对不同类型干预给出综合排名；实际温降、通风与人体热暴露效果需要现场基准、标定模型及独立验证。</p></div></div>`;
   if (draft) for (const [key, value] of Object.entries(draft)) { const field = $("plan-form").elements.namedItem(key); if (field) field.value = value; }
-  const captureDraft = () => { state.draft = Object.fromEntries(new FormData($("plan-form"))); };
+  const captureDraft = () => { state.draft = { ...state.draft, ...Object.fromEntries(new FormData($("plan-form"))) }; };
   $("plan-form").addEventListener("input", captureDraft);
   const updateFields = () => {
     const type = $("plan-form").elements.intervention.value;
@@ -194,17 +239,20 @@ function renderPlans() {
   $("plan-form").addEventListener("submit", async (event) => {
     event.preventDefault(); if (planSaveBusy) return;
     const form = event.currentTarget;
+    const errorNode = $("plan-error");
+    const saveButton = $("save-plan");
     const input = Object.fromEntries(new FormData(form));
     captureDraft();
     for (const key of Object.keys(input)) if (!["name", "intervention"].includes(key)) input[key] = Number(input[key]);
     $("plan-error").hidden = true; $("save-plan").disabled = true; planSaveBusy = true;
     try {
       const record = await request(PLAN_API, { method: "POST", headers: planHeaders(), body: JSON.stringify(input) });
+      planRevision++;
       state.plans.unshift(record); if (state.selected.size < 3) state.selected.add(record.id);
-      if (state.view === "plans") { renderPlanList(); renderComparison(); $("plan-count").textContent = state.plans.length; }
+      if (plansActive()) { renderPlanList(); renderComparison(); $("plan-count").textContent = state.plans.length; screenInstance?.update(); }
       toast("方案已保存，可对比参数与几何指标。");
-    } catch (error) { if (state.view === "plans") { $("plan-error").textContent = error.message; $("plan-error").hidden = false; } }
-    finally { planSaveBusy = false; if ($("save-plan")) $("save-plan").disabled = !planToken; }
+    } catch (error) { if (errorNode.isConnected) { errorNode.textContent = error.message; errorNode.hidden = false; } else toast(error.message); }
+    finally { planSaveBusy = false; if (saveButton.isConnected) saveButton.disabled = !planToken; if ($("save-plan")) $("save-plan").disabled = !planToken; }
   });
 }
 
@@ -236,10 +284,10 @@ function readiness(title, content, ready) { return `<div class="readiness-row"><
 $("delete-dialog").addEventListener("close", async () => {
   if ($("delete-dialog").returnValue !== "confirm" || !pendingDelete) return;
   const id = pendingDelete; pendingDelete = null;
-  try { await request(`${PLAN_API}/${id}`, { method: "DELETE", headers: planHeaders() }); state.plans = state.plans.filter((p) => p.id !== id); state.selected.delete(id); if (state.view === "plans") { renderPlanList(); renderComparison(); $("plan-count").textContent = state.plans.length; } toast("方案已删除。"); }
+  try { await request(`${PLAN_API}/${id}`, { method: "DELETE", headers: planHeaders() }); planRevision++; state.plans = state.plans.filter((p) => p.id !== id); state.selected.delete(id); if (plansActive()) { renderPlanList(); renderComparison(); $("plan-count").textContent = state.plans.length; } screenInstance?.update(); toast("方案已删除。"); }
   catch (error) { toast(error.message); }
 });
-function route() { const next = location.hash.slice(1); state.view = Object.hasOwn(views, next) ? next : "overview"; nav(false); render(); }
+function route() { const next = location.hash.slice(1); state.view = Object.hasOwn(views, next) ? next : "screen"; nav(false); render(); }
 $("nav-toggle").addEventListener("click", () => nav(!document.body.classList.contains("nav-open")));
 $("nav-scrim").addEventListener("click", () => nav(false));
 document.addEventListener("keydown", (event) => { if (event.key === "Escape") nav(false); });
@@ -248,6 +296,6 @@ $("site-select").addEventListener("change", () => { state.site = $("site-select"
 $("refresh-all").addEventListener("click", () => refresh());
 window.addEventListener("hashchange", route);
 const timer = setInterval(() => { if (!document.hidden && !$("refresh-all").disabled) refresh(); }, 300000);
-window.addEventListener("pagehide", () => { cleanup(); refreshController?.abort(); clearInterval(timer); });
+window.addEventListener("pagehide", () => { panelCleanup(); cleanup(); refreshController?.abort(); clearInterval(timer); });
 window.addEventListener("pageshow", (event) => { if (event.persisted) location.reload(); });
 route(); refresh({ initial: true });

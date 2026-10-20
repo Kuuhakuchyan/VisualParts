@@ -4,10 +4,11 @@ import { $, escape as e, numeric as n, date } from "./ui.js";
 
 const empty = () => ({ type: "FeatureCollection", features: [] });
 export class SpatialWorkspace {
-  constructor({ observation, plans, onChoose }) {
+  constructor({ observation, plans, onChoose, dark = false, onState = () => {} }) {
     this.observation = observation;
     this.plans = plans;
     this.onChoose = onChoose;
+    this.dark = dark; this.onState = onState;
     this.disposed = false;
     this.abort = new AbortController();
     this.handlers = [];
@@ -18,13 +19,13 @@ export class SpatialWorkspace {
   }
 
   async init() {
-    this.map = new maplibregl.Map({ container: "workspace-map", center: [113.531, 34.814], zoom: 15.3, pitch: 48, bearing: -16, maxPitch: 65, attributionControl: false,
-      style: { version: 8, sources: { imagery: { type: "raster", tileSize: 256, tiles: [`${location.origin}/tiles/world-imagery/{z}/{y}/{x}`], attribution: "Esri World Imagery" } }, layers: [{ id: "background", type: "background", paint: { "background-color": "#e4e9df" } }, { id: "imagery", type: "raster", source: "imagery", paint: { "raster-opacity": 0.9, "raster-saturation": -0.25 } }] },
+    this.map = new maplibregl.Map({ container: "workspace-map", center: [113.531, 34.814], zoom: this.dark ? 15.7 : 15.3, pitch: 54, bearing: -24, maxPitch: 70, attributionControl: false, canvasContextAttributes: { antialias: true, preserveDrawingBuffer: new URLSearchParams(location.search).get("capture") === "1" },
+      style: { version: 8, light: { anchor: "map", color: "#fff0da", intensity: 0.6, position: [1.5, 210, 38] }, sources: { imagery: { type: "raster", tileSize: 256, tiles: [`${location.origin}/tiles/world-imagery/{z}/{y}/{x}`], attribution: "Esri World Imagery" }, streets: { type: "raster", tileSize: 256, tiles: [`${location.origin}/tiles/world-topo/{z}/{y}/{x}`], attribution: "Esri World Topographic Map" } }, layers: [{ id: "background", type: "background", paint: { "background-color": this.dark ? "#202c2b" : "#e4e9df" } }, { id: "imagery", type: "raster", source: "imagery", paint: { "raster-opacity": 1, "raster-saturation": -0.15, "raster-brightness-max": this.dark ? 0.72 : 1 } }, { id: "streets", type: "raster", source: "streets", layout: { visibility: "none" } }] },
     });
     this.map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
     this.map.addControl(new maplibregl.NavigationControl({ showCompass: true, visualizePitch: true }), "top-right");
     this.map.on("error", (event) => {
-      if (event.sourceId === "imagery") { this.tileFailed = true; this.updateMapState(); }
+      if (["imagery", "streets"].includes(event.sourceId)) { this.tileFailed = true; this.updateMapState(); }
     });
     await new Promise((resolve) => {
       const done = () => { clearTimeout(this.readyTimer); this.readyDone = null; resolve(); };
@@ -40,16 +41,24 @@ export class SpatialWorkspace {
     this.map.addLayer({ id: "plan-areas", type: "fill", source: "plans", paint: { "fill-color": ["match", ["get", "intervention"], "greening", "#76be70", "cool_roof", "#9b92d0", "building", "#cb9572", "#e6bd58"], "fill-opacity": 0.7 } });
     this.map.addLayer({ id: "plan-outline", type: "line", source: "plans", paint: { "line-color": "#fff", "line-width": 2 } });
     this.map.on("click", (event) => this.pick(event));
+    this.map.on("moveend", () => { if (!this.disposed) $("map-pitch")?.setAttribute("aria-pressed", String(this.map.getPitch() >= 20)); });
     this.map.on("mousemove", (event) => { if (!this.disposed) $("map-coordinate").textContent = `${n(event.lngLat.lng, 5)}°E / ${n(event.lngLat.lat, 5)}°N`; });
     this.resizeObserver = new ResizeObserver(() => { if (!this.disposed) this.map.resize(); });
     this.resizeObserver.observe($("workspace-map"));
-    this.bind("map-home", "click", () => this.map.easeTo({ center: [113.531, 34.814], zoom: 15.3, pitch: 48, bearing: -16, duration: this.duration() }));
+    this.bind("map-home", "click", () => { this.stopOrbit(); this.map.easeTo({ center: [113.531, 34.814], zoom: this.dark ? 15.7 : 15.3, pitch: 54, bearing: -24, duration: this.duration() }); });
     this.bind("map-grid", "click", () => { if (this.observation) this.map.easeTo({ center: [this.observation.location.longitude, this.observation.location.latitude], zoom: 13.5, duration: this.duration() }); });
     this.bind("map-pitch", "click", () => { const next = this.map.getPitch() < 20; this.map.easeTo({ pitch: next ? 48 : 0, bearing: next ? -16 : 0, duration: this.duration() }); $("map-pitch").setAttribute("aria-pressed", String(next)); });
-    this.bind("layer-buildings", "change", (event) => this.visible(["campus-building"], event.target.checked));
+    this.bind("layer-buildings", "change", (event) => this.setBuildings(event.target.checked));
     this.bind("layer-grid", "change", (event) => this.visible(["weather-grid-point"], event.target.checked));
     this.bind("layer-plans", "change", (event) => this.visible(["plan-areas", "plan-outline"], event.target.checked));
     this.bind("use-location", "click", () => { if (this.point) this.onChoose(this.point); });
+    this.bind("map-imagery", "click", () => this.setBasemap("imagery"));
+    this.bind("map-streets", "click", () => this.setBasemap("streets"));
+    this.bind("map-orbit", "click", () => this.orbiting ? this.stopOrbit() : this.startOrbit());
+    this.bind("map-light", "input", (event) => this.modelLayer?.setLighting(event.target.value));
+    this.map.on("dragstart", () => this.stopOrbit());
+    this.visibilityHandler = () => { if (document.hidden) this.stopOrbit(); };
+    document.addEventListener("visibilitychange", this.visibilityHandler);
     window.addEventListener("workspace:weather", this.weatherListener);
     this.updateWeather();
     try {
@@ -60,19 +69,57 @@ export class SpatialWorkspace {
       if (this.disposed) return;
       this.buildings = data.features.length;
       this.map.addSource("campus-buildings", { type: "geojson", data, generateId: true, attribution: "© OpenStreetMap contributors · ODbL" });
-      this.map.addLayer({ id: "campus-building", type: "fill-extrusion", source: "campus-buildings", paint: { "fill-extrusion-color": "#c7d9cf", "fill-extrusion-height": ["coalesce", ["to-number", ["get", "height_m"]], 18], "fill-extrusion-opacity": 0.85, "fill-extrusion-base": 0 } }, "weather-grid-point");
-      this.visible(["campus-building"], $("layer-buildings").checked);
+      this.map.addLayer({ id: "campus-picking", type: "fill", source: "campus-buildings", paint: { "fill-color": "#a1d4b7", "fill-opacity": 0.01 } }, "weather-grid-point");
+      this.map.addLayer({ id: "campus-building", type: "fill-extrusion", source: "campus-buildings", paint: { "fill-extrusion-color": "#c7d9cf", "fill-extrusion-height": ["case", [">", ["coalesce", ["to-number", ["get", "height_m"]], 0], 0], ["to-number", ["get", "height_m"]], 18], "fill-extrusion-opacity": 0.95, "fill-extrusion-base": 0 } }, "weather-grid-point");
+      this.map.addLayer({ id: "campus-outline", type: "line", source: "campus-buildings", paint: { "line-color": this.dark ? "#8bd9bb" : "#355c4a", "line-width": 0.8, "line-opacity": 0.65 } }, "weather-grid-point");
+      this.setBuildings($("layer-buildings").checked);
       this.updateMapState();
+      try {
+        const { createBuildingLayer } = await import("./buildings3d.js");
+        if (this.disposed) return;
+        this.modelLayer = createBuildingLayer(data, { dark: this.dark, onError: () => { this.modelFailed = true; this.map.setPaintProperty("campus-building", "fill-extrusion-opacity", 0.95); this.updateMapState(); } });
+        this.map.addLayer(this.modelLayer, "weather-grid-point");
+        if (!this.modelFailed) this.map.setPaintProperty("campus-building", "fill-extrusion-opacity", 0);
+        this.setBuildings($("layer-buildings").checked);
+        this.updateMapState();
+      } catch { this.modelFailed = true; this.updateMapState(); }
     } catch { if (!this.disposed) { this.buildingFailed = true; this.updateMapState(); } }
   }
 
   bind(id, event, callback) { const node = $(id); node?.addEventListener(event, callback); this.handlers.push(() => node?.removeEventListener(event, callback)); }
   duration() { return matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 450; }
+  setBuildings(on) {
+    this.visible(["campus-building", "campus-outline", "campus-picking"], on);
+    if (this.modelLayer) this.modelLayer.visible = on;
+    this.map.triggerRepaint();
+  }
+  setBasemap(name) {
+    this.tileFailed = false;
+    this.visible(["imagery"], name === "imagery"); this.visible(["streets"], name === "streets");
+    for (const key of ["imagery", "streets"]) $("map-" + key)?.setAttribute("aria-pressed", String(key === name));
+    this.updateMapState();
+  }
+  startOrbit() {
+    if (!this.duration()) return;
+    this.orbiting = true; $("map-orbit")?.setAttribute("aria-pressed", "true");
+    let previous = performance.now();
+    const tick = (now) => {
+      if (!this.orbiting || this.disposed || document.hidden) return;
+      const delta = Math.min(now - previous, 100);
+      if (delta >= 32) { this.map.setBearing(this.map.getBearing() + delta * 0.0025); previous = now; }
+      this.orbitFrame = requestAnimationFrame(tick);
+    };
+    this.orbitFrame = requestAnimationFrame(tick);
+  }
+  stopOrbit() { this.orbiting = false; cancelAnimationFrame(this.orbitFrame); $("map-orbit")?.setAttribute("aria-pressed", "false"); }
   visible(layers, on) { for (const layer of layers) if (this.map.getLayer(layer)) this.map.setLayoutProperty(layer, "visibility", on ? "visible" : "none"); }
   updateMapState() {
     if (this.disposed) return;
-    $("map-state").classList.toggle("warn", !!(this.tileFailed || this.buildingFailed));
-    $("map-state").textContent = `${this.buildings ? `${this.buildings}栋建筑轮廓 · 高度含估计值` : (this.buildingFailed ? "建筑资料暂不可用" : "正在读取建筑资料")}${this.tileFailed ? " · 影像底图暂缺，保留空间矢量" : ""}`;
+    $("map-state").classList.toggle("warn", !!(this.tileFailed || this.buildingFailed || this.modelFailed));
+    $("map-state").textContent = `${this.buildings ? `${this.buildings}栋建筑轮廓 · 高度含估计值` : (this.buildingFailed ? "建筑资料暂不可用" : "正在读取建筑资料")}${this.tileFailed ? " · 当前底图部分瓦片不可用" : ""}${this.modelFailed ? " · 细节渲染不可用，已保留基础体块" : ""}`;
+    $("workspace-map").dataset.model = this.modelLayer && !this.modelFailed ? "three" : "extrusion";
+    $("workspace-map").dataset.buildings = String(this.buildings);
+    this.onState({ buildings: this.buildings, model: this.modelLayer && !this.modelFailed ? "Three.js 建筑细节" : "建筑体块", unavailable: this.buildingFailed, tileFailed: this.tileFailed });
   }
   updateWeather() {
     if (this.disposed) return;
@@ -89,15 +136,18 @@ export class SpatialWorkspace {
     this.point = { longitude: Number(lng.toFixed(6)), latitude: Number(lat.toFixed(6)) };
     this.marker?.remove(); this.marker = new maplibregl.Marker({ color: "#147858" }).setLngLat([lng, lat]).addTo(this.map);
     $("picked-location").textContent = `${n(lng, 6)}°E / ${n(lat, 6)}°N`;
-    const queryLayers = ["campus-building", "plan-areas", "weather-grid-point"].filter((id) => this.map.getLayer(id));
-    const feature = this.map.queryRenderedFeatures(event.point, { layers: queryLayers })[0];
+    const queryLayers = ["campus-picking", "campus-building", "plan-areas", "weather-grid-point"].filter((id) => this.map.getLayer(id));
+    const features = this.map.queryRenderedFeatures(event.point, { layers: queryLayers });
+    const feature = features.find((item) => item.layer.id === "weather-grid-point") || features.find((item) => item.layer.id === "plan-areas") || features[0];
+    const isBuilding = feature && ["campus-building", "campus-picking"].includes(feature.layer.id);
     let description = "已选择研判位置；坐标来自地图点击，未作现场测量。";
-    if (feature?.layer.id === "campus-building") {
+    if (isBuilding) {
       const p = feature.properties;
       description = `建筑轮廓 · ${p.name || "未命名建筑"} · 高度${p.height_m == null ? "缺失，按18米示意" : n(Number(p.height_m)) + "米（底图属性，未现场核验）"}`;
     } else if (feature?.layer.id === "plan-areas") description = `已有方案：${feature.properties.name}，用户输入的理想化范围。`;
     else if (feature?.layer.id === "weather-grid-point") description = "模型返回的网格中心，不是校园现场传感器。";
     $("picked-description").textContent = description;
+    this.modelLayer?.select(isBuilding ? feature.id : null);
     $("use-location").disabled = false;
     this.popup?.remove(); this.popup = new maplibregl.Popup({ offset: 28, closeOnClick: true }).setLngLat([lng, lat]).setHTML(`<h3>已选研判位置</h3><p>${e(description)}</p>`).addTo(this.map);
   }
@@ -108,5 +158,5 @@ export class SpatialWorkspace {
       return { type: "Feature", properties: { name: p.name, intervention: p.intervention }, geometry: { type: "Polygon", coordinates: [[[p.longitude-dx,p.latitude-dy],[p.longitude+dx,p.latitude-dy],[p.longitude+dx,p.latitude+dy],[p.longitude-dx,p.latitude+dy],[p.longitude-dx,p.latitude-dy]]] } };
     }) };
   }
-  destroy() { this.disposed = true; this.abort.abort(); this.readyDone?.(); clearTimeout(this.readyTimer); this.resizeObserver?.disconnect(); this.handlers.forEach((remove) => remove()); window.removeEventListener("workspace:weather", this.weatherListener); this.popup?.remove(); this.marker?.remove(); this.map?.remove(); }
+  destroy() { this.disposed = true; this.stopOrbit(); this.abort.abort(); this.readyDone?.(); clearTimeout(this.readyTimer); this.resizeObserver?.disconnect(); this.handlers.forEach((remove) => remove()); window.removeEventListener("workspace:weather", this.weatherListener); document.removeEventListener("visibilitychange", this.visibilityHandler); this.popup?.remove(); this.marker?.remove(); this.map?.remove(); }
 }

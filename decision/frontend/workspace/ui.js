@@ -1,7 +1,8 @@
 import { createIcons, LayoutDashboard, Map, ShieldCheck, GitCompareArrows, Database, Radio, Cpu, Logs, Activity, ArrowUpRight, ArrowRight, MapPin, RefreshCw, Menu, Thermometer, Droplets, Wind, CloudRain, Clock3, Download, ExternalLink, Layers, Crosshair, Plus, Trash2, X, Check, ChevronRight, TriangleAlert, FileCheck2, Search, Sun, Focus, Printer, Box, SlidersHorizontal, Leaf, PanelLeftClose } from "lucide";
+import { Monitor, Maximize, Play, Compass, Image } from "lucide";
 
 export const $ = (id) => document.getElementById(id);
-export function icons() { createIcons({ icons: { LayoutDashboard, Map, ShieldCheck, GitCompareArrows, Database, Radio, Cpu, Logs, Activity, ArrowUpRight, ArrowRight, MapPin, RefreshCw, Menu, Thermometer, Droplets, Wind, CloudRain, Clock3, Download, ExternalLink, Layers, Crosshair, Plus, Trash2, X, Check, ChevronRight, TriangleAlert, FileCheck2, Search, Sun, Focus, Printer, Box, SlidersHorizontal, Leaf, PanelLeftClose }, attrs: { "stroke-width": 1.6, "aria-hidden": "true" } }); }
+export function icons() { createIcons({ icons: { Monitor, Maximize, Play, Compass, Image, LayoutDashboard, Map, ShieldCheck, GitCompareArrows, Database, Radio, Cpu, Logs, Activity, ArrowUpRight, ArrowRight, MapPin, RefreshCw, Menu, Thermometer, Droplets, Wind, CloudRain, Clock3, Download, ExternalLink, Layers, Crosshair, Plus, Trash2, X, Check, ChevronRight, TriangleAlert, FileCheck2, Search, Sun, Focus, Printer, Box, SlidersHorizontal, Leaf, PanelLeftClose }, attrs: { "stroke-width": 1.6, "aria-hidden": "true" } }); }
 export function escape(value) { return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]); }
 export const icon = (name) => `<i data-lucide="${name}"></i>`;
 export const numeric = (value, digits = 1) => typeof value === "number" && Number.isFinite(value) ? value.toFixed(digits) : "—";

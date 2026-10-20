@@ -17,6 +17,7 @@
     "lucide": "^1.59.0",
     "maplibre-gl": "^6.2.0",
     "serve-static": "^2.2.0",
+    "three": "^0.180.0",
     "tslib": "^2.8.1"
   },
   "devDependencies": {
