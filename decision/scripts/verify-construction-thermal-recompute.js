@@ -97,6 +97,7 @@ async (page) => {
     const baseline=await calculate('baseline',()=>qa.locator('#sb-auto').check());
     await qa.locator('[data-mode="baseline"]').click();
     await capture('11-sandbox-baseline.png','建筑干预前的模拟热场');
+    await qa.locator('[data-mode="edit"]').click();
     const built=await calculate('build18m',()=>qa.locator('#sb-redo').click());
     check(built.scene.additions.length===1&&built.scene.additions[0].height_m===18,'18m geometry included in inference');
     const first=compare(baseline,built);

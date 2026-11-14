@@ -194,7 +194,8 @@ def export_manual(output, identity, font, screenshots):
                 continue
             story.append(prose(line.lstrip("# ") if line.startswith("#") else line, "heading" if line.startswith("#") else "body"))
             index += 1
-        story.append(PageBreak())
+        if name == "用户操作手册.md":
+            story.append(PageBreak())
     if screenshots and not (screenshots / "manifest.json").is_file() and (screenshots / "capture-result.log").is_file():
         captured = (screenshots / "capture-result.log").read_text(encoding="utf-8-sig")
         found = re.search(r"### Result\s*\n(\{[^\n]+\})", captured)
