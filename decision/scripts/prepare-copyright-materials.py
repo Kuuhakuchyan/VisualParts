@@ -161,9 +161,9 @@ def export_manual(output, identity, font, screenshots):
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, PageBreak
 
-    styles = {"body": ParagraphStyle("body", fontName=font, fontSize=10, leading=17, spaceAfter=6, wordWrap="CJK"),
+    styles = {"body": ParagraphStyle("body", fontName=font, fontSize=10, leading=15, spaceAfter=3, wordWrap="CJK"),
               "title": ParagraphStyle("title", fontName=font, fontSize=20, leading=29, spaceAfter=18, wordWrap="CJK"),
-              "heading": ParagraphStyle("heading", fontName=font, fontSize=13, leading=21, spaceBefore=12, spaceAfter=7, wordWrap="CJK"),
+              "heading": ParagraphStyle("heading", fontName=font, fontSize=13, leading=18, spaceBefore=8, spaceAfter=5, wordWrap="CJK"),
               "cell": ParagraphStyle("cell", fontName=font, fontSize=9, leading=14, wordWrap="CJK")}
     def prose(text, style="body"):
         text = re.sub(r"\*\*(.*?)\*\*", r"\1", text).replace("`", "")
