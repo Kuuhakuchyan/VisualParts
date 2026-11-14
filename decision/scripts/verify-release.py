@@ -26,6 +26,7 @@ def main():
         ("iot-api", [sys.executable, "-m", "unittest", "discover", "-s", "../api", "-p", "test_safety.py", "-q"]),
         ("isolated-package", [sys.executable, "scripts/verify-runtime-package.py"]),
         ("submission-workflows", [sys.executable, "scripts/verify-submission-workflows.py", "--output", str(reports / "submission-workflows")]),
+        ("state-recovery", [sys.executable, "scripts/verify-state-recovery.py", "--output", str(reports / "state-recovery")]),
         ("workspace", ["node", "--test", "scripts/test-workspace-core.mjs", "scripts/test-forecast-frames.mjs", "scripts/test-home-geometry.mjs"]),
         ("dev-assets", ["node", "scripts/test-dev-assets.mjs"]),
     ]

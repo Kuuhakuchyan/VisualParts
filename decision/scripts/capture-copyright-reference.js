@@ -1,5 +1,7 @@
 async (page) => {
-  const origin = 'https://weather.nogamenolife.cn';
+  const local = ['localhost','127.0.0.1'].includes(new URL(page.url()).hostname);
+  const origin = local ? new URL(page.url()).origin : 'https://weather.nogamenolife.cn';
+  const provenance = local ? await (await page.request.get(origin+'/api/synthetic-provenance')).json() : null;
   const output = 'output/playwright/copyright-v1';
   const images = [], errors = [];
   const errorListener = error => errors.push(error.message);
@@ -17,7 +19,7 @@ async (page) => {
   try {
     await page.setViewportSize({ width: 1440, height: 1000 });
     for (const [file, title, route, selector] of entries) {
-      await page.goto(origin + route);
+      await page.goto(origin + (local && route==='/'?'/home.html':route));
       await page.locator(selector).waitFor({ state: 'attached', timeout: 60000 });
       if (route.startsWith('/decision/')) {
         await page.waitForFunction(() => !document.querySelector('#refresh-all')?.disabled, null, { timeout: 60000 });
@@ -28,15 +30,15 @@ async (page) => {
         await page.waitForLoadState('networkidle', { timeout: 30000 });
       }
       await page.screenshot({ path: output + '/' + file });
-      images.push({ file, title, url: page.url(), viewport: { width: 1440, height: 1000 }, role: 'public-interface-reference' });
+      images.push({ file, title, url: page.url(), viewport: { width: 1440, height: 1000 }, role: local?'synthetic-interface-acceptance':'public-interface-reference' });
     }
     await page.goto(origin + '/sensors');
-    await page.getByRole('button', { name: 'UGV', exact: true }).click();
+    await page.getByRole('button', { name: /^UGV(?: 在线| 离线)?$/ }).click();
     await page.getByRole('heading', { name: 'UGV', exact: true }).waitFor();
     await page.locator('mobile-observations').scrollIntoViewIfNeeded();
     await page.screenshot({ path: output + '/09-ugv.png' });
     images.push({ file: '09-ugv.png', title: 'UGV 设备详情入口', url: page.url(), viewport: { width: 1440, height: 1000 }, role: 'public-interface-reference' });
-    await page.getByRole('button', { name: 'UAV', exact: true }).click();
+    await page.getByRole('button', { name: /^UAV(?: 在线| 离线)?$/ }).click();
     await page.getByRole('heading', { name: 'UAV', exact: true }).waitFor();
     await page.setViewportSize({ width: 390, height: 900 });
     await page.locator('mobile-observations').scrollIntoViewIfNeeded();
@@ -45,7 +47,9 @@ async (page) => {
     images.push({ file: '10-mobile-uav.png', title: '手机端 UAV 设备详情', url: page.url(), viewport: { width: 390, height: 900 }, role: 'public-interface-reference' });
     if (errors.length) throw new Error('Uncaught page exceptions: ' + errors.join('; '));
     return { origin, captured_at: new Date().toISOString(), public_source_revision_verified: false,
-      note: 'Reference screenshots of public UI; no records created and no raw observations exported.', images, errors };
+      source_revision:provenance?.source_revision, frozen_local_source_verified:!!provenance?.source_revision,
+      test_fixture:!!provenance?.test_fixture,
+      note: local?'Frozen local UI with synthetic inputs; actual calculation modules.':'Reference screenshots of public UI; no records created and no raw observations exported.', images, errors };
   } finally {
     page.off('pageerror', errorListener);
   }

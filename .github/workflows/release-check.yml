@@ -51,3 +51,22 @@ jobs:
           name: release-check-logs
           path: decision/output/release-check/
           retention-days: 14
+  postgres-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build disposable platform PostgreSQL
+        run: docker build -f postgres.Dockerfile -t wjtj-pg-recovery .
+      - name: Verify full schema backup and restore
+        run: python scripts/verify-postgres-recovery.py --output decision/output/postgres-recovery
+      - name: Save recovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: postgres-recovery-logs
+          path: decision/output/postgres-recovery/
+          retention-days: 14

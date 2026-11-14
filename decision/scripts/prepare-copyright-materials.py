@@ -58,6 +58,10 @@ def source_files():
             if path not in paths:
                 paths.append(path)
     paths += [ROOT / "api/app.py", *sorted((ROOT / "api/templates").glob("*.html"))]
+    paths += [ROOT / "bridge/bridge.py", ROOT / "pg_init/001_init.sql", ROOT / "api/static/console.css"]
+    paths += [DECISION / "index.html", DECISION / "frontend/shared/api.js"]
+    paths += [path for path in sorted((ROOT / "api/static/home").iterdir())
+              if path.suffix == ".css" or path.name == "mobile-devices.js"]
     return [path for path in paths if path.is_file() and path.stat().st_size > 0]
 
 
@@ -200,7 +204,13 @@ def export_manual(output, identity, font, screenshots):
     if screenshots and (screenshots / "manifest.json").is_file():
         manifest = json.loads((screenshots / "manifest.json").read_text(encoding="utf-8"))
         story.append(prose("界面截图与来源", "heading"))
-        story.append(prose("截图来源：" + manifest["origin"] + "；拍摄时间：" + manifest["captured_at"] + "。均为界面参考截图。"))
+        verified = manifest.get("frozen_local_source_verified") and manifest.get("source_revision") == git("rev-parse", "HEAD")
+        if manifest.get("frozen_local_source_verified") and not verified:
+            raise ValueError("Screenshot source revision differs from the exported source")
+        description = "同一冻结源码的本地模拟业务截图。" if verified else "界面参考截图。"
+        story.append(prose("截图来源：" + manifest["origin"] + "；拍摄时间：" + manifest["captured_at"] + "。" + description))
+        if verified:
+            story.append(prose("源码提交：" + manifest["source_revision"] + "。天气和设备输入均为模拟样例，拆建、格点计算和报告使用软件实际模块。"))
         for entry in manifest["images"]:
             image_path = (screenshots / entry["file"]).resolve()
             if not image_path.is_relative_to(screenshots.resolve()):

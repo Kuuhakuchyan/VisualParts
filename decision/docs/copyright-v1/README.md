@@ -19,6 +19,7 @@
 ```powershell
 python scripts/verify-submission-workflows.py --output output/submission-workflows
 python scripts/prepare-copyright-materials.py --output output/copyright-materials
+python scripts/prepare-filing-source.py --output output/copyright-materials
 ```
 
 第一条命令仅在临时存储内运行模拟热场、拆建、人群报告、场景保存/删除及 UGV/UAV 图像数据流程，保存测试输入、输出和快照证据，不连接生产数据或模型服务。
@@ -30,6 +31,10 @@ python scripts/prepare-copyright-materials.py --output output/copyright-material
 公网界面参考截图可由 `scripts/capture-copyright-reference.js` 在 Playwright CLI 的 `run-code --filename` 中运行。脚本仅浏览页面和切换设备，不创建线上方案、不写入遥测。导出器也能读取成功采集的 `capture-result.log` 来生成截图清单；截图是手册附录，不替代带数据的业务验收。
 
 输出均为核对稿，仍需确认权属、正式名称、日期、所选源码范围和受理格式。不得把原始设备资料、生产 `.env` 或完整数据库加入生成目录。
+
+第三条命令生成面向一般交存行数要求的源程序排版版。使用 `requirements-docs.txt` 中的 Black 和临时调用的 Prettier 3.6.2，仅在临时目录排版；不改业务源码。每页至少 50 条非空源码行，续行和页眉不计数，保留源文件哈希及排版页码映射。不要将原来的普通核对稿和排版版同时当作两份程序材料提交。
+
+工程恢复操作见 [运行维护与备份恢复](运行维护与备份恢复.md)，受理渠道与材料要求见 [官方提交要求核对](官方提交要求核对.md)。申请事实未核定前，技术材料与申请表/签章材料分开保管。
 
 ## 本批不包含
 
