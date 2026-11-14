@@ -73,6 +73,8 @@ class UGVTelemetry(BaseModel):
 
 
 def contract():
+    from backend.collection import VERSION as collection_version
+    from backend.routing import VERSION as routing_version
     result = {"schema_version": CONTRACT_VERSION, "requirements": {"UGV": "WJTJ-REQ-UGV-001/V1.3",
             "UAV": "WJTJ-REQ-UAV-002/V1.1", "MED": "WJTJ-REQ-MED-003/V1.2"},
             "time": {"wire": "UTC YYYY-MM-DDTHH:MM:SSZ", "display": "Asia/Shanghai", "meaning": "sampling_time_not_transmission_time"},
@@ -86,11 +88,11 @@ def contract():
                      "unknown_risk": "unavailable", "level_codes": {"below_range": 0, "caution": 1, "extreme_caution": 2, "danger": 3, "extreme_danger": 4, "unavailable": 255}},
             "telemetry": {"topic": "sensor/{device_id}/telemetry", "qos": 0, "compatibility_fields": ["device", "ts", "temp", "humid", "bat"],
                           "position_topic": "sensor/{device_id}/gps", "schema": UGVTelemetry.model_json_schema()},
-            "collection_simulation": {"schema_version": "WJTJ-collection-simulation/1.1", "source_type": "simulated_collection",
+            "collection_simulation": {"schema_version": collection_version, "source_type": "simulated_collection",
                                       "quality_flag": None, "med_eligible": False, "time": "simulation_clock_UTC_not_field_sampling",
                                       "units": "degC / %RH / m / m/s", "coordinates": "EPSG:4326",
                                       "uav_values": "2m_ground_grid_projection_not_flight_altitude_meteorology",
-                                      "mqtt_published": False, "planner": "informative-return-tour/1.0",
+                                      "mqtt_published": False, "planner": routing_version,
                                       "energy": "Wh; constant assumed power; explicit battery budget and return reserve; not calibrated",
                                       "optimality": "heuristic_not_global_optimum"},
             "mobile_telemetry": {"schema_version": "WJTJ-mobile-telemetry-1.0",

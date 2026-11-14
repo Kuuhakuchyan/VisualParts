@@ -1,0 +1,4 @@
+# Install separately from the production runtime.
+reportlab>=4.4,<5
+pypdf>=6,<7
+PyMuPDF>=1.26,<2

@@ -12,6 +12,25 @@
 | 用户操作手册.md | 按真实用户流程组织操作步骤，作为截图与正式手册基础 |
 | 权属与出件清单.md | 分离团队软件、第三方组件、模拟样例和私有数据，核对申请事实 |
 
+## 可重复生成
+
+在 `decision/` 目录安装 `requirements-test.lock` 和 `requirements-docs.txt` 后运行：
+
+```powershell
+python scripts/verify-submission-workflows.py --output output/submission-workflows
+python scripts/prepare-copyright-materials.py --output output/copyright-materials
+```
+
+第一条命令仅在临时存储内运行模拟热场、拆建、人群报告、场景保存/删除及 UGV/UAV 图像数据流程，保存测试输入、输出和快照证据，不连接生产数据或模型服务。
+
+第二条命令输出中文说明/手册 PDF、源代码核对全文、最多 60 页的前后连续代码核对稿、页码到原文件的映射、两版接口 Schema 和接口目录。默认拒绝在已跟踪源码有未提交改动、或所选源码尚未进入 Git 时导出；显式 `--allow-dirty` 只能用于内部草稿。中文字体默认使用 Windows 宋体，也可用 `--font` 指定可用的中文 TrueType 字体。
+
+可用 `--screenshots` 指定包含 `manifest.json` 的界面截图目录。公网截图必须标为界面参考，不自动视为与候选源代码同版；最终发布冻结后再核对或重截。
+
+公网界面参考截图可由 `scripts/capture-copyright-reference.js` 在 Playwright CLI 的 `run-code --filename` 中运行。脚本仅浏览页面和切换设备，不创建线上方案、不写入遥测。导出器也能读取成功采集的 `capture-result.log` 来生成截图清单；截图是手册附录，不替代带数据的业务验收。
+
+输出均为核对稿，仍需确认权属、正式名称、日期、所选源码范围和受理格式。不得把原始设备资料、生产 `.env` 或完整数据库加入生成目录。
+
 ## 本批不包含
 
 本目录暂不填写未经核实的著作权人、合作开发归属、开发完成日期或首次发表日期；不根据团队成员展示顺序推定法律权属。不把源代码中的第三方库归为团队原创。
