@@ -10,3 +10,10 @@ docs/
 identification/result/
 *.zip
 *.log
+dist-aic/
+output/
+.playwright-cli/
+**/*.sqlite3
+**/*.sqlite3-*
+**/*.db
+**/review-private/

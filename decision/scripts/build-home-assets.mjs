@@ -1,0 +1,15 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { build } from 'esbuild';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const target=path.join(root,'../api/static/home');
+const read=name=>JSON.parse(fs.readFileSync(path.join(root,'public/data',name),'utf8'));
+const simplify=(data)=>({type:'FeatureCollection',features:data.features.map(f=>({type:'Feature',geometry:f.geometry,properties:{...(Number.isFinite(f.properties?.height_m)?{height_m:f.properties.height_m}:{})}}))});
+const boundary=read('campus-boundary.geojson');
+const data={source_type:'visual_simulation',boundary:{type:'Feature',geometry:boundary.geometry,properties:{}},buildings:simplify(read('campus-buildings.geojson')),streets:simplify(read('campus-streets.geojson'))};
+fs.writeFileSync(path.join(target,'scene.json'),JSON.stringify(data));
+await build({entryPoints:[path.join(root,'frontend/home/scene.js')],bundle:true,minify:true,format:'esm',target:'es2022',outfile:path.join(target,'scene.js')});
+const anonymous=path.join(root,'public/aic/assets');
+for(const name of ['scene.js','scene.json'])fs.copyFileSync(path.join(target,name),path.join(anonymous,name));
+console.log('Shared homepage scene built; geometry contains no identifying properties.');

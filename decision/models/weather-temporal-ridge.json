@@ -1,0 +1,135 @@
+{
+  "schema_version": "weather-temporal-ridge/1.0",
+  "horizon_minutes": 15,
+  "feature_names": [
+    "temperature_c",
+    "humidity_pct",
+    "pressure_hpa",
+    "wind_mps",
+    "dt5",
+    "dt15",
+    "dt30",
+    "drh5",
+    "drh15",
+    "drh30",
+    "hour_sin",
+    "hour_cos"
+  ],
+  "coefficients": [
+    [
+      -0.007749503720329176,
+      0.014896357427049652,
+      0.004917152228105612,
+      -0.005212057027324457,
+      0.02778270673569761,
+      0.019672092365553357,
+      0.06616965989086922,
+      -0.009901924236444712,
+      -0.021732721476561388,
+      -0.01928645536915184,
+      0.059075307801325395,
+      -0.09652164315453655
+    ],
+    [
+      -0.056018981214621136,
+      -0.16389543974391055,
+      -0.054968881844743266,
+      0.034340833075697956,
+      -0.26460843146352625,
+      -0.19229670848420738,
+      -0.3007684133790147,
+      -0.2230430080913423,
+      -0.013855741132459104,
+      0.05697598671135863,
+      -0.02535444238663906,
+      0.259304801099767
+    ]
+  ],
+  "intercept": [
+    0.0014602708435231704,
+    0.002039484418425794
+  ],
+  "feature_mean": [
+    28.95151737640716,
+    59.88383096753141,
+    992.5402431065363,
+    1.012416381138851,
+    0.000546581824114864,
+    0.0017294827867515095,
+    0.0035160711372165055,
+    0.0006526350138684941,
+    0.0010605318975363028,
+    0.0017131669114047968,
+    0.004123359438524529,
+    -0.0024639177390768877
+  ],
+  "feature_scale": [
+    4.933382584790735,
+    17.32638649738492,
+    4.027628093921022,
+    0.612592221991652,
+    0.16596188181284924,
+    0.3721679742504382,
+    0.6475576601825159,
+    1.142269725390699,
+    1.8773579009586538,
+    2.920703297487973,
+    0.7066712137784024,
+    0.7075257752430599
+  ],
+  "enabled_targets": [
+    true,
+    true
+  ],
+  "alpha": 1000,
+  "evaluation": {
+    "temperature_c": {
+      "mae": 0.18969037912966782,
+      "rmse": 0.32919221619995054,
+      "persistence_mae": 0.22377329783187522,
+      "persistence_rmse": 0.3842120072162755,
+      "passes_holdout_gate": true
+    },
+    "humidity_pct": {
+      "mae": 1.17652838538993,
+      "rmse": 1.7964447389966913,
+      "persistence_mae": 1.2772917459109927,
+      "persistence_rmse": 2.0104330389704854,
+      "passes_holdout_gate": true
+    }
+  },
+  "sample_counts": {
+    "train": 12258,
+    "validation": 2620,
+    "test": 2629
+  },
+  "split": {
+    "train_end": "2026-07-13T16:00:00+08:00",
+    "validation_start": "2026-07-13T16:50:00+08:00",
+    "validation_end": "2026-07-22T19:55:00+08:00",
+    "test_start": "2026-07-22T20:45:00+08:00",
+    "test_end": "2026-07-31T23:45:00+08:00",
+    "embargo_minutes": 45
+  },
+  "data_summary": {
+    "files": 61,
+    "rows": 17552,
+    "exact_duplicates": 0,
+    "conflicting_timestamps": 0,
+    "rejected_rows": 0,
+    "retained_rows": 17552,
+    "first": "2026-06-01T00:05:00+08:00",
+    "last": "2026-08-01T00:00:00+08:00"
+  },
+  "source_sha256": "9a7772d98b6cd8812b3715ebc4330acf7811bef27c144b8ad6d706445e07cfc0",
+  "provenance_status": "user_supplied_station_exports_station_id_location_calibration_unverified",
+  "spatial_retreatment_eligible": false,
+  "medical_eligible": false,
+  "deepseek_weights_modified": false,
+  "limitations": [
+    "Chronological holdout, not independent station validation.",
+    "No location, LCZ or intervention labels: cannot fit building-induced spatial temperature change.",
+    "Rejected targets fall back to persistence, not invented improvements.",
+    "Requires seven consecutive five-minute station observations; not applicable to hourly gridded weather."
+  ]
+}

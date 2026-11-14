@@ -3,28 +3,30 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#171c1a">
+  <meta name="theme-color" content="#fcfdfd">
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light">
   <meta name="description" content="微境探界：可操作的三维气象决策大屏与分模块工作台，连接区域天气、空间研判、热风险和可追溯方案。">
   <title>微境探界 · 可视化决策平台</title>
   <link rel="icon" href="./logo.png">
+  <link rel="stylesheet" href="/ui-fonts/fonts.css">
   <script type="module" src="./frontend/workspace/app.js"></script>
 </head>
 <body>
   <a class="skip-link" href="#main">跳至主要内容</a>
   <div class="workspace-shell">
     <aside class="sidebar" id="sidebar" aria-label="工作台导航">
-      <a href="/" class="brand"><img src="./logo.png" alt="微境探界标志"><span>微境探界<small>MICROCLIMATE LAB</small></span></a>
+      <a href="/" class="brand"><img src="./logo.png" alt="微境探界标志"><span>微境探界<small>城市微气候研究平台</small></span></a>
       <div class="workspace-label">决策工作台 <span>WORKSPACE</span></div>
       <nav class="primary-nav" aria-label="决策模块">
         <a href="#screen" data-view="screen"><i data-lucide="monitor"></i><span>可视化大屏</span><small>00</small></a>
         <a href="#overview" data-view="overview"><i data-lucide="layout-dashboard"></i><span>态势总览</span><small>01</small></a>
         <a href="#spatial" data-view="spatial"><i data-lucide="map"></i><span>空间研判</span><small>02</small></a>
         <a href="#risk" data-view="risk"><i data-lucide="shield-check"></i><span>区域人群研判</span><small>03</small></a>
-        <a href="#plans" data-view="plans"><i data-lucide="git-compare-arrows"></i><span>方案对比</span><small>04</small></a>
+        <a href="#plans" data-view="plans"><i data-lucide="git-compare-arrows"></i><span>干预档案</span><small>04</small></a>
         <a href="#evidence" data-view="evidence"><i data-lucide="database"></i><span>数据与依据</span><small>05</small></a>
       </nav>
       <div class="sidebar-secondary"><p>平台管理</p><a href="/monitor"><i data-lucide="radio"></i>实时监测<i data-lucide="arrow-up-right"></i></a><a href="/sensors"><i data-lucide="cpu"></i>传感器管理<i data-lucide="arrow-up-right"></i></a><a href="/logs"><i data-lucide="logs"></i>数据日志<i data-lucide="arrow-up-right"></i></a><a href="/grafana/"><i data-lucide="activity"></i>运行保障<i data-lucide="arrow-up-right"></i></a></div>
-      <div class="sidebar-bottom"><span class="lab-mark">M / E</span><div>从环境数据到空间决策<small>可核查 · 有边界 · 可追溯</small></div></div>
     </aside>
     <button class="nav-scrim" id="nav-scrim" aria-label="关闭导航" hidden></button>
     <div class="workspace-main">
@@ -33,10 +35,10 @@
         <div class="topbar-actions"><label class="site-select"><i data-lucide="map-pin"></i><span class="sr-only">研判区域</span><select id="site-select"><option value="zhongyuan">郑州 · 中原区</option><option value="campus">校园周边</option></select></label><button id="refresh-all" class="icon-button" title="刷新当前区域数据" aria-label="刷新数据"><i data-lucide="refresh-cw"></i></button><span class="connection-status" id="connection-status" role="status">连接中</span></div>
       </header>
       <main id="main" tabindex="-1">
-        <div class="page-heading"><div><p class="eyebrow" id="page-eyebrow">ENVIRONMENTAL INTELLIGENCE</p><h1 id="page-title">区域环境态势</h1><p id="page-description">汇集区域天气、空间底图与风险依据。</p></div><div class="page-actions" id="page-actions"></div></div>
+        <div class="page-heading"><div><p class="eyebrow" id="page-eyebrow">ENVIRONMENTAL INTELLIGENCE</p><div class="heading-with-help"><h1 id="page-title">区域环境态势</h1><span id="page-help"></span></div></div><div class="page-actions" id="page-actions"></div></div>
         <div id="data-alert" class="notice" role="status" hidden></div>
         <div id="view-root" aria-busy="true"><div class="initial-state">正在连接区域天气与证据服务…</div></div>
-        <footer class="workspace-footer"><span>微境探界 / 决策工作台</span><span>网格资料与校园实测分别标注 · 不作疾病确诊</span><a href="./aic/" target="_blank" rel="noopener">匿名评估入口 <i data-lucide="arrow-up-right"></i></a></footer>
+        <footer class="workspace-footer"><span>微境探界 / 决策工作台</span><span>网格资料与校园实测分别标注 · 不作疾病确诊</span></footer>
       </main>
     </div>
   </div>

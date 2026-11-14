@@ -10,13 +10,15 @@ let report = null;
 let weatherController = null;
 let assessmentController = null;
 let currentMode = "current";
+let weatherTask = null;
+let formKey;
 const timeLabel = (iso) => iso ? new Date(iso).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false }) : "—";
 function text(id, value) { $(id).textContent = anonymous(value); }
 function element(tag, value, className) { const node = document.createElement(tag); if (value != null) node.textContent = value; if (className) node.className = className; return node; }
 function link(label, url) { const node = element("a", label); node.href = url; node.target = "_blank"; node.rel = "noopener noreferrer"; return node; }
 function symptoms() { return [...document.querySelectorAll('[name="symptom"]:checked')].map((el) => el.value); }
 function invalidate() {
-  assessmentController?.abort(); report = null;
+  assessmentController?.abort(); assessmentController = null; report = null;
   $("report").hidden = true; $("result-empty").hidden = false;
   $("json-download").disabled = true; $("print-report").disabled = true;
   $("assess-button").disabled = false; text("assess-button", "评估环境风险");
@@ -33,9 +35,16 @@ function download(value, name) {
   const anchor = document.createElement("a"); anchor.href = url; anchor.download = name; anchor.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-async function loadWeather() {
+function loadWeather() {
+  const key=`${workspaceSite}/${currentMode}`;
+  if(weatherTask?.key===key)return weatherTask.promise;
   weatherController?.abort(); weatherController = new AbortController();
-  const controller = weatherController; observation = null; invalidate();
+  const task=weatherTask={key};
+  task.promise=fetchWeather(weatherController).finally(()=>{if(weatherTask===task)weatherTask=null;});
+  return task.promise;
+}
+async function fetchWeather(controller) {
+  observation = null; invalidate();
   text("temperature", "—"); text("humidity", "—"); text("observed-at", "—"); text("provider", "—");
   text("location", workspaceSite === "campus" ? "校园周边网格" : "中原区附近网格"); text("quality-note", "区域网格估计，非校园站点实测。");
   text("weather-state", currentMode === "history" ? "正在获取2024年历史资料…" : "正在获取区域当前天气…");
@@ -102,12 +111,19 @@ function showReport(value) {
   $("json-download").disabled = false; $("print-report").disabled = false;
   if (innerWidth <= 700) $("report").scrollIntoView({ behavior: "auto", block: "start" });
 }
-$("assessment-form").addEventListener("change", () => { invalidate(); $("emergency-banner").hidden = !symptoms().some((s) => redFlags.has(s)); });
-$("duration").addEventListener("input", invalidate);
+const formState=()=>JSON.stringify({activity:$("activity").value,duration:$("duration").value,exposure:$("exposure").value,use_ai:$("use-ai").checked,symptoms:symptoms()});
+function formChanged() {
+  const key=formState();
+  if(key===formKey)return;formKey=key;invalidate();
+  $("form-error").hidden=true;$("emergency-banner").hidden=!symptoms().some(s=>redFlags.has(s));
+}
+formKey=formState();
+$("assessment-form").addEventListener("input",formChanged);
+$("assessment-form").addEventListener("change",formChanged);
 document.querySelectorAll('[name="mode"]').forEach((radio) => radio.addEventListener("change", () => { currentMode = radio.value; loadWeather(); }));
 $("refresh").addEventListener("click", loadWeather);
 $("assessment-form").addEventListener("submit", async (event) => {
-  event.preventDefault(); $("form-error").hidden = true;
+  event.preventDefault(); if(assessmentController)return;$("form-error").hidden = true;
   const selected = symptoms();
   if (!observation && selected.length === 0) { text("form-error", "缺少有效气象记录，请刷新数据；危险症状无需等待气象数据。"); $("form-error").hidden = false; return; }
   assessmentController?.abort(); assessmentController = new AbortController();
@@ -118,12 +134,14 @@ $("assessment-form").addEventListener("submit", async (event) => {
       body: JSON.stringify({ observation_id: observation?.id || null, activity: $("activity").value, exposure_minutes: Number($("duration").value), exposure: $("exposure").value, symptoms: selected, use_ai: $("use-ai").checked && !$("use-ai").disabled }) });
     if (!controller.signal.aborted) showReport(value);
   } catch (error) { if (!controller.signal.aborted) { text("form-error", error.name === "TimeoutError" ? "评估超时，请重试；危险症状请直接联系急救。" : error.message); $("form-error").hidden = false; } }
-  finally { if (controller === assessmentController) { $("assess-button").disabled = false; text("assess-button", "评估环境风险"); } }
+  finally { if (controller === assessmentController) { assessmentController=null;$("assess-button").disabled = false; text("assess-button", "评估环境风险"); } }
 });
 $("raw-download").addEventListener("click", async () => {
-  if (!observation) return;
-  try { download(await request(`${API}/observations/${observation.id}`), `${observation.id}.json`); }
+  if (!observation||$("raw-download").disabled) return;
+  const record=observation;$("raw-download").disabled=true;
+  try { download(await request(`${API}/observations/${record.id}`), `${record.id}.json`); }
   catch { text("weather-state", "原始记录下载失败，请重试。"); }
+  finally { if(observation===record)$("raw-download").disabled=false; }
 });
 $("json-download").addEventListener("click", () => { if (report) download(report, `microclimate-${report.report_sha256.slice(0, 12)}.json`); });
 $("print-report").addEventListener("click", () => { if (report) { document.querySelectorAll(".audit-details").forEach((d) => { d.open = true; }); window.print(); } });

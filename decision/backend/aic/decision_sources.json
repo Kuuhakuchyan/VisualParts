@@ -1,0 +1,41 @@
+{
+  "fetched_at": "2026-10-21T11:56:52.861347+00:00",
+  "sources": {
+    "NWS-METHOD": {
+      "url": "https://www.wpc.ncep.noaa.gov/html/heatindex_equation.shtml",
+      "sha256": "6a2a7971867b6cd6f6d57022097ea319aad9c18533f4532ce63e6c1d591fbd93",
+      "fetched_at": "2026-10-21T11:56:55.180897+00:00",
+      "quotes_verified": true,
+      "quote_count": 0,
+      "etag": null,
+      "last_modified": null
+    },
+    "NWS-LEVELS": {
+      "url": "https://www.weather.gov/ama/heatindex",
+      "sha256": "66474cb06f410a6e494052197ec497dcc2a59ecfa51859f79956ab33860f540a",
+      "fetched_at": "2026-10-21T11:56:56.649189+00:00",
+      "quotes_verified": true,
+      "quote_count": 0,
+      "etag": null,
+      "last_modified": null
+    },
+    "NWS-ILLNESS": {
+      "url": "https://www.weather.gov/safety/heat-illness",
+      "sha256": "ca5b61bc4d6622e7b426cd597c7a1e1bdf5b10504c685c3a0749df5f253d0724",
+      "fetched_at": "2026-10-21T11:56:57.401443+00:00",
+      "quotes_verified": true,
+      "quote_count": 2,
+      "etag": null,
+      "last_modified": null
+    },
+    "WHO-HEAT": {
+      "url": "https://www.who.int/news-room/fact-sheets/detail/climate-change-heat-and-health",
+      "sha256": "75af96342782bc48a3ae9ce84d65c94cece00b8e6c360d04f4f841f5c9799d29",
+      "fetched_at": "2026-10-21T11:56:58.549908+00:00",
+      "quotes_verified": true,
+      "quote_count": 3,
+      "etag": null,
+      "last_modified": "Wed, 21 Oct 2026 10:14:00 GMT"
+    }
+  }
+}

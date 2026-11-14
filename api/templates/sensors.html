@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Lucide icons (ISC): https://lucide.dev/license -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>微境探界｜传感器管理</title>
+<link rel="icon" href="/logo.png">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  background:#eef2f7; color:#0f172a; min-height:100vh;
+}
+.header {
+  background:#111827; color:#fff; min-height:64px; padding:14px 24px;
+  display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.brand { display:flex; align-items:center; gap:10px; }
+.brand img { width:32px; height:32px; border-radius:50%; }
+.brand h1 { font-size:18px; line-height:1.2; }
+.brand span { display:block; font-size:12px; color:#566f7d; font-weight:400; margin-top:2px; }
+.nav { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.nav a {
+  color:#bfdbfe; text-decoration:none; font-size:13px; padding:7px 10px;
+  border:1px solid rgba(147,197,253,.28); border-radius:8px;
+}
+.nav a:hover { background:rgba(59,130,246,.14); color:#fff; }
+.refresh { color:#566f7d; font-size:12px; margin-left:4px; }
+.container { max-width:1400px; margin:0 auto; padding:16px; }
+.summary {
+  display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:12px; margin-bottom:16px;
+}
+.metric {
+  background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:14px 16px;
+  box-shadow:0 1px 3px rgba(15,23,42,.06);
+}
+.metric .label { color:#64748b; font-size:12px; margin-bottom:6px; }
+.metric .value { font-size:24px; font-weight:700; letter-spacing:0; }
+.layout { display:grid; grid-template-columns:320px 1fr; gap:16px; align-items:start; }
+.panel {
+  background:#fff; border:1px solid #e2e8f0; border-radius:8px;
+  box-shadow:0 1px 3px rgba(15,23,42,.06); overflow:hidden;
+}
+.panel-head {
+  padding:14px 16px; border-bottom:1px solid #e2e8f0;
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+}
+.panel-head h2 { font-size:15px; }
+.panel-head span { font-size:12px; color:#64748b; }
+.tree { padding:10px 8px 14px; max-height:calc(100vh - 230px); overflow:auto; }
+details { margin:2px 0; }
+summary {
+  list-style:none; cursor:pointer; min-height:32px; padding:7px 8px; border-radius:7px;
+  display:flex; align-items:center; gap:8px; font-size:13px; color:#334155;
+}
+summary::-webkit-details-marker { display:none; }
+summary:hover { background:#f1f5f9; }
+.twisty { width:14px; color:#94a3b8; font-size:10px; transition:transform .16s ease; }
+details[open] > summary .twisty { transform:rotate(90deg); }
+.tree-count { margin-left:auto; color:#64748b; font-size:11px; }
+.tree-children { margin-left:18px; border-left:1px solid #e2e8f0; padding-left:8px; }
+.device-node {
+  width:100%; min-height:34px; border:0; background:transparent; cursor:pointer; text-align:left;
+  display:flex; align-items:center; gap:8px; padding:7px 8px; border-radius:7px; color:#0f172a;
+}
+.device-node:hover { background:#eff6ff; }
+.device-node.active { background:#dbeafe; color:#1d4ed8; font-weight:700; }
+.dot { width:8px; height:8px; border-radius:50%; flex:0 0 auto; }
+.dot.online { background:#10b981; box-shadow:0 0 0 3px rgba(16,185,129,.15); }
+.dot.offline { background:#ef4444; box-shadow:0 0 0 3px rgba(239,68,68,.12); }
+.node-text { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.node-sub { margin-left:auto; color:#94a3b8; font-size:11px; font-weight:500; }
+.field-list { margin:3px 0 7px 28px; display:grid; gap:3px; }
+.field-node {
+  color:#64748b; font-size:12px; padding:4px 6px; border-radius:6px;
+  display:flex; justify-content:space-between; gap:8px;
+}
+.field-node:hover { background:#f8fafc; }
+.detail-body { padding:16px; }
+.empty {
+  text-align:center; color:#94a3b8; padding:64px 16px; border:1px dashed #cbd5e1; border-radius:8px;
+}
+.detail-title { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:14px; }
+.detail-title h3 { font-size:20px; margin-bottom:4px; }
+.detail-title p { color:#64748b; font-size:13px; }
+.badge {
+  display:inline-flex; align-items:center; min-height:24px; padding:3px 9px; border-radius:999px;
+  font-size:12px; font-weight:700; white-space:nowrap;
+}
+.badge.online { color:#047857; background:#ecfdf5; border:1px solid #a7f3d0; }
+.badge.offline { color:#b91c1c; background:#fef2f2; border:1px solid #fecaca; }
+.info-grid { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:10px; margin-bottom:16px; }
+.info-item { background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; min-width:0; }
+.info-item .label { color:#64748b; font-size:11px; margin-bottom:4px; }
+.info-item .value { font-size:13px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.info-item.wide { grid-column:span 2; }
+.section-title { font-size:14px; margin:18px 0 8px; display:flex; align-items:center; gap:8px; }
+.section-title::before { content:""; width:4px; height:14px; border-radius:2px; background:#2563eb; }
+.fields-table { width:100%; border-collapse:collapse; font-size:13px; border:1px solid #e2e8f0; border-radius:8px; overflow:hidden; }
+.fields-table th, .fields-table td { text-align:left; padding:10px 12px; border-bottom:1px solid #eef2f7; }
+.fields-table th { background:#f8fafc; color:#475569; font-weight:700; }
+.fields-table tr:last-child td { border-bottom:0; }
+.quick-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+.action {
+  display:inline-flex; align-items:center; min-height:32px; padding:7px 12px; border-radius:8px;
+  text-decoration:none; color:#1d4ed8; background:#eff6ff; border:1px solid #bfdbfe; font-weight:700; font-size:13px;
+}
+.action.device { color:#047857; background:#ecfdf5; border-color:#a7f3d0; }
+.action.ops { color:#6d28d9; background:#f5f3ff; border-color:#ddd6fe; }
+.footer { text-align:center; padding:16px; font-size:12px; color:#94a3b8; }
+.warn { color:#d97706; }
+@media (max-width: 980px) {
+  .summary { grid-template-columns:1fr 1fr; }
+  .layout { grid-template-columns:1fr; }
+  .tree { max-height:none; }
+}
+@media (max-width: 620px) {
+  .header { padding:12px 16px; }
+  .summary, .info-grid { grid-template-columns:1fr; }
+  .info-item.wide { grid-column:auto; }
+  .panel-head, .detail-title { flex-direction:column; align-items:flex-start; }
+}
+</style>
+<link rel="stylesheet" href="/console.css">
+</head>
+<body class="console-sensors">
+<div class="header">
+  <div class="brand">
+    <img src="/logo.png" alt="">
+    <div>
+      <h1>传感器管理</h1>
+      <span>设备状态与观测字段</span>
+    </div>
+  </div>
+  <div class="header-tools"><button type="button" class="icon-tool" onclick="load()" aria-label="刷新传感器" title="刷新传感器"><svg aria-hidden="true" focusable="false"   xmlns="http://www.w3.org/2000/svg"   width="24"   height="24"   viewBox="0 0 24 24"   fill="none"   stroke="currentColor"   stroke-width="2"   stroke-linecap="round"   stroke-linejoin="round" >   <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />   <path d="M21 3v5h-5" />   <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />   <path d="M8 16H3v5" /> </svg></button><span class="refresh" id="refreshTime"></span><a href="/">项目主页 ↗</a></div>
+</div>
+<nav class="console-nav" aria-label="平台模块"><a href="/monitor">实时监测</a><a class="active" aria-current="page" href="/sensors">传感器管理</a><a href="/logs">数据日志</a><a href="/decision/">决策工作台</a><a href="/decision/#risk">热风险评估</a><a href="/decision/#evidence">数据与依据</a><a href="/grafana/">运行看板</a></nav>
+<form class="console-filters" role="search" onsubmit="event.preventDefault()">
+  <label>搜索设备<input type="search" id="sensorSearch" placeholder="设备名称或类型" oninput="render(devicesState)"></label>
+  <fieldset><legend class="sr-only">设备状态</legend><label><input type="radio" name="sensorStatus" value="all" checked onchange="render(devicesState)">全部</label><label><input type="radio" name="sensorStatus" value="online" onchange="render(devicesState)">在线</label><label><input type="radio" name="sensorStatus" value="offline" onchange="render(devicesState)">离线</label></fieldset>
+</form>
+<div class="container" id="content" aria-live="polite"><div class="empty">加载中...</div></div>
+<div class="footer">微境探界 · 传感器管理</div>
+<script>
+let devicesState = [];
+let selectedDeviceId = null;
+let mobileAdapter = null;
+let mobileRows = [];
+const mobileModule = import('/home-assets/mobile-devices.js?v=20261112-entries').then(module => { mobileAdapter = module; mobileRows = module.sensorRows([]); });
+
+function esc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  }[ch]));
+}
+
+function jsArg(value) {
+  return esc(JSON.stringify(value ?? ''));
+}
+
+function fmtDate(value, mode = 'datetime') {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return mode === 'date' ? date.toLocaleDateString('zh-CN') : date.toLocaleString('zh-CN');
+}
+
+function fmtNum(value, digits, suffix = '') {
+  return value == null ? '-' : `${Number(value).toFixed(digits)}${suffix}`;
+}
+
+function groupDevices(devices) {
+  return devices.reduce((groups, device) => {
+    const type = device.device_type || '未分类设备';
+    if (!groups[type]) groups[type] = [];
+    groups[type].push(device);
+    return groups;
+  }, {});
+}
+
+function renderSummary(devices) {
+  devices = devices.filter(d=>!d.placeholder);
+  const total = devices.length;
+  const online = devices.filter(d => d.online).length;
+  const offline = total - online;
+  const fields = new Set();
+  devices.forEach(d => (d.fields || []).forEach(f => fields.add(`${d.device_type || d.device_id}:${f.field_name}`)));
+  return `<div class="summary">
+    <div class="metric"><div class="label">接入设备</div><div class="value">${total}</div></div>
+    <div class="metric"><div class="label">在线设备</div><div class="value">${online}</div></div>
+    <div class="metric"><div class="label">离线设备</div><div class="value">${offline}</div></div>
+    <div class="metric"><div class="label">字段模板</div><div class="value">${fields.size}</div></div>
+  </div>`;
+}
+
+function renderTree(devices) {
+  const groups = groupDevices(devices);
+  const typeHtml = Object.entries(groups).map(([type, group]) => {
+    const online = group.filter(d => d.online).length;
+    const deviceHtml = group.map(d => {
+      const fields = d.fields || [];
+      const fieldHtml = fields.length
+        ? `<div class="field-list">${fields.map(f => `<div class="field-node"><span>${esc(f.display_name || f.field_name)}</span><span>${esc(f.field_unit || '-')}</span></div>`).join('')}</div>`
+        : `<div class="field-list"><div class="field-node"><span>暂无字段模板</span><span>-</span></div></div>`;
+      return `<div>
+        <button type="button" aria-pressed="${d.device_id === selectedDeviceId}" class="device-node ${d.device_id === selectedDeviceId ? 'active' : ''}" onclick="selectDevice(${jsArg(d.device_id)})">
+          <span class="dot ${d.placeholder ? '' : d.online ? 'online' : 'offline'}"></span>
+          <span class="node-text">${esc(d.device_name || d.device_id)}</span>
+          <span class="node-sub">${d.placeholder ? '' : d.online ? '在线' : '离线'}</span>
+        </button>
+        ${fieldHtml}
+      </div>`;
+    }).join('');
+    return `<details open>
+      <summary><span class="twisty">▶</span><strong>${esc(type)}</strong><span class="tree-count">${online}/${group.filter(d=>!d.placeholder).length}</span></summary>
+      <div class="tree-children">${deviceHtml}</div>
+    </details>`;
+  }).join('');
+
+  return `<div class="panel">
+    <div class="panel-head"><h2>设备树</h2><span>项目 / 类型 / 设备 / 字段</span></div>
+    <div class="tree">
+      <details open>
+        <summary><span class="twisty">▶</span><strong>微境探界 IoT 传感网络</strong><span class="tree-count">${devices.filter(d=>!d.placeholder).length}</span></summary>
+        <div class="tree-children">${typeHtml}</div>
+      </details>
+    </div>
+  </div>`;
+}
+
+function renderDetail(device) {
+  if (!device) {
+    return `<div class="panel"><div class="detail-body"><div class="empty">请选择左侧设备节点</div></div></div>`;
+  }
+  if (device.mobile_type) return `<mobile-observations device-type="${esc(device.mobile_type)}"></mobile-observations>`;
+  if (device.mobile_id) return `<mobile-observations device-id="${esc(device.mobile_id)}"></mobile-observations>`;
+  const fields = device.fields || [];
+  const coord = device.lat != null && device.lon != null
+    ? `${Number(device.lat).toFixed(5)}, ${Number(device.lon).toFixed(5)}`
+    : '无定位';
+  const range = `${fmtDate(device.first_ts, 'date')} ~ ${fmtDate(device.last_ts, 'date')}`;
+  const rows = Number(device.total_rows || 0).toLocaleString('zh-CN');
+  const fieldRows = fields.length
+    ? fields.map(f => `<tr><td>${esc(f.display_name || f.field_name)}</td><td>${esc(f.field_name)}</td><td>${esc(f.field_unit || '-')}</td></tr>`).join('')
+    : '<tr><td colspan="3" style="color:#94a3b8;">暂无字段模板</td></tr>';
+  return `<div class="panel">
+    <div class="panel-head">
+      <h2>设备详情</h2>
+      <span>${device.online ? '最近 5 分钟内有上报' : '当前未在线'}</span>
+    </div>
+    <div class="detail-body">
+      <div class="detail-title">
+        <div>
+          <h3>${esc(device.device_id)}</h3>
+          <p>${esc(device.device_type || '未知类型')} · 固件 ${esc(device.firmware || '未知')}</p>
+        </div>
+        <span class="badge ${device.online ? 'online' : 'offline'}">${device.online ? '在线' : '离线'}</span>
+      </div>
+      <div class="info-grid">
+        <div class="info-item"><div class="label">最后上报</div><div class="value ${device.online ? '' : 'warn'}">${fmtDate(device.last_seen)}</div></div>
+        <div class="info-item"><div class="label">注册时间</div><div class="value">${fmtDate(device.created_at)}</div></div>
+        <div class="info-item"><div class="label">最新坐标</div><div class="value">${esc(coord)}</div></div>
+        <div class="info-item"><div class="label">数据总量</div><div class="value">${rows} 条</div></div>
+        <div class="info-item"><div class="label">最新温度</div><div class="value">${fmtNum(device.temp_c, 1, '°C')}</div></div>
+        <div class="info-item"><div class="label">最新湿度</div><div class="value">${fmtNum(device.humidity, 1, '%')}</div></div>
+        <div class="info-item"><div class="label">电池电压</div><div class="value">${fmtNum(device.bat_v, 2, 'V')}</div></div>
+        <div class="info-item"><div class="label">平均上报间隔</div><div class="value">${device.avg_interval ? Math.round(device.avg_interval) + 's' : '-'}</div></div>
+        <div class="info-item wide"><div class="label">数据范围</div><div class="value">${esc(range)}</div></div>
+        <div class="info-item wide"><div class="label">直连入口</div><div class="value">连接设备 AP 后访问 192.168.4.1</div></div>
+      </div>
+      <div class="section-title">字段模板</div>
+      <table class="fields-table">
+        <thead><tr><th>显示名称</th><th>字段名</th><th>单位</th></tr></thead>
+        <tbody>${fieldRows}</tbody>
+      </table>
+      <div class="quick-actions">
+        <a class="action" href="/logs">查看数据日志</a>
+        <a class="action" href="/api/export/${encodeURIComponent(device.device_id)}" target="_blank" rel="noopener noreferrer">导出今日 CSV</a>
+        <a class="action device" href="http://192.168.4.1" target="_blank" rel="noopener noreferrer">设备直连</a>
+        <a class="action ops" href="/grafana/">Grafana 看板</a>
+      </div>
+    </div>
+  </div>`;
+}
+
+function render(devices) {
+  const query = document.getElementById('sensorSearch').value.trim().toLocaleLowerCase();
+  const status = document.querySelector('input[name="sensorStatus"]:checked').value;
+  devices = devices.filter(device => `${device.device_id} ${device.device_name || ''} ${device.device_type || ''}`.toLocaleLowerCase().includes(query) && (status === 'all' || !device.placeholder && Boolean(device.online) === (status === 'online')));
+  if (!devices.length) {
+    document.getElementById('content').innerHTML = `${renderSummary(devicesState)}<div class="empty">${devicesState.length ? '没有匹配的设备，请调整搜索或状态。' : '暂无传感器记录。'}</div>`;
+    return;
+  }
+  if (!selectedDeviceId || !devices.some(d => d.device_id === selectedDeviceId)) {
+    const previousType=selectedDeviceId?.startsWith('mobile-type:')?selectedDeviceId.slice(12):null;
+    selectedDeviceId = (devices.find(d=>d.device_type===previousType)||devices[0]).device_id;
+  }
+  const current = devices.find(d => d.device_id === selectedDeviceId);
+  const content = document.getElementById('content');
+  if (!content.querySelector('#sensor-detail-slot')) content.innerHTML = '<div id="sensor-summary-slot"></div><div class="layout"><div id="sensor-tree-slot"></div><div id="sensor-detail-slot" style="min-width:0"></div></div>';
+  document.getElementById('sensor-summary-slot').innerHTML = renderSummary(devicesState);
+  document.getElementById('sensor-tree-slot').innerHTML = renderTree(devices);
+  const slot = document.getElementById('sensor-detail-slot');
+  const attribute=current.mobile_type?'device-type':'device-id';
+  const value=current.mobile_type||current.mobile_id;
+  if (!value || slot.querySelector('mobile-observations')?.getAttribute(attribute) !== value) slot.innerHTML = renderDetail(current);
+}
+
+function selectDevice(deviceId) {
+  selectedDeviceId = deviceId;
+  render(devicesState);
+}
+
+let loading = false;
+async function load() {
+  if (loading) return;
+  loading = true;
+  const button = document.querySelector('.icon-tool');
+  button.disabled = true;
+  button.setAttribute('aria-busy', 'true');
+  const content = document.getElementById('content');
+  content.setAttribute('aria-busy', 'true');
+  try {
+    const [fixed, mobile] = await Promise.allSettled([
+      fetch('/api/sensors/detail', { signal: AbortSignal.timeout(15000) }).then(async res=>{if(!res.ok)throw new Error('固定传感器读取失败');const data=await res.json();if(!Array.isArray(data))throw new Error('数据格式异常');return data;}),
+      mobileModule.then(()=>mobileAdapter.readMobile('/devices'))
+    ]);
+    if (fixed.status==='rejected' && mobile.status==='rejected') throw new Error('设备读取失败');
+    if (mobile.status==='fulfilled') mobileRows=mobileAdapter.sensorRows(mobile.value.devices);
+    const fixedRows=fixed.status==='fulfilled'?fixed.value:devicesState.filter(d=>!d.mobile_id&&!d.mobile_type);
+    const next=[...fixedRows,...mobileRows];
+    const changed=JSON.stringify(next)!==JSON.stringify(devicesState);
+    devicesState = next;
+    if (changed || !content.querySelector('.layout')) render(devicesState);
+    const failures=[fixed.status==='rejected'?'固定传感器读取失败':'',mobile.status==='rejected'?'移动设备读取失败':''].filter(Boolean);
+    document.getElementById('refreshTime').textContent = failures.length?failures.join('；')+'，保留上次记录':'更新于 ' + new Date().toLocaleTimeString('zh-CN');
+    document.getElementById('refreshTime').classList.toggle('error-text',failures.length>0);
+  } catch {
+    document.getElementById('refreshTime').textContent = devicesState.length ? '刷新失败，保留上次记录' : '传感器暂不可用';
+    document.getElementById('refreshTime').classList.add('error-text');
+    if (!devicesState.length) content.innerHTML = '<div class="empty error" role="alert">传感器读取失败。<button type="button" class="action" onclick="load()">重新加载</button></div>';
+  } finally {
+    loading = false;
+    button.disabled = false;
+    button.removeAttribute('aria-busy');
+    content.removeAttribute('aria-busy');
+  }
+}
+
+load();
+setInterval(load, 30000);
+</script>
+</body>
+</html>

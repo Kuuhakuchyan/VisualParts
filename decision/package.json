@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "build": "node scripts/build-home-assets.mjs && vite build",
+    "preview": "vite preview",
+    "test:workspace": "node --test scripts/test-workspace-core.mjs scripts/test-forecast-frames.mjs"
   },
   "dependencies": {
     "cesium": "^1.140.0",
@@ -16,12 +17,17 @@
     "http-proxy-middleware": "^3.0.5",
     "lucide": "^1.59.0",
     "maplibre-gl": "^6.2.0",
+    "polygon-clipping": "^0.15.7",
+    "proj4": "^2.22.0",
     "serve-static": "^2.2.0",
     "three": "^0.180.0",
     "tslib": "^2.8.1"
   },
   "devDependencies": {
+    "@mapbox/vector-tile": "^3.0.0",
     "@types/node": "^25.6.0",
+    "esbuild": "^0.28.2",
+    "pbf": "^5.1.2",
     "typescript": "^6.0.2",
     "vite": "^8.0.8",
     "vite-plugin-cesium": "^1.2.23"

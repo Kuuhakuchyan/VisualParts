@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>董少睿 | 作者主页</title>
+<link rel="icon" href="/logo.png">
+<link rel="stylesheet" href="/decision/ui-fonts/fonts.css">
 <style>
 :root {
   color-scheme: light;
@@ -13,8 +15,8 @@
   --panel: #ffffff;
   --soft: #f5f7fb;
   --blue: #2463eb;
-  --green: #0f8b6f;
-  --amber: #b7791f;
+  --green: #347269;
+  --amber: #946321;
   --red: #b42318;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -30,9 +32,8 @@ a:hover { text-decoration: underline; }
   position: sticky;
   top: 0;
   z-index: 10;
-  background: rgba(255,255,255,.95);
+  background: #fafbfa;
   border-bottom: 1px solid var(--line);
-  backdrop-filter: blur(12px);
 }
 .nav {
   width: min(1160px, calc(100% - 32px));
@@ -296,6 +297,7 @@ a:hover { text-decoration: underline; }
   .timeline-item { grid-template-columns: 1fr; gap: 5px; }
 }
 </style>
+<link rel="stylesheet" href="/home-assets/author.css?v=20261025d">
 </head>
 <body>
 <header class="topbar">
@@ -305,11 +307,12 @@ a:hover { text-decoration: underline; }
       <span>微境探界</span>
     </a>
     <div class="nav-links">
-      <a href="/">平台</a>
+      <a href="/">项目主页</a>
       <a href="/sensors">设备</a>
       <a href="/logs">数据</a>
       <a href="/grafana/">Grafana</a>
-      <a class="primary" href="/author">作者主页</a>
+      <a href="/author/project/">项目博客</a>
+      <a class="primary" aria-current="page" href="/author">作者主页</a>
     </div>
   </nav>
 </header>
@@ -327,25 +330,24 @@ a:hover { text-decoration: underline; }
         <span class="tag">AGI 仿生智能</span>
       </div>
       <div class="contact">
-        <div><span>邮箱</span><br>待补充</div>
-        <div><span>GitHub / ORCID</span><br>待补充</div>
         <div><span>项目平台</span><br><a href="https://weather.nogamenolife.cn/">weather.nogamenolife.cn</a></div>
+        <div><span>研究记录</span><br><a href="/author/project/">微境探界项目博客</a></div>
       </div>
     </aside>
 
     <div class="content">
       <section class="hero">
-        <div class="eyebrow">AUTHOR PROFILE</div>
         <h2>面向城市热胁迫的遥感-物联网-智能诊断平台探索</h2>
         <p>
           当前工作围绕“微境探界”展开，聚焦城市微气候观测、热胁迫识别、遥感指标融合与智能诊断方法，
           目标是把多源环境数据组织成可观测、可解释、可决策的平台能力。
         </p>
         <div class="actions">
-          <a class="button main" href="/">查看平台</a>
-          <a class="button" href="/api/devices">设备接口</a>
+          <a class="button main" href="/decision/">空间决策</a>
+          <a class="button" href="/author/project/">项目博客</a>
           <a class="button" href="/grafana/">数据看板</a>
         </div>
+        <figure class="research-scene"><img src="/home-assets/campus-scene.webp" alt="校园数字场景与研究网格" width="1200" height="500"><figcaption>校园数字场景，包含模拟网格</figcaption></figure>
       </section>
 
       <section class="section">
@@ -404,11 +406,12 @@ a:hover { text-decoration: underline; }
       </section>
 
       <section class="section">
-        <h3>资料与成果</h3>
-        <p class="note">
-          项目计划书、技术流程、论文、专利、演示视频、代码仓库和数据说明可在整理后集中放入本页。
-          当前页面先作为规范化作者主页骨架，后续可替换头像、补充履历并接入正式成果列表。
-        </p>
+        <h3>项目记录</h3>
+        <ul class="research-links">
+          <li><a href="/author/project/microjie-overview/">“微境探界”：城市热胁迫的遥感-AGI仿生智能诊断</a><span>项目简介</span></li>
+          <li><a href="/author/project/platform-architecture/">微气候平台的当前工程结构</a><span>平台工程</span></li>
+          <li><a href="/author/project/roadmap-security/">下一阶段：安全性、可靠性与平台化补强</a><span>研发计划</span></li>
+        </ul>
       </section>
     </div>
   </div>

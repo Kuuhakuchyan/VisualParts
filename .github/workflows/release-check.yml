@@ -1,0 +1,47 @@
+name: Platform release checks
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'decision/**'
+      - 'api/static/**'
+      - 'api/templates/**'
+      - '.github/workflows/release-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: decision/package-lock.json
+      - name: Install dependencies
+        run: |
+          python -m pip install --require-hashes -r decision/requirements-test.lock
+          npm ci --prefix decision
+      - name: Verify source dependencies and application
+        working-directory: decision
+        run: python scripts/verify-release.py --report-dir output/release-check
+      - name: Build backend image and check its runtime layout
+        working-directory: decision
+        run: |
+          docker build -f backend/Dockerfile -t wjtj-release-check .
+          docker run --rm wjtj-release-check python -m backend.release_check
+      - name: Save verification logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-check-logs
+          path: decision/output/release-check/
+          retention-days: 14

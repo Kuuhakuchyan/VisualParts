@@ -88,6 +88,9 @@ def review_bundle(output):
 def import_reviews(input_path, output):
     bundle = json.loads(Path(input_path).read_text(encoding="utf-8"))
     kb = KnowledgeBase(review_path=input_path)
+    unknown = set(bundle.get("clauses",{})) - {c["id"] for c in kb.data["clauses"]}
+    if unknown:
+        raise ValueError("Review contains unknown clause IDs: " + ", ".join(sorted(unknown)))
     if bundle.get("protocol", {}).get("status") == "approved" and not kb.protocol_reviewed():
         raise ValueError("Protocol approval is incomplete or rules/source changed")
     for clause in kb.data["clauses"]:
@@ -202,11 +205,15 @@ async def model_smoke(output):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=["harvest", "review-export", "review-import", "scenarios", "evaluate", "field-import", "model-smoke"])
+    parser.add_argument("command", choices=["harvest", "review-export", "review-import", "scenarios", "evaluate", "field-import", "model-smoke", "audit"])
     parser.add_argument("--input")
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
-    if args.command == "harvest":
+    if args.command == "audit":
+        audit=KnowledgeBase().audit()
+        write_json(args.output,audit)
+        print(json.dumps(audit,ensure_ascii=False))
+    elif args.command == "harvest":
         asyncio.run(harvest(args.output))
     elif args.command == "review-export":
         review_bundle(args.output)

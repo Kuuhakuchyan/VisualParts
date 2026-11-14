@@ -1,0 +1,10 @@
+{
+  "description": "Homepage D migration media provenance. No full interface screenshot is used as a cover.",
+  "sources": [
+    {"files": ["homepage-scene.png", "d-context.png", "d-intervention.png"], "source": "Approved ui-design-20261025-d/preview.html and preview.js", "method": "Render hero, blog and plan Three.js canvases at 1800x1100 with all surrounding UI excluded", "reproduce": "frontend/home/capture-design.js", "data_type": "Deterministic visual simulation; project building and street footprints, not live observations"},
+    {"files": ["landcover.png"], "source": "Existing project constrained LCZ classification asset", "reproduce": "scripts/render-anonymous-lcz.py", "data_type": "Uncalibrated simulation with provisional built types"},
+    {"files": ["field-observation.webp"], "source": "Existing anonymous crop of the project observation theme photograph", "reproduce": "scripts/prepare-anonymous-home-media.py; instrument-only upper-right panel", "data_type": "Theme photograph; no claim that the depicted station is deployed by this project"},
+    {"files": ["data-platform.webp", "station-timeseries.png", "model-validation.png"], "source": "Existing project weather-training chart outputs", "reproduce": "scripts/capture-training-charts.js", "data_type": "Single-station chronological holdout validation, not spatial intervention validation"}
+  ],
+  "encoding": "frontend/home/prepare-media.py creates homepage WebP versions without changing evidence values"
+}

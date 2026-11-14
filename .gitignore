@@ -5,6 +5,17 @@
 **/aic_state/
 **/review-private/
 data/
+!decision/public/data/
+decision/public/data/*
+!decision/public/data/campus-buildings.geojson
+!decision/public/data/campus-boundary.geojson
+!decision/public/data/campus-lcz-simulation.geojson
+!decision/public/data/reference-station.json
+!decision/public/data/campus-lcz-constraints.geojson
+!decision/public/data/campus-streets.geojson
+!decision/public/data/neighborhood-buildings.geojson
+!decision/public/data/neighborhood-landcover.geojson
+!decision/public/data/neighborhood-streets.geojson
 grafana_data/
 mosquitto/data/
 mosquitto/config/passwd

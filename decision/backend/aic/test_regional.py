@@ -139,6 +139,8 @@ class RegionalModelTests(unittest.TestCase):
         with patch.dict(os.environ,{"AIC_DEEPSEEK_API_KEY":"synthetic-only"}), patch("backend.aic.generation.httpx.AsyncClient.post",side_effect=httpx.ReadTimeout("not-public")):
             value,meta=asyncio.run(select_regional(self.facts,self.actions,self.contexts,[]))
         self.assertEqual(meta["mode"],"rules_fallback")
+        self.assertEqual(meta["failure_type"],"timeout")
+        self.assertIsNone(meta["validation_code"])
         self.assertNotIn("not-public",json.dumps(meta))
         self.assertIn("DATA-GAP",value["action_ids"])
 

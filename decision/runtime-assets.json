@@ -1,0 +1,20 @@
+{
+  "schema_version": "WJTJ-runtime-assets-1.0",
+  "files": [
+    {"path": "release-version.json", "kind": "release"},
+    {"path": "models/weather-temporal-ridge.json", "kind": "model"},
+    {"path": "models/spatial-utci-emulator.json", "kind": "model"},
+    {"path": "public/data/campus-boundary.geojson", "kind": "spatial"},
+    {"path": "public/data/campus-buildings.geojson", "kind": "spatial"},
+    {"path": "public/data/campus-lcz-constraints.geojson", "kind": "spatial"},
+    {"path": "public/data/campus-lcz-simulation.geojson", "kind": "spatial"},
+    {"path": "public/data/campus-streets.geojson", "kind": "spatial"},
+    {"path": "public/data/neighborhood-buildings.geojson", "kind": "spatial"},
+    {"path": "public/data/neighborhood-landcover.geojson", "kind": "spatial"},
+    {"path": "public/data/neighborhood-streets.geojson", "kind": "spatial"},
+    {"path": "public/data/zzu_osm_buildings.geojson", "kind": "spatial"},
+    {"path": "public/data/reference-station.json", "kind": "station"},
+    {"path": "backend/aic/knowledge.json", "kind": "knowledge"},
+    {"path": "backend/aic/decision_sources.json", "kind": "knowledge"}
+  ]
+}

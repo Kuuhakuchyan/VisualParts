@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Lucide icons (ISC): https://lucide.dev/license -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数据日志</title>
+<link rel="icon" href="/logo.png">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:#f0f2f5; color:#333; }
+.header { background: linear-gradient(135deg,#1a1a2e,#16213e); color:#fff; padding:14px 24px; display:flex; align-items:center; justify-content:space-between; }
+.header h1 { font-size:18px; }
+.header a { color:#94a3b8; text-decoration:none; font-size:13px; }
+.header a:hover { color:#fff; }
+.container { max-width:1000px; margin:0 auto; padding:16px; }
+.card { background:#fff; border-radius:10px; box-shadow:0 1px 3px rgba(0,0,0,.08); padding:16px; margin-bottom:12px; }
+.device-tabs { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+.device-tab { padding:8px 16px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:500; border:none; background:#e2e8f0; color:#555; }
+.device-tab.active { background:#6366f1; color:#fff; }
+.date-list { display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:8px; }
+.date-item { background:#f8fafc; border:1px solid #e5e7eb; border-radius:8px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; }
+.date-item .info { font-size:13px; }
+.date-item .info .date { font-weight:600; }
+.date-item .info .count { font-size:11px; color:#888; }
+.date-item a { background:#2563eb; color:#fff; padding:4px 12px; border-radius:6px; text-decoration:none; font-size:12px; }
+.date-item a:hover { background:#1d4ed8; }
+.footer { text-align:center; padding:12px; font-size:12px; color:#566f7d; }
+</style>
+<link rel="stylesheet" href="/console.css">
+</head>
+<body class="console-logs">
+<div class="header">
+  <div class="brand"><img src="/logo.png" alt=""><div><h1>数据日志</h1><span>观测记录归档</span></div></div>
+  <div class="header-tools"><button type="button" class="icon-tool" onclick="loadDevices()" aria-label="刷新日志" title="刷新日志"><svg aria-hidden="true" focusable="false"   xmlns="http://www.w3.org/2000/svg"   width="24"   height="24"   viewBox="0 0 24 24"   fill="none"   stroke="currentColor"   stroke-width="2"   stroke-linecap="round"   stroke-linejoin="round" >   <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />   <path d="M21 3v5h-5" />   <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />   <path d="M8 16H3v5" /> </svg></button><a href="/">项目主页 ↗</a></div>
+</div>
+<nav class="console-nav" aria-label="平台模块"><a href="/monitor">实时监测</a><a href="/sensors">传感器管理</a><a class="active" aria-current="page" href="/logs">数据日志</a><a href="/decision/">决策工作台</a><a href="/decision/#risk">热风险评估</a><a href="/decision/#evidence">数据与依据</a><a href="/grafana/">运行看板</a></nav>
+<div class="container">
+  <div class="page-intro"><h2>观测数据归档</h2></div>
+  <div class="section-label">选择观测设备</div>
+  <div class="device-tabs" id="deviceTabs"></div>
+  <div class="archive-toolbar"><h2 class="section-label">可用数据日期</h2><label>筛选日期<input id="logDate" type="date" onchange="renderDates()"></label><button type="button" class="action" onclick="document.getElementById('logDate').value='';renderDates()">全部日期</button></div>
+  <div id="dateContent" aria-live="polite"><div style="text-align:center;padding:40px;color:#566f7d;">请选择设备</div></div>
+</div>
+<div class="footer">微境探界 · 数据日志</div>
+<script>
+let currentDevice = null;
+let datesController;
+let datesState = [];
+let loadingDates = false;
+function esc(value) { return String(value ?? '').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+function renderDates() {
+  if (loadingDates) return;
+  const date = document.getElementById('logDate').value;
+  const dates = datesState.filter(item => !date || item.date_str === date);
+  const div = document.getElementById('dateContent');
+  if (!dates.length) {
+    div.innerHTML = '<div class="empty">' + (date ? '该日期没有观测记录。' : '暂无归档记录。') + '</div>';
+    return;
+  }
+  div.innerHTML = `<div class="date-list">${dates.map(item => `<div class="date-item"><div class="info"><time class="date" datetime="${esc(item.date_str)}">${esc(item.date_str)}</time><div class="count">${esc(item.rows)} 条数据</div></div><a href="/api/export/${encodeURIComponent(currentDevice)}?date=${encodeURIComponent(item.date_str)}" download>下载 CSV</a></div>`).join('')}</div>`;
+}
+async function loadDevices() {
+  const button = document.querySelector('.icon-tool');
+  if (button.disabled) return;
+  button.disabled = true;
+  button.setAttribute('aria-busy', 'true');
+  try {
+    const res = await fetch('/api/devices', { signal: AbortSignal.timeout(15000) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const devices = await res.json();
+    if (!Array.isArray(devices)) throw new Error('Invalid devices');
+    const tabs = document.getElementById('deviceTabs');
+    tabs.innerHTML = devices.map(device => `<button class="device-tab" type="button" aria-pressed="false">${esc(device.device_id)}</button>`).join('');
+    tabs.querySelectorAll('button').forEach((tab, index) => tab.addEventListener('click', () => selectDevice(devices[index].device_id)));
+    if (devices.length) {
+      await selectDevice(devices.some(device => device.device_id === currentDevice) ? currentDevice : devices[0].device_id);
+    } else {
+      datesController?.abort();
+      datesState = [];
+      currentDevice = null;
+      document.getElementById('dateContent').innerHTML = '<div class="empty">暂无设备记录。</div>';
+    }
+  } catch {
+    datesController?.abort();
+    loadingDates = false;
+    document.getElementById('dateContent').innerHTML = '<div class="empty error" role="alert">设备列表读取失败。<button type="button" class="action" onclick="loadDevices()">重新加载</button></div>';
+  } finally {
+    button.disabled = false;
+    button.removeAttribute('aria-busy');
+  }
+}
+async function selectDevice(id) {
+  datesController?.abort();
+  const controller = datesController = new AbortController();
+  currentDevice = id;
+  datesState = [];
+  loadingDates = true;
+  const dateInput = document.getElementById('logDate');
+  dateInput.disabled = true;
+  document.querySelectorAll('.device-tab').forEach(button => {
+    const active = button.textContent === id;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
+  const div = document.getElementById('dateContent');
+  div.setAttribute('aria-busy', 'true');
+  div.innerHTML = '<div class="empty">正在读取归档…</div>';
+  try {
+    const res = await fetch(`/api/dates/${encodeURIComponent(id)}`, { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const dates = await res.json();
+    if (controller.signal.aborted || currentDevice !== id) return;
+    if (!Array.isArray(dates)) throw new Error('Invalid dates');
+    datesState = dates;
+    loadingDates = false;
+    renderDates();
+  } catch {
+    if (!controller.signal.aborted && currentDevice === id) {
+      div.innerHTML = '<div class="empty error" role="alert">归档读取失败。<button type="button" class="action" onclick="selectDevice(currentDevice)">重新加载</button></div>';
+    }
+  } finally {
+    if (datesController === controller) {
+      loadingDates = false;
+      dateInput.disabled = false;
+      div.removeAttribute('aria-busy');
+    }
+  }
+}
+loadDevices();
+</script>
+</body>
+</html>

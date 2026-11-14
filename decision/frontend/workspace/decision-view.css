@@ -1,0 +1,27 @@
+.ai-decision-analysis { margin:18px 0;padding:16px 0;border-top:1px solid #d6e1da;border-bottom:1px solid #d6e1da;overflow-wrap:anywhere; }
+.ai-decision-analysis h3 { font-size:16px;margin:0; }
+.ai-decision-analysis h4 { font-size:13px;line-height:1.6;margin:12px 0 6px; }
+.ai-decision-analysis p,.ai-decision-analysis li { font-size:12px;line-height:1.8; }
+.ai-decision-analysis small { color:#66766c; }
+.ai-intensity { display:grid;grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:14px;margin:14px 0; }
+.ai-intensity div { display:flex;flex-direction:column;gap:6px;min-width:0; }
+.ai-intensity strong { font-size:15px;font-weight:600; }
+.ai-intensity span { font-size:12px; }
+.ai-cohort-decisions>section,.ai-building-decision { border-top:1px solid #d6e1da;margin-top:14px;padding-top:8px; }
+.ai-decision-analysis ul { padding-left:19px; }
+.ai-health-concerns { color:#8c5131; }
+.ai-decision-analysis details { font-size:12px;line-height:1.8; }
+.ai-decision-analysis .section-header { flex-wrap:wrap;gap:8px; }
+@media(max-width:600px){.ai-decision-analysis h3 { font-size:14px; }.ai-decision-analysis { margin:12px 0;padding:12px 0; }}
+.cohort-plan-conclusion {font-size:17px!important;font-weight:500;line-height:1.8;margin:16px 0;color:var(--ink)}
+.cohort-plan-factors {font-size:13px;color:var(--amber);margin:10px 0}
+.cohort-plan-reason {font-size:14px;line-height:1.9;max-width:70ch}
+.regional-cohorts h5 {font-size:14px;margin:20px 0 10px;font-weight:600}
+.cohort-plan-actions {padding-left:20px;line-height:1.9;font-size:15px}
+.cohort-plan-actions li {margin:10px 0}
+.cohort-plan-sources,.regional-method-details,.regional-support-details {font-size:13px;line-height:1.8;padding:12px 0;border-top:1px solid var(--line);overflow-wrap:anywhere}
+.cohort-plan-sources summary,.regional-method-details summary,.regional-support-details summary {cursor:pointer;min-height:32px;display:flex;align-items:center;gap:8px}
+.cohort-plan-sources summary::before,.regional-method-details summary::before,.regional-support-details summary::before {content:'+';color:var(--accent)}
+.cohort-plan-sources[open] summary::before,.regional-method-details[open] summary::before,.regional-support-details[open] summary::before {content:'−'}
+.cohort-plan-sources blockquote {margin:12px 0;padding:0;color:var(--muted)}
+@media(max-width:600px){.cohort-overview {grid-template-columns:1fr 1fr}.cohort-overview b {font-size:16px}.cohort-plan-conclusion {font-size:16px!important}.regional-result-banner h2 {font-size:20px}.regional-context {font-size:12px}}

@@ -1,15 +1,15 @@
 """Area and cohort risk evidence; never infer clinical diagnoses or sub-grid heat."""
 
 import asyncio
-import math
 from typing import Literal
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from .risk import assess_environment, build_context
+from .risk import assess_environment, assess_forecast, build_context
+from backend.spatial import region_samples, region_description
 
-REGIONAL_VERSION = "area-cohort-1.0.0"
+REGIONAL_VERSION = "area-cohort-1.1.0"
 GROUPS = {
     "students": ("一般学生 / 步行人群", "人群标签不代表已取得年龄、体质或热适应资料。"),
     "athletes": ("户外运动人群", "运动会增加体内产热；需另行核实运动强度与热适应情况。"),
@@ -46,6 +46,8 @@ class RegionalRequest(BaseModel):
     bounds: Bounds
     area_kind: Literal["campus", "neighborhood"] = "campus"
     mode: Literal["current", "history"] = "current"
+    data_mode: Literal["live", "lcz_simulation"] = "live"
+    grid_resolution_m: Literal[30, 50, 100] = 30
     groups: list[Literal["students", "athletes", "workers", "older_adults", "children", "sensitive"]] = Field(default_factory=lambda: ["students", "athletes", "workers"], min_length=1, max_length=6)
     activity: Literal["rest", "walk", "run", "work"] = "walk"
     exposure_minutes: int = Field(default=30, ge=1, le=480)
@@ -53,17 +55,28 @@ class RegionalRequest(BaseModel):
     use_ai: bool = True
     cohort_scenarios: dict[Literal["students", "athletes", "workers", "older_adults", "children", "sensitive"], CohortScenario] = Field(default_factory=dict, max_length=6)
 
+    @model_validator(mode="after")
+    def applicable_groups(self):
+        if len(set(self.groups)) != len(self.groups):
+            raise ValueError("目标人群不可重复")
+        if not set(self.cohort_scenarios) <= set(self.groups):
+            raise ValueError("活动情景只能配置给已选择的人群")
+        return self
+
 
 async def sample_region(weather, body):
-    b = body.bounds
-    points = [((b.west+b.east)/2, (b.south+b.north)/2), (b.west, b.south), (b.east, b.south), (b.east, b.north), (b.west, b.north)]
+    if body.data_mode == "lcz_simulation":
+        from backend.lcz import sample_scenario
+        return await sample_scenario(weather, body)
+    region, locations, _ = region_samples(body)
+    points = [(p.x, p.y) for p in locations]
 
     async def fetch(index, point):
         lon, lat = point
         try:
             observation = await weather.get(body.mode, location={"latitude": lat, "longitude": lon, "label": "某校园区域网格" if body.area_kind == "campus" else "某街区区域网格"}, history_hour=14 if body.mode == "history" else None)
             return {"id": f"sample-{index+1}", "requested": {"longitude": lon, "latitude": lat},
-                    "observation": observation, "environment": assess_environment(observation, body.exposure), "error": None}
+                    "observation": observation, "environment": (assess_forecast if observation.get("source_type")=="open_meteo_forecast" else assess_environment)(observation, body.exposure), "error": None}
         except (httpx.HTTPError, ValueError, KeyError, TypeError, IndexError):
             return {"id": f"sample-{index+1}", "requested": {"longitude": lon, "latitude": lat},
                     "observation": None, "environment": assess_environment(None), "error": "天气资料不可用；未使用模拟值"}
@@ -78,14 +91,12 @@ async def sample_region(weather, body):
     worst = max(usable, key=lambda s: (RANK[s["environment"]["risk"]], s["environment"]["heat_index_c"] or -1000)) if usable else None
     complete = len(usable) == len(samples)
     env = worst["environment"] if worst else assess_environment(None)
-    area_km2 = (b.east-b.west) * (b.north-b.south) * 111.32**2 * math.cos(math.radians((b.north+b.south)/2))
     return {"samples": samples, "environment": env, "representative_sample_id": worst["id"] if worst else None,
             "coverage": {"requested_samples": 5, "usable_samples": len(usable), "unique_model_grids": len(unique),
                          "complete": complete, "spatial_comparison_supported": len(unique) > 1 and complete,
                          "status": "complete" if complete else "time_mismatch" if len(stamps) > 1 else "partial" if usable else "unavailable",
-                         "note": "中心与四角是请求位置，不是实测点；重复网格不构成独立空间证据。区域结论取有效样本最高等级，不是连续热场或全区安全证明。"},
-            "area": {"label": "某校园" if body.area_kind == "campus" else "某街区", "bounds": b.model_dump(),
-                     "area_km2_approx": round(area_km2, 3), "geometry": {"type": "Polygon", "coordinates": [[[b.west,b.south],[b.east,b.south],[b.east,b.north],[b.west,b.north],[b.west,b.south]]]}},
+                         "note": "中心与分区内代表点是请求位置，不是实测点；重复网格不构成独立空间证据。校园选区按提供的数字化边界裁剪，非地籍测绘；结论取有效样本最高等级，不是连续热场或全区安全证明。"},
+            "area": region_description(body, region),
             "case_type": "historical_reanalysis" if body.mode == "history" else "current_grid_estimate"}
 
 
@@ -127,17 +138,38 @@ def cohort_assessment(context, environment, coverage):
 
 def regional_facts(result, body):
     env, coverage = result["environment"], result["coverage"]
+    activity = {"rest":"静坐或休息","walk":"户外步行","run":"跑步或运动","work":"户外劳动"}[body.activity]
+    exposure = {"shade":"阴凉轻风","sun":"阳光直射","unknown":"现场未核实"}[body.exposure]
     facts = [{"id": "ENVIRONMENT", "text": f"有效样本最高环境等级：{env['risk_label']}；并非人群疾病诊断。", "source_ids": ["NWS-METHOD", "NWS-LEVELS"],
               "evidence_ids": [s["observation"]["id"] for s in result["samples"] if s["observation"]]},
              {"id": "COVERAGE", "text": f"5个请求位置，{coverage['usable_samples']}个可用样本，{coverage['unique_model_grids']}个不同模型网格；不可识别网格内部冷热差异。", "source_ids": ["DATA-CONTRACT"]},
-             {"id": "EXPOSURE", "text": f"场景输入：{body.exposure_minutes}分钟，活动{body.activity}，环境{body.exposure}；为用户情景假设，不是跟踪测量。", "source_ids": ["USER-SCENARIO"]},
+             {"id": "EXPOSURE", "text": f"共同场景输入：{body.exposure_minutes}分钟，活动为{activity}，环境为{exposure}；人群独立设置以各自情景为准。均为用户假设，不是跟踪测量。", "source_ids": ["USER-SCENARIO"]},
              {"id": "VULNERABILITY", "text": "年龄、健康状况、职业与活动影响热易感性；当前仅作群体定性分析，不计算患病概率或因人数虚构风险分数。", "source_ids": ["WHO-HEAT"]}]
     actions = [{"id": "VERIFY", "text": "核实选区内遮阴、通风、现场温湿度与模型网格覆盖，再用于具体场地安排。", "source_ids": ["DATA-CONTRACT"]},
                {"id": "GROUP-PLAN", "text": "按目标人群分别登记活动、暴露与保障条件，勿把同一环境等级当作所有人的相同健康风险。", "source_ids": ["WHO-HEAT"]}]
+    if body.data_mode == "lcz_simulation":
+        facts[1]["text"] = f"{coverage['requested_samples']}个LCZ模拟网格，{coverage['usable_samples']}个可计算；共同气象边界来自1个公开网格，不是实测残差或独立空间证据。"
+        facts[0]["evidence_ids"] = [result["samples"][i]["observation"]["id"] for i in range(len(result["samples"])) if result["samples"][i]["id"] == result["representative_sample_id"]]
+        facts.insert(0, {"id": "SIMULATION", "text": "本报告为LCZ模拟演示；温湿度偏移是既有项目参数的确定性情景，未实测标定，不用于真实疾病诊断或当前应急决策。", "source_ids": ["DATA-CONTRACT"]})
+        summary = result.get("classification_summary")
+        if summary:
+            composition = "、".join(f"{row['name']}占{row['area_fraction']:.1%}" for row in summary["classes"])
+            facts.append({"id": "LCZ-COMPOSITION", "text": "选区细尺度地表构成："+composition+"。面积不是人员暴露比例，混合网格按分类面积加权，不是只按主导类别赋值。",
+                          "source_ids": ["DATA-CONTRACT"], "evidence_ids": [summary["classification_sha256"]]})
+            proxies = [row["name"] for row in summary["classes"] if row["proxy_profile_code"] is not None]
+            facts.append({"id": "LCZ-PARAMETERS", "text": ("建筑高度及道路宽度含情景假设；"+("、".join(proxies)+"温湿度系数复用既有建成区参数；" if proxies else "")+
+                          "分类更新用于现状模拟边界，不等于已求解拆建后的气温、风场或热蓄积。"),
+                          "source_ids": ["DATA-CONTRACT"], "evidence_ids": [summary["parameters_sha256"]]})
+        actions.insert(0, {"id": "SIMULATION-ONLY", "text": "仅比较假设情景；切回真实气象模式并核实基准站与现场观测后，才可支持实际活动安排。", "source_ids": ["DATA-CONTRACT"]})
     if env["risk"] not in {"below_range", "unavailable"}:
         actions.append({"id": "HEAT-PLAN", "text": "启动场地热风险复核，结合当地官方预警与现场条件审查活动安排；医学防护措施仅引用已审核条款。", "source_ids": ["NWS-LEVELS", "WHO-HEAT"]})
     if not coverage["complete"]:
         actions.insert(0, {"id": "DATA-GAP", "text": "采样存在缺测或时刻不一致，不能给出全区低风险或安全结论，先补齐证据。", "source_ids": ["DATA-CONTRACT"]})
     if body.mode == "history":
         actions.insert(0, {"id": "HISTORY", "text": "该结果仅为注明日期的历史再分析案例，不可用于当前活动指挥。", "source_ids": ["DATA-CONTRACT"]})
+    for group in body.groups:
+        context = cohort_context(body, group, env)
+        label = {"rest": "休息", "walk": "步行", "run": "运动", "work": "户外作业"}[context["activity"]]
+        facts.append({"id": "SCENARIO-" + group, "text": f"{GROUPS[group][0]}：{label}，{context['minutes']}分钟，环境条件为{exposure}。",
+                      "source_ids": ["USER-SCENARIO"]})
     return facts, actions

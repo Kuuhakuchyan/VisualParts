@@ -136,6 +136,36 @@ class RetrievalTests(unittest.TestCase):
         self.context["risk"] = "unavailable"
         self.assertEqual(self.kb.retrieve(self.context), ([], "environment_unavailable"))
 
+    def test_request_snapshot_does_not_mix_review_revisions(self):
+        self.approve_fixture()
+        frozen=self.kb.snapshot()
+        before=frozen.provenance()
+        self.review.write_text('{"clauses":{}}',encoding="utf-8")
+        self.assertEqual(self.kb.approved(),[])
+        self.assertTrue(frozen.approved())
+        self.assertEqual(frozen.provenance(),before)
+        self.assertNotEqual(self.kb.provenance()["review_revision_sha256"],before["review_revision_sha256"])
+        citation=frozen.citation(frozen.approved()[0])
+        self.assertEqual(citation["review_status"],"approved")
+        self.assertNotIn("reviewer",json.dumps(before))
+
+    def test_pending_or_revoked_clause_cannot_be_cited(self):
+        with self.assertRaises(ValueError):self.kb.citation(self.kb.data["clauses"][0])
+        for limit in [0,-1,21,True,1.5]:
+            with self.assertRaises(ValueError):self.kb.retrieve(self.context,limit=limit)
+
+    def test_malformed_review_or_manifest_fails_closed(self):
+        self.approve_fixture()
+        for value in [[],{"clauses":[]},{"clauses":{"WHO-SHADE":[]}}, {"protocol":[]}]:
+            self.review.write_text(json.dumps(value),encoding="utf-8")
+            self.assertFalse(self.kb.approved())
+            self.assertFalse(self.kb.audit()["medical_ready"])
+        self.approve_fixture()
+        for value in [[],{"sources":[]},{"sources":{"WHO-HEAT":[]}}]:
+            self.manifest.write_text(json.dumps(value),encoding="utf-8")
+            self.assertFalse(self.kb.approved())
+            self.kb.public_sources()
+
 
 class ModelTests(unittest.TestCase):
     def test_unsupported_ids_or_free_text_rejected(self):

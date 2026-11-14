@@ -1,0 +1,128 @@
+async (page) => {
+  const checks=[];
+  await page.bringToFront();
+  const expect=async(name,fn)=>{if(!await fn())throw new Error(name);checks.push(name);};
+  const active=async mode=>(await page.locator('#workspace-map').getAttribute('data-interaction'))===mode;
+  const press=async(selector,value)=>(await page.locator(selector).getAttribute('aria-pressed'))===String(value);
+  await page.setViewportSize({width:1440,height:960});
+  await page.locator('[data-operation="add"]').waitFor();
+  const task=async key=>{
+    if(!await page.locator('#dock-tab-'+key).isVisible())await page.locator('.sandbox-mobile-toggle').click();
+    await page.locator('#dock-tab-'+key).click();
+  };
+  const tool=async mode=>{
+    await task('sandbox');
+    if(!await page.locator('#sb-editor').isVisible())await page.locator('#sb-enter-edit').click();
+    await page.locator('[data-operation="'+mode+'"]').click();
+  };
+  const region=async()=>{await task('risk');await page.locator('#screen-select-region').click();};
+  const modes=['inspect','select','region','orbit','add','move','remove'];
+  const enter=async mode=>{
+    await page.keyboard.press('Escape');
+    if(mode==='region')await region();
+    else if(mode==='orbit')await page.locator('#map-orbit').click();
+    else await tool(mode);
+  };
+  for(const from of modes)for(const to of modes){
+    if(from===to)continue;
+    await enter(from);
+    if(to==='region')await region();
+    else if(to==='orbit')await page.locator('#map-orbit').click();
+    else await tool(to);
+    await expect(from+' -> '+to,async()=>await active(to)&&await press('#map-orbit',to==='orbit')&&await press('#screen-select-region',to==='region'));
+  }
+  await page.keyboard.press('Escape');
+  await page.locator('#map-home').click();
+  await region();
+  await expect('region starts',()=>active('region'));
+  await page.mouse.click(680,420);
+  await tool('add');
+  await expect('build cancels region',async()=>await active('add')&&await press('#screen-select-region',false));
+  await page.mouse.click(710,440);
+  await expect('build click chooses point, not region',async()=>await page.locator('#sb-selection').textContent().then(t=>t.includes('建造位置'))&&!await page.locator('#sb-confirm').isDisabled());
+  await region();
+  await expect('region clears build confirmation',async()=>await active('region')&&await press('[data-operation="add"]',false)&&await page.locator('#sb-confirm').isDisabled());
+  await page.locator('#screen-select-region').click();
+  await expect('second region click cancels',()=>active('inspect'));
+  await tool('add');
+  await tool('add');
+  await expect('second build click cancels',()=>active('inspect'));
+  for(const operation of ['add','move','remove']){
+    await region();
+    await tool(operation);
+    await expect(operation+' exits region',()=>active(operation));
+    await page.keyboard.press('Escape');
+    await expect('Escape exits '+operation,()=>active('inspect'));
+  }
+  await tool('add');
+  await page.mouse.click(700,430);
+  await page.locator('[data-mode="baseline"]').click();
+  await expect('view switch clears action and confirmation',async()=>await active('inspect')&&await press('[data-operation="add"]',false)&&await page.locator('#sb-confirm').isDisabled());
+  await page.locator('#map-orbit').click();
+  await expect('orbit starts with pause icon',async()=>await active('orbit')&&await press('#map-orbit',true)&&await page.locator('#map-orbit .lucide-pause').count()===1);
+  await page.locator('#map-orbit').click();
+  await expect('orbit stops with play icon',async()=>await active('inspect')&&await press('#map-orbit',false)&&await page.locator('#map-orbit .lucide-play').count()===1);
+  await page.locator('#map-orbit').click();
+  await tool('add');
+  await expect('build stops orbit',async()=>await active('add')&&await press('#map-orbit',false));
+  await page.locator('#map-orbit').click();
+  await expect('orbit clears build',async()=>await active('orbit')&&await press('[data-operation="add"]',false));
+  await page.locator('#map-home').click();
+  await expect('home stops orbit',async()=>await active('inspect')&&await press('#map-orbit',false));
+  await page.locator('#map-orbit').click();
+  await page.mouse.move(700,350);await page.mouse.down();await page.mouse.move(760,390,{steps:6});await page.mouse.up();
+  await expect('drag stops orbit',async()=>await active('inspect')&&await press('#map-orbit',false));
+  await page.locator('#map-orbit').click();
+  await page.locator('#map-pitch').click();
+  await expect('pitch stops orbit',async()=>await active('inspect')&&await press('#map-orbit',false));
+  await page.locator('#map-home').click();
+  await region();
+  await page.mouse.click(650,390);await page.mouse.move(780,510);
+  await page.keyboard.press('Escape');
+  await expect('Escape cancels incomplete region',async()=>await active('inspect')&&await press('#screen-select-region',false));
+  await region();
+  await page.mouse.click(650,390);await page.mouse.click(650,390);
+  await expect('zero-area selection resets first corner',async()=>await active('region')&&(await page.locator('#screen-region-state').textContent()).includes('重新选择'));
+  await page.mouse.click(650,390);await page.mouse.click(780,510);
+  await expect('two corners complete region and release pointer',async()=>await active('inspect')&&await press('#screen-select-region',false)&&(await page.locator('#screen-region-state').textContent()).startsWith('选区 '));
+  await page.locator('#map-orbit').click();
+  await page.locator('.screen-nav [data-screen-panel="risk"]').click();
+  await expect('modal stops orbit',async()=>await active('inspect')&&await press('#map-orbit',false));
+  await page.locator('#screen-panel-close').click();
+  await page.bringToFront();
+  await page.locator('#map-orbit').click();
+  const angle=()=>page.locator('.maplibregl-ctrl-compass .maplibregl-ctrl-icon').getAttribute('style');
+  const before=await angle();await page.waitForTimeout(900);
+  await expect('orbit actually moves',async()=>await angle()!==before);
+  await page.locator('#map-orbit').click();
+  const stopped=await angle();await page.waitForTimeout(700);
+  await expect('stopped orbit stays still',async()=>await angle()===stopped);
+  await page.locator('#map-orbit').click();await page.mouse.move(720,420);await page.mouse.wheel(0,-90);await page.waitForTimeout(150);
+  await expect('wheel stops orbit',async()=>await active('inspect')&&await press('#map-orbit',false));
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.locator('#map-orbit').click();
+  await expect('reduced motion does not falsely activate',async()=>await active('inspect')&&await press('#map-orbit',false));
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  await page.screenshot({path:'output/playwright/interaction-desktop.png'});
+  for(const width of [390,320]){
+    await page.setViewportSize({width,height:844});
+    await page.locator('.sandbox-mobile-toggle').click();
+    await expect(width+' mobile panel opens',async()=>await page.locator('.sandbox-mobile-toggle').getAttribute('aria-expanded')==='true');
+    await tool('add');
+    await expect(width+' building controls stay available until explicitly collapsed',async()=>await active('add')&&await page.locator('.sandbox-mobile-toggle').getAttribute('aria-expanded')==='true');
+    await page.locator('.screen-dock-close').click();
+    await page.locator('#workspace-map').scrollIntoViewIfNeeded();
+    const b=await page.locator('#workspace-map').boundingBox();
+    await page.mouse.click(b.x+b.width*.5,b.y+b.height*.23);
+    await expect(width+' mobile build selects point',async()=>await page.locator('#sb-selection').textContent().then(t=>t.includes('建造位置')));
+    await page.keyboard.press('Escape');
+    await page.locator('.sandbox-mobile-toggle').click();
+    await region();
+    await expect(width+' region closes sheet',async()=>await active('region')&&await page.locator('.sandbox-mobile-toggle').getAttribute('aria-expanded')==='false');
+    await page.locator('[data-interaction-cancel]').click();
+    await expect(width+' touch-accessible cancel',()=>active('inspect'));
+    await page.screenshot({path:'output/playwright/interaction-mobile-'+width+'.png'});
+    await expect(width+' no horizontal overflow',()=>page.evaluate(()=>document.documentElement.scrollWidth===document.documentElement.clientWidth));
+  }
+  return {url:page.url(),checks};
+}

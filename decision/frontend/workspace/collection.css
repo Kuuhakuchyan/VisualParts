@@ -1,0 +1,22 @@
+.collection-dialog{width:min(800px,calc(100% - 24px));max-height:88dvh;padding:22px;border:1px solid #d6dfe2;border-radius:8px;background:#fcfdfd;color:#30434c;overflow:auto;overscroll-behavior:contain}
+.collection-dialog::backdrop{background:#071b20ad}
+.collection-dialog>header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.collection-dialog h2{font-size:21px;margin:4px 0 0}.collection-dialog h3{font-size:16px;margin:0}.collection-dialog h4{display:flex;align-items:center;gap:8px;font-size:14px;margin:0}
+.collection-dialog h2,.collection-dialog h3,.collection-dialog h4,.collection-dialog strong,.collection-dialog label,.collection-dialog output{color:#30434c}
+.collection-dialog>section{border-top:1px solid var(--line,#d6dfe2);margin-top:20px;padding-top:18px}
+.collection-dialog p,.collection-dialog small{font-size:12px;line-height:1.65;overflow-wrap:anywhere}
+.collection-dialog .icon-button,.collection-dialog .button{background:#eef4f6;color:#286780;border-color:#d6dfe2}.collection-dialog .primary{background:#286780;color:#fff}
+.collection-dialog .icon-button:hover,.collection-dialog .button:not(.primary):hover{background:#e4eef3;color:#205770}
+.collection-device{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:15px;border-bottom:1px solid var(--line,#d6dfe2);padding:13px 0}
+.collection-device strong,.collection-device small{display:block}.collection-device small{color:#607782;font-size:11px}.collection-device-reading{text-align:right}.collection-device-status{font-size:12px;color:#a96d30}.collection-device-status.online{color:#3e7e6c}
+.collection-controls{display:flex;align-items:end;flex-wrap:wrap;gap:8px;margin:16px 0}.collection-controls .field{display:grid;gap:5px;font-size:11px;margin:0}.collection-controls select{background:#fff;color:#30434c;min-height:40px;border:1px solid #d6dfe2;border-radius:6px;padding:5px}
+.collection-controls .icon-button{width:38px;height:38px}.collection-controls [aria-pressed=true]{background:#e2c079;color:#173b2b}
+.collection-progress{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;font-size:12px}.collection-progress input{width:100%;accent-color:#9ed8bb}.collection-progress output{font-variant-numeric:tabular-nums}
+.collection-track{border-top:1px solid var(--line,#d6dfe2);padding-top:12px;margin-top:15px}.collection-track .section-header>span{font-size:12px;color:var(--muted,#566f7d);text-align:right}.collection-track-values{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;font-variant-numeric:tabular-nums}.collection-track-values strong{font-size:20px}.collection-track-values>span{font-size:12px}.collection-track>small{display:block;color:var(--muted,#566f7d)}
+.collection-method{margin-top:20px;font-size:12px}.collection-method dl{display:grid;grid-template-columns:72px minmax(0,1fr);gap:8px;font-size:11px;line-height:1.6}.collection-method dd{margin:0;overflow-wrap:anywhere}
+.collection-marker{width:34px;height:34px;border:2px solid #d5fff0;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#163c32;background:#77ddbd;pointer-events:none;box-shadow:0 2px 10px #0006}.collection-marker.aerial{background:#f1cc83;border-color:#fff2d5;color:#534019}.collection-marker svg{width:19px;height:19px}
+.sandbox-analysis>#sb-collection{grid-column:1/-1}
+@media(max-width:600px){.collection-dialog{padding:16px;max-height:91dvh}.collection-device{grid-template-columns:minmax(0,1fr) auto;gap:8px}.collection-device-reading{grid-column:1/-1;text-align:left}.collection-device-reading strong,.collection-device-reading small{display:inline-block;margin-right:10px}.collection-controls .button,.collection-dialog .icon-button,.collection-controls select{min-height:44px}.collection-dialog .icon-button{width:44px;min-width:44px}.collection-track-values strong{font-size:18px}.collection-track .section-header{align-items:start}.collection-method dl{grid-template-columns:64px minmax(0,1fr)}}
+.collection-budget { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0; }
+.collection-budget input,.collection-budget select { width:100%;min-height:44px; }
+@media(max-width:420px) { .collection-budget { grid-template-columns:repeat(2,minmax(0,1fr)); } }

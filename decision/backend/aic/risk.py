@@ -75,6 +75,9 @@ def assess_environment(observation, exposure="unknown", now=None):
     if observation.get("quality_status") != "validated":
         base["triggers"] = ["observation_not_validated"]
         return base
+    if observation.get("source_type") == "field_collection" and (type(observation.get("quality_flag")) is not int or observation["quality_flag"] != 0):
+        base["triggers"] = ["field_quality_flag_missing_or_nonzero"]
+        return base
     try:
         if observation.get("units") != {"temperature": "°C", "humidity": "%"}:
             raise ValueError("unexpected units")
@@ -93,6 +96,46 @@ def assess_environment(observation, exposure="unknown", now=None):
     except (ValueError, KeyError, TypeError):
         base["triggers"] = ["invalid_observation"]
         return base
+    return evaluate_values(base, t, rh, exposure, observation["source_type"] == "historical_weather")
+
+
+def assess_scenario(observation, exposure="unknown"):
+    """Explicit scenario path; synthetic records remain blocked in clinical/real assessment."""
+    base = assess_environment(None, exposure)
+    base.update(scenario_only=True, quality_status="simulation_unvalidated")
+    base["limitations"].insert(0, "LCZ模拟输入，未经实测标定；仅演示情景指标，不是实测或真实医疗决策依据。")
+    if not observation:
+        return base
+    t, rh = observation.get("temperature_c"), observation.get("relative_humidity_pct")
+    if observation.get("source_type") != "simulated_lcz" or not all(type(v) in (float, int) and math.isfinite(v) for v in (t, rh)) or not -60 <= t <= 60 or not 0 <= rh <= 100:
+        base["triggers"] = ["invalid_simulation_input"]
+        return base
+    result = evaluate_values(base, t, rh, exposure, False)
+    result["risk_label"] = "模拟 · " + result["risk_label"]
+    result["triggers"] = [t for t in result["triggers"] if t != "current_reference"] + ["uncalibrated_lcz_scenario"]
+    return result
+
+
+def assess_forecast(observation, exposure="unknown", now=None):
+    """Forecast-only evaluation; real observation assessment still rejects future data."""
+    current = now or datetime.now(timezone.utc)
+    try:
+        valid = datetime.fromisoformat(observation["observed_at"])
+        retrieved = datetime.fromisoformat(observation["retrieved_at"])
+        if (observation["source_type"] != "open_meteo_forecast" or valid.tzinfo is None or retrieved.tzinfo is None
+                or not -7200 <= (valid-current).total_seconds() <= 26*3600
+                or not 0 <= (current-retrieved).total_seconds() <= 7200):
+            raise ValueError("invalid forecast horizon")
+        result = assess_environment({**observation, "source_type":"open_meteo_grid"}, exposure, now=valid)
+    except (KeyError, TypeError, ValueError):
+        result = assess_environment(None, exposure)
+    result.update(forecast_only=True)
+    result["risk_label"] = "预报 · " + result["risk_label"]
+    result["triggers"] = [t for t in result["triggers"] if t != "current_reference"] + ["forecast_weather"]
+    return result
+
+
+def evaluate_values(base, t, rh, exposure, historical):
     base["applicability"] = "conditional" if exposure != "shade" else "reference_only"
     tf = t * 1.8 + 32
     if tf < 80:
@@ -110,7 +153,7 @@ def assess_environment(observation, exposure="unknown", now=None):
         return base
     risk, label = category(hi)
     base.update(heat_index_c=round((hi - 32) / 1.8, 2), heat_index_f=round(hi, 2),
-                risk=risk, risk_label=label, triggers=["nws_heat_index", "historical_case" if observation["source_type"] == "historical_weather" else "current_reference"])
+                risk=risk, risk_label=label, triggers=["nws_heat_index", "historical_case" if historical else "current_reference"])
     if exposure != "shade":
         base["limitations"].insert(0, "现场阴凉/轻风条件未核实，仅展示条件性参考值，不等于日晒下的实际热负荷。")
     return base

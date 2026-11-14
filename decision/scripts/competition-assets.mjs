@@ -46,11 +46,14 @@ function preview(features, bbox) {
   return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]), chunk('IHDR', header), chunk('IDAT', deflateSync(pixels)), chunk('IEND', Buffer.alloc(0))]);
 }
 export function competitionAssets() {
-  const original = JSON.parse(fs.readFileSync(path.join(root, 'public/data/zzu_osm_buildings.geojson'), 'utf8'));
+  const source = fs.existsSync(path.join(root, 'public/data/campus-buildings.geojson')) ? 'campus-buildings.geojson' : 'zzu_osm_buildings.geojson';
+  const original = JSON.parse(fs.readFileSync(path.join(root, 'public/data', source), 'utf8'));
   const features = original.features.map((f, index) => ({ type: 'Feature', id: index, geometry: f.geometry, properties: {
-    height_m: typeof f.properties?.height_m === 'number' ? f.properties.height_m : null, name: `某校园建筑 ${String(index + 1).padStart(3, '0')}`,
+    height_m: ['osm_height', 'osm_levels'].includes(f.properties?.height_source) && typeof f.properties?.height_m === 'number' ? f.properties.height_m : null,
+    source: f.properties?.source === 'user_supplied_digitized_footprint' ? 'user_supplied_digitized_footprint' : 'OpenStreetMap',
+    survey_verified: false, name: `某校园建筑 ${String(index + 1).padStart(3, '0')}`,
   } }));
-  const data = { type: 'FeatureCollection', name: 'anonymous-campus-buildings', attribution: '© OpenStreetMap contributors · ODbL 1.0',
+  const data = { type: 'FeatureCollection', name: 'anonymous-campus-buildings', attribution: '© OpenStreetMap contributors · ODbL 1.0 / 用户提供数字化轮廓（日期、授权与精度待核验）',
     anonymization: 'Institution names and OSM object identifiers omitted for anonymous presentation; geographic coordinates and source geometry retained. Not a synthetic campus or independent survey.',
     bbox: original.bbox, features };
   return { 'campus-buildings.geojson': Buffer.from(JSON.stringify(data)), 'campus-preview.png': preview(features, original.bbox) };

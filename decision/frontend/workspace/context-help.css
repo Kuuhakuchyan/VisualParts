@@ -1,0 +1,12 @@
+.context-help { display:inline-flex; flex:0 0 auto; align-items:center; justify-content:center; width:28px; height:28px; padding:5px; margin:0; border:0; border-radius:4px; background:transparent; color:var(--muted,#66747e); vertical-align:middle; cursor:help; }
+.context-help svg { width:16px; height:16px; pointer-events:none; }
+.context-help:hover,.context-help:focus-visible,.context-help[data-help-open] { background:#087e9614; color:var(--accent,#087e96); }
+.context-help:focus-visible { outline:2px solid #159ab4; outline-offset:2px; }
+.context-tooltip { position:fixed; inset:auto; z-index:10000; width:max-content; max-width:min(310px,calc(100vw - 24px)); max-height:calc(100svh - 24px); overflow:auto; margin:0; padding:10px 12px; border:1px solid #526570; border-radius:4px; background:#26333b; color:#f4f7f8; font:12px/1.75 "PingFang SC","Microsoft YaHei","Segoe UI",sans-serif; text-align:left; white-space:pre-line; overflow-wrap:anywhere; box-shadow:0 3px 12px #0002; }
+.context-tooltip[hidden] { display:none!important; }
+.heading-with-help,.label-with-help { display:flex; align-items:center; gap:6px; }
+.heading-with-help h1,.heading-with-help h2,.heading-with-help h3 { margin-bottom:0; }
+.screen-section-title .context-help { color:#99b5bf; }
+.context-help-row { display:flex; align-items:center; gap:6px; }
+@media(pointer:coarse) { .context-help { width:36px; height:36px; padding:10px; } }
+@media print { .context-help,.context-tooltip { display:none!important; } }

@@ -1,11 +1,14 @@
 """微境探界 — 决策推演 API；天气取自 Open-Meteo，空间推演仍属演示。"""
 
+import asyncio
+import hmac
 import json
 import logging
 import os
 import uuid
 import random
 import math
+import re
 import sqlite3
 import tempfile
 import threading
@@ -21,7 +24,10 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, Field
+from starlette.requests import ClientDisconnect
+from backend.release import SOFTWARE_VERSION
 
 try:
     from backend.agi import AGIReasoner
@@ -52,11 +58,12 @@ def _env_float(name: str, default: float) -> float:
         return default
 
 
-APP_VERSION = os.getenv("APP_VERSION", "0.1.0-DEMO")
+APP_VERSION = os.getenv("APP_VERSION", SOFTWARE_VERSION)
 RATE_LIMIT_PER_MINUTE = _env_int("DECISION_RATE_LIMIT_PER_MINUTE", 240)
 WRITE_RATE_LIMIT_PER_MINUTE = _env_int("DECISION_WRITE_RATE_LIMIT_PER_MINUTE", 60)
 WEATHER_CACHE_SECONDS = _env_float("DECISION_WEATHER_CACHE_SECONDS", 120.0)
 TRACKING_CACHE_SECONDS = _env_float("DECISION_TRACKING_CACHE_SECONDS", 0.8)
+MAX_REQUEST_BYTES = max(16384, min(_env_int("DECISION_MAX_REQUEST_BYTES", 262144), 2097152))
 
 # =============================================================================
 # FastAPI 应用初始化
@@ -66,12 +73,26 @@ app = FastAPI(
     title="微境探界 — 城市微气候决策支持系统",
     version=APP_VERSION,
     description="提供空间推演演示接口，以及标明来源的区域天气估计",
+    docs_url="/docs" if os.getenv("DECISION_ENABLE_API_DOCS") == "1" else None,
+    redoc_url=None,
+    openapi_url="/openapi.json" if os.getenv("DECISION_ENABLE_API_DOCS") == "1" else None,
 )
 
 from backend.aic.router import router as aic_router
 app.include_router(aic_router)
 from backend.planning import router as planning_router
 app.include_router(planning_router)
+from backend.sandbox import router as sandbox_router
+app.include_router(sandbox_router)
+from backend.collection import router as collection_router
+app.include_router(collection_router)
+from backend.temporal import router as temporal_router
+app.include_router(temporal_router)
+if os.getenv("MOBILE_TELEMETRY_ENABLED", "1") == "1" and os.getenv("COLLECTION_IOT_DISABLED") != "1":
+    from backend.telemetry import router as telemetry_router
+    app.include_router(telemetry_router)
+    from backend.telemetry_view import router as telemetry_view_router
+    app.include_router(telemetry_view_router)
 
 ALLOWED_ORIGINS = [
     origin.strip()
@@ -108,9 +129,7 @@ _cache_lock = threading.Lock()
 
 
 def _client_ip(request: Request) -> str:
-    forwarded_for = request.headers.get("x-forwarded-for", "")
-    if forwarded_for:
-        return forwarded_for.split(",")[0].strip()
+    # Uvicorn resolves configured trusted proxies; raw client headers are not an identity.
     return request.client.host if request.client else "unknown"
 
 
@@ -161,9 +180,43 @@ def _cache_set(key: str, value: object, ttl_seconds: float) -> None:
         _ttl_cache[key] = (time.monotonic() + ttl_seconds, value)
 
 
+@app.exception_handler(RequestValidationError)
+async def invalid_request(_request: Request, error: RequestValidationError):
+    details = [{key: item[key] for key in ("loc", "msg", "type") if key in item} for item in error.errors()]
+    return JSONResponse(status_code=422, content={"detail": details})
+
+
+async def bounded_request_body(request: Request):
+    if request.method in {"GET", "HEAD", "OPTIONS"}:
+        return None
+    limit = MAX_REQUEST_BYTES
+    if request.method == "PUT" and re.fullmatch(r"/api/weather/telemetry/media/[a-f0-9]{64}", request.url.path):
+        limit = 8 * 1024 * 1024
+    length = request.headers.get("content-length")
+    if length is not None and (not length.isdecimal() or len(length) > 10):
+        return JSONResponse(status_code=400, content={"detail": "请求长度无效"})
+    if length is not None and int(length) > limit:
+        return JSONResponse(status_code=413, content={"detail": "请求内容过大，请缩小输入"})
+    body = bytearray()
+    try:
+        async with asyncio.timeout(15):
+            async for chunk in request.stream():
+                if len(body) + len(chunk) > limit:
+                    return JSONResponse(status_code=413, content={"detail": "请求内容过大，请缩小输入"})
+                body.extend(chunk)
+    except TimeoutError:
+        return JSONResponse(status_code=408, content={"detail": "请求上传超时"})
+    except ClientDisconnect:
+        return JSONResponse(status_code=400, content={"detail": "请求上传中断"})
+    # Preserve the bounded body for Starlette's downstream cached receive channel.
+    request._body = bytes(body)
+    return None
+
+
 @app.middleware("http")
 async def request_guard_middleware(request: Request, call_next):
-    request_id = request.headers.get("x-request-id") or uuid.uuid4().hex[:16]
+    supplied_id = request.headers.get("x-request-id", "")
+    request_id = supplied_id if re.fullmatch(r"[A-Za-z0-9._:-]{1,64}", supplied_id) else uuid.uuid4().hex[:16]
     start = time.perf_counter()
 
     retry_after = _rate_limit_retry_after(request)
@@ -179,7 +232,9 @@ async def request_guard_middleware(request: Request, call_next):
             )
             response.headers["Retry-After"] = str(max(1, math.ceil(retry_after)))
         else:
-            response = await call_next(request)
+            response = await bounded_request_body(request)
+            if response is None:
+                response = await call_next(request)
     except Exception:
         elapsed_ms = (time.perf_counter() - start) * 1000
         logger.exception(
@@ -189,12 +244,15 @@ async def request_guard_middleware(request: Request, call_next):
             request.url.path,
             elapsed_ms,
         )
-        raise
+        response = JSONResponse(status_code=500, content={"detail": "服务暂不可用，请稍后重试", "requestId": request_id})
 
     elapsed_ms = (time.perf_counter() - start) * 1000
     response.headers["X-Request-ID"] = request_id
     response.headers["X-Process-Time-Ms"] = f"{elapsed_ms:.1f}"
     response.headers["X-Decision-API-Version"] = APP_VERSION
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    if response.status_code >= 400:
+        response.headers["Cache-Control"] = "no-store"
     logger.info(
         "request id=%s method=%s path=%s status=%s elapsed_ms=%.1f",
         request_id,
@@ -634,6 +692,7 @@ async def operational_health():
     return {
         "status": "ok",
         "version": APP_VERSION,
+        "softwareVersion": SOFTWARE_VERSION,
         "timestamp": datetime.now().isoformat(),
         "stateBackend": "sqlite",
         "buildingsCount": _state_count("buildings"),
@@ -692,9 +751,18 @@ async def get_current_weather(response: Response):
     return payload
 
 
+def legacy_write_guard(request: Request):
+    if os.getenv("DECISION_ENABLE_LEGACY_MOCK") != "1":
+        raise HTTPException(409, "旧版演示写操作已停用，请使用布局决策沙盘。")
+    expected = os.getenv("DECISION_LEGACY_WRITE_TOKEN", "")
+    if not expected or not hmac.compare_digest(request.headers.get("x-legacy-write-token", ""), expected):
+        raise HTTPException(403, "无旧版演示写入权限")
+
+
 @app.post("/api/simulation/buildings", response_model=BuildingResponse, tags=["simulation"])
-async def create_building(body: BuildingCreate):
+async def create_building(body: BuildingCreate, request: Request):
     """将新建建筑写入数据库（Mock）"""
+    legacy_write_guard(request)
     building_id = str(uuid.uuid4())
     record = {
         "id": building_id,
@@ -715,10 +783,11 @@ async def create_building(body: BuildingCreate):
 
 
 @app.post("/api/simulation/what-if", response_model=WhatIfResponse, tags=["simulation"])
-async def what_if_simulation(body: WhatIfRequest):
+async def what_if_simulation(body: WhatIfRequest, request: Request):
     """What-If 推演核心接口"""
     if os.getenv("DECISION_ENABLE_LEGACY_MOCK") != "1":
-        raise HTTPException(409, "旧版未验证温降推演已停用。请使用决策工作台的几何方案比较；不提供随机温降或置信度。")
+        raise HTTPException(409, "旧版未验证温降推演已停用。请使用布局决策沙盘进行有来源、注明假设的辐射情景比较；不提供随机温降或置信度。")
+    legacy_write_guard(request)
     start = time.time()
 
     action = body.action.upper()
@@ -818,9 +887,10 @@ async def get_scenario(scenario_id: str):
     return {"success": True, "data": record}
 
 
-@app.get("/api/simulation/scenarios/{scenario_id}/undo", tags=["simulation"])
-async def undo_scenario(scenario_id: str):
+@app.post("/api/simulation/scenarios/{scenario_id}/undo", tags=["simulation"])
+async def undo_scenario(scenario_id: str, request: Request):
     """撤销场景（Mock：删除记录，返回原热力场）"""
+    legacy_write_guard(request)
     record = _state_delete("scenarios", scenario_id)
     if not record:
         return {"success": False, "message": f"场景 {scenario_id} 不存在或已被撤销"}

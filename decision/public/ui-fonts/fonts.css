@@ -1,0 +1,6 @@
+@font-face{font-family:"WJTJ Sans";src:url("wjtj-sans.woff") format("woff");font-style:normal;font-weight:100 900;font-display:swap}
+@font-face{font-family:"WJTJ Numeric";src:url("wjtj-numeric.woff") format("woff");font-style:normal;font-weight:100 700;font-display:swap}
+:root{--font:"WJTJ Sans","PingFang SC","Microsoft YaHei",sans-serif;--number:"WJTJ Numeric","WJTJ Sans",sans-serif;font-synthesis:none}
+body,button,input,select,textarea{font-family:var(--font)!important}
+.screen-temperature,.screen-weather-grid strong,.metric-value,.reference-value,.screen-risk-index>strong,.plan-comparison-summary strong,.sandbox-results>strong,.sandbox-ticks,time{font-family:var(--number)!important;font-variant-numeric:tabular-nums lining-nums}
+.hero h1{font-weight:600!important}

@@ -1,0 +1,56 @@
+async page=>{
+  const root='G:/Working/大创/output/aic-submission-20261027',dir=root+'/evidence/screens';
+  const ctx=await page.context().browser().newContext({viewport:{width:1440,height:900},recordVideo:{dir:root+'/private-build/recording',size:{width:1440,height:900}}});
+  const q=await ctx.newPage(),errors=[],cross=[],checks=[],stages=[];
+  const started=Date.now();let stage='home';
+  const saveJSON=async(path,data)=>{const pending=q.waitForEvent('download');await q.evaluate(obj=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(obj,null,2)],{type:'application/json'}));a.download='evidence.json';a.click();},data);await(await pending).saveAs(path);};
+  q.on('pageerror',e=>errors.push(e.message));q.on('request',r=>{if(new URL(r.url()).hostname==='weather.nogamenolife.cn')cross.push(r.url());});
+  await q.addInitScript(()=>performance.setResourceTimingBufferSize(10000));
+  const shot=async name=>{await q.screenshot({path:dir+'/'+name+'.png'});stages.push({name,seconds:(Date.now()-started)/1000});};
+  try{
+    await q.goto('https://aic.nogamenolife.cn/aic/home.html');await q.waitForTimeout(5500);await shot('01-home');
+    await q.mouse.wheel(0,850);await q.waitForTimeout(2500);await shot('02-platform');
+    await q.goto('https://aic.nogamenolife.cn/aic/#screen');stage='screen';
+    await q.locator('#workspace-map[data-buildings="225"]').waitFor({timeout:65000});
+    await q.locator('.sandbox-legend[data-valid-cells]:not([data-valid-cells="0"])').waitFor({timeout:65000});
+    await q.waitForTimeout(2500);await shot('03-screen');
+    checks.push({name:'大屏225栋与热场就绪',passed:true});
+    await q.locator('#dock-tab-sandbox').click();await q.locator('#sb-auto').uncheck();
+    await q.evaluate(async()=>{const url=performance.getEntriesByType('resource').map(r=>r.name).find(u=>/\/sandbox(?:-[^/]+)?\.js(?:\?|$)/.test(u));const {LayoutSandbox}=await import(url),paint=LayoutSandbox.prototype.paint;LayoutSandbox.prototype.paint=function(...args){window.__materials=this;return paint.apply(this,args);};});
+    await q.locator('#sb-layer').selectOption('weather');
+    await q.waitForFunction(()=>window.__materials.map.queryRenderedFeatures({layers:['sandbox-heat-fill']}).length>0,{timeout:25000});
+    checks.push({name:'热场与路网实际渲染',passed:await q.evaluate(()=>window.__materials.map.queryRenderedFeatures({layers:['sandbox-heat-fill']}).length>0&&window.__materials.map.queryRenderedFeatures({layers:['campus-road-line']}).length>0)});
+    await q.evaluate(()=>{const s=window.__materials,bounds={west:113.527,east:113.531,south:34.812,north:34.816};s.state.regionalDraft={...s.regional(),bounds};s.setBounds(bounds);});
+    await q.locator('[data-screen-panel="risk"]').first().click();stage='history';
+    await q.locator('#region-mode').selectOption('history');await q.locator('#region-ai').uncheck();
+    const history=q.waitForResponse(r=>r.url().endsWith('/aic/regional-assess'),{timeout:120000});await q.locator('#regional-submit').click();await history;
+    await q.waitForTimeout(2000);await shot('04-regional');await q.keyboard.press('Escape');
+    const pending=q.waitForResponse(r=>r.url().endsWith('/sandbox/simulate'),{timeout:120000});await q.locator('#sb-auto').check();await pending;
+    await q.waitForTimeout(2000);await shot('05-historical-grid');
+    stage='build';await q.locator('#map-home').click();await q.waitForTimeout(1100);
+    await q.locator('[data-mode="edit"]').click();await q.locator('[data-operation="add"]').click();
+    for(const id of ['width','depth'])await q.locator('#sb-'+id).fill('20');await q.locator('#sb-height').fill('30');
+    const point=await q.evaluate(()=>{const s=window.__materials,r=document.querySelector('#workspace-map').getBoundingClientRect(),p=s.map.project([113.528143,34.813813]);return{x:r.left+p.x,y:r.top+p.y};});
+    await q.mouse.click(point.x,point.y);await q.waitForTimeout(1000);await shot('06-building-edit');
+    const calculated=q.waitForResponse(r=>r.url().endsWith('/sandbox/simulate'),{timeout:120000});await q.locator('#sb-confirm').click();const response=await calculated,result=await response.json();
+    await saveJSON(root+'/evidence/browser-building-result.json',result);
+    await q.waitForFunction(hash=>document.getElementById('workspace-map').dataset.resultSha256===hash,result.report_sha256,{timeout:90000});
+    checks.push({name:'界面与接口报告哈希一致',passed:await q.locator('#workspace-map').getAttribute('data-result-sha256')===result.report_sha256});
+    await q.waitForTimeout(2500);await shot('07-building-result');
+    await q.locator('#sb-report').click();await q.waitForTimeout(1800);await shot('08-report');
+    checks.push({name:'报告使用当前计算',passed:(await q.locator('#sb-report-content').innerText()).includes(result.report_sha256)});
+    await q.locator('#sb-report-close').click();
+    await q.locator('[data-mode="proposed"]').click();await q.locator('#sb-layer').selectOption('utci');await q.waitForTimeout(1500);await shot('09-utci');
+    stage='mobile';await q.setViewportSize({width:390,height:844});await q.waitForTimeout(1800);await shot('10-mobile-screen');
+    checks.push({name:'手机大屏无横向溢出',passed:await q.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)});
+    await q.goto('https://aic.nogamenolife.cn/aic/home.html');await q.waitForTimeout(3500);await shot('11-mobile-home');
+    checks.push({name:'手机主页无横向溢出',passed:await q.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)});
+    await q.setViewportSize({width:1440,height:900});await q.goto('https://aic.nogamenolife.cn/aic/#overview');await q.waitForTimeout(3000);await shot('12-overview');
+    await q.goto('https://aic.nogamenolife.cn/aic/journal.html');await q.waitForTimeout(2000);await shot('13-journal');
+    checks.push({name:'可见内容无学校教师',passed:!(/郑州大学|Zhengzhou University|闫梓宇/i.test(await q.locator('body').innerText()))});
+  }catch(e){checks.push({name:'流程 '+stage,passed:false,error:e.message});await shot('failure-'+stage);}
+  checks.push({name:'运行时无异常',passed:errors.length===0,detail:errors});checks.push({name:'没有向项目域名发请求',passed:cross.length===0,detail:cross});
+  const video=q.video();const videoPath=await video.path();
+  const summary={checks,stages,videoPath,createdAt:new Date().toISOString()};await saveJSON(root+'/evidence/browser-acceptance.json',summary);await ctx.close();
+  return summary;
+}

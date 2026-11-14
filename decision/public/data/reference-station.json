@@ -1,0 +1,27 @@
+{
+  "id": "CAMPUS_AWS_REFERENCE",
+  "label": "\u57fa\u51c6\u7ad9",
+  "role": "calibration_reference",
+  "location": {
+    "longitude": 113.5323459,
+    "latitude": 34.8145206
+  },
+  "crs": "EPSG:4326",
+  "location_status": "user_map_pin",
+  "location_basis": "user_supplied_map_pin_between_two_teaching_buildings_road_front",
+  "telemetry_status": "not_connected",
+  "observation": null,
+  "note": "\u7528\u6237\u63d0\u4f9b\u5730\u56fe\u5b9a\u4f4d\uff0c\u5df2\u7531GCJ-02\u8f6c\u4e3aWGS84\uff0c\u975e\u6d4b\u7ed8\u6216RTK\u5750\u6807\u3002\u6307\u5b9a\u4e3a\u6821\u56ed\u57fa\u51c6\u7ad9\uff0c\u7ad9\u70b9\u5b9e\u6d4b\u672a\u63a5\u5165\uff1b\u5f53\u524d\u6a21\u62df\u6c14\u8c61\u8fb9\u754c\u4ecd\u4e3a\u516c\u5f00\u7f51\u683c\u3002",
+  "source_location": {
+    "longitude": 113.53853,
+    "latitude": 34.813483,
+    "crs": "GCJ-02"
+  },
+  "coordinate_conversion": {
+    "library": "eviltransform",
+    "version": "0.1.1",
+    "method": "gcj2wgs_exact",
+    "source": "https://github.com/googollee/eviltransform",
+    "survey_accuracy_m": null
+  }
+}

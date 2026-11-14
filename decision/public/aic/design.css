@@ -1,0 +1,35 @@
+:root {--accent:#286780;--muted:#566f7d;--line:#d6dfe2;font-size:16px;color:#2d4654;background:#f6f8f8}
+body {font:400 14px/1.7 var(--font);letter-spacing:0}
+::selection {background:#d9e9f0;color:#24495f}
+button,a,input,select,summary {letter-spacing:0;touch-action:manipulation}
+a {text-underline-offset:4px}
+button {font-size:14px;font-weight:500;min-height:40px;border-radius:7px}
+button:hover:enabled {background:#e8eff2;border-color:#d6dfe2}
+button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible {outline:2px solid #286780;outline-offset:3px}
+button:disabled {cursor:not-allowed}
+h1 {font-size:30px;font-weight:500;line-height:1.4}
+h2,h3 {font-size:18px;font-weight:500;line-height:1.5}
+.wordmark {font-size:23px;font-weight:600}.wordmark span {display:none}
+.eyebrow {display:none}.section-heading h2>span {display:none}
+.inputs {border-top:1px solid var(--line);background:transparent}
+.section {padding:24px 0}.inputs>.section {padding-right:28px}
+.workspace {gap:36px}.results {border-left:1px solid var(--line);padding-left:32px}
+.measurements strong,.index-value strong {font-family:var(--number);font-variant-numeric:tabular-nums lining-nums;font-size:42px;font-weight:500;color:#286780}
+.field,.data-meta,.muted,.segments span,.symptoms label,.ai-option,.small-badge,.review-badge {font-size:13px}
+.field input,.field select {font-size:14px;min-height:42px;border-radius:6px}
+.segments {background:#edf2f4;border-radius:7px}.segments input:checked+span {box-shadow:none;color:#286780;background:#e4edf2;border-color:#d6dfe2}
+.symptoms label {min-height:40px}.emergency {border-left:0;border-radius:7px;background:#f9eeee;color:#9b3935}
+.primary,#assess {background:#286780;color:white;border-color:#286780}
+.result-section,.citation,.notice {font-size:14px;line-height:1.8}
+.citation {border-radius:6px}.result-section p {max-width:74ch}
+summary {cursor:pointer}.data-meta dd,.audit-details {overflow-wrap:anywhere}
+footer {font-size:12px;color:#566f7d}
+@media(max-width:800px){.results {border-left:0;padding-left:0}.inputs>.section {padding-right:0}.workspace {gap:24px}}
+@media(max-width:600px){h1 {font-size:24px}.page-title {align-items:start;flex-wrap:wrap}button {min-height:44px}.field input,.field select {font-size:16px;min-height:44px}.symptoms label {min-height:44px}.measurements strong {font-size:38px}}
+@media(prefers-reduced-motion:no-preference){button {transition:background-color .16s,transform .13s}button:not(:disabled):active {transform:translateY(1px) scale(.98)}}
+@media print {.results {border:0;padding:0}}
+.embedded .inputs {border:0;border-top:1px solid var(--line)}
+.embedded .primary {background:#286780;border-color:#286780}
+.embedded .data-meta,.embedded .muted,.embedded .source-link {font-size:12px}
+.embedded .section {padding:22px 18px}.embedded .section h2,.embedded h3 {font-size:16px}
+.embedded .method-section p,.embedded .result-section p {font-size:14px;line-height:1.85}
