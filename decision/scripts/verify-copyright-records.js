@@ -45,6 +45,7 @@ async page => {
     await sceneButton().waitFor();
     await q.reload();await q.locator('#dock-tab-sandbox').click();await q.locator('#sb-auto').uncheck();
     await q.locator('.sandbox-library > summary').click();await sceneButton().click();
+    await q.waitForFunction(name=>document.querySelector('#sb-name')?.value===name,sceneName);
     check(await q.locator('#sb-name').inputValue()===sceneName,'scene reload restores saved name');
     const deleteScene=()=>q.locator('[data-delete-scene="'+scene.id+'"]');
     await capture('20-scene-library.png','建筑情景：保存与回读');
