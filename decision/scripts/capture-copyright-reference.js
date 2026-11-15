@@ -35,16 +35,18 @@ async (page) => {
     await page.goto(origin + '/sensors');
     await page.getByRole('button', { name: /^UGV(?: 在线| 离线)?$/ }).click();
     await page.getByRole('heading', { name: 'UGV', exact: true }).waitFor();
+    if(local) await page.waitForFunction(()=>document.querySelector('mobile-observations')?.shadowRoot.querySelectorAll('tbody tr').length===3);
     await page.locator('mobile-observations').scrollIntoViewIfNeeded();
     await page.screenshot({ path: output + '/09-ugv.png' });
-    images.push({ file: '09-ugv.png', title: 'UGV 设备详情入口', url: page.url(), viewport: { width: 1440, height: 1000 }, role: 'public-interface-reference' });
+    images.push({ file: '09-ugv.png', title: 'UGV 模拟观测数据', url: page.url(), viewport: { width: 1440, height: 1000 }, role: local?'synthetic-interface-acceptance':'public-interface-reference' });
     await page.getByRole('button', { name: /^UAV(?: 在线| 离线)?$/ }).click();
     await page.getByRole('heading', { name: 'UAV', exact: true }).waitFor();
+    if(local) await page.waitForFunction(()=>document.querySelector('mobile-observations')?.shadowRoot.querySelectorAll('tbody tr').length===3);
     await page.setViewportSize({ width: 390, height: 900 });
     await page.locator('mobile-observations').scrollIntoViewIfNeeded();
     if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) throw new Error('Mobile layout overflow');
     await page.screenshot({ path: output + '/10-mobile-uav.png' });
-    images.push({ file: '10-mobile-uav.png', title: '手机端 UAV 设备详情', url: page.url(), viewport: { width: 390, height: 900 }, role: 'public-interface-reference' });
+    images.push({ file: '10-mobile-uav.png', title: '手机端 UAV 模拟观测数据', url: page.url(), viewport: { width: 390, height: 900 }, role: local?'synthetic-interface-acceptance':'public-interface-reference' });
     if (errors.length) throw new Error('Uncaught page exceptions: ' + errors.join('; '));
     return { origin, captured_at: new Date().toISOString(), public_source_revision_verified: false,
       source_revision:provenance?.source_revision, frozen_local_source_verified:!!provenance?.source_revision,

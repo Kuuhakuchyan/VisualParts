@@ -42,6 +42,9 @@ def install_weather():
         temperature = round(30 + 5 * math.sin((at.hour - 8) * math.pi / 12), 2)
         payload = {"source_type": "open_meteo_forecast" if target else "historical_weather" if mode == "history" else "open_meteo_grid",
                    "source_name": "模拟气象样例 / 非真实观测", "source_url": "urn:wjtj:synthetic-weather-fixture",
+                   "provider": "synthetic-local-fixture", "original_record_id": "synthetic:" + at.isoformat(),
+                   "requested_location": location or {"longitude": 113.531, "latitude": 34.814},
+                   "location_label": "模拟区域", "quality_note": "模拟输入，仅用于隔离功能验收。",
                    "observed_at": at.isoformat(), "retrieved_at": datetime.now(timezone.utc).isoformat(),
                    "valid_time": at.isoformat(), "is_forecast": target is not None, "temperature_c": temperature,
                    "relative_humidity_pct": 55, "quality_status": "validated", "test_fixture": True,

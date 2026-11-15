@@ -1,5 +1,6 @@
 async (page) => {
   const checks=[];
+  await page.goto(new URL('/sensors',page.url()).href);
   await page.getByRole('button',{name:/^UGV (在线|离线)$/}).click();
   await page.locator('mobile-observations').getByRole('table').waitFor();
   if(await page.locator('mobile-observations tbody tr').count()!==3)throw new Error('history missing');
